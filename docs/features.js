@@ -68,9 +68,16 @@ function initPhrases(config) {
   return config;
 }
 
-/** Fetch the shared word lists over HTTP, then set them up. */
+/**
+ * Fetch the shared word lists over HTTP, then set them up.
+ *
+ * cache: "no-cache" for the same reason as the model file: train.py
+ * refreshes this copy on every run, and scoring with last week's word
+ * lists but this week's weights would be silently wrong. The browser
+ * still caches; it just revalidates first.
+ */
 async function loadPhrases(url = "phrases.json") {
-  const response = await fetch(url);
+  const response = await fetch(url, { cache: "no-cache" });
   if (!response.ok) {
     throw new Error(`Could not load ${url} (HTTP ${response.status})`);
   }

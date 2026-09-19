@@ -27,9 +27,19 @@ function initModel(model) {
   return MODEL;
 }
 
-/** Load the trained weights produced by train.py. */
+/**
+ * Load the trained weights produced by train.py.
+ *
+ * cache: "no-cache" forces the browser to check with the server before
+ * reusing its copy. WHY: GitHub Pages tells browsers they may keep a file
+ * for about ten minutes, and this is the file that changes every time the
+ * model is retrained. Without this, someone who visited recently would be
+ * scored by the previous model with no sign anything was stale. It is not
+ * "no-store": the browser still caches, it just revalidates first, so the
+ * usual answer is a tiny 304 rather than a fresh download.
+ */
 async function loadModel(url = "model.json") {
-  const response = await fetch(url);
+  const response = await fetch(url, { cache: "no-cache" });
   if (!response.ok) {
     throw new Error(`Could not load ${url} (HTTP ${response.status})`);
   }

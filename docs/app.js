@@ -208,7 +208,20 @@ function handleScore() {
     return;
   }
   elements.inputError.hidden = true;
-  render(score(text));
+
+  // If rendering throws, say so plainly instead of leaving a half-drawn
+  // result on screen. The realistic cause is a stale cached script running
+  // against newer HTML after a deploy, which a reload fixes, so the message
+  // says that rather than showing a raw error.
+  try {
+    render(score(text));
+  } catch (error) {
+    elements.results.hidden = true;
+    elements.inputError.textContent =
+      "Something went wrong displaying the result. Please reload the page " +
+      `(your browser may be holding an old copy of this site). Details: ${error.message}`;
+    elements.inputError.hidden = false;
+  }
 }
 
 async function start() {

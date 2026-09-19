@@ -5,7 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>HireProof &mdash; Ghost Job Checker</title>
 <meta name="description" content="Paste a job posting and see how closely its wording matches postings labelled as ghost jobs. Runs entirely in your browser.">
-<link rel="stylesheet" href="style.css">
+<!-- The ?v= number busts the browser cache. GitHub Pages lets browsers keep
+     these files for about ten minutes, so without it a returning visitor can
+     end up running an old script against new HTML, which half-renders the
+     page. BUMP THIS NUMBER whenever index.html, style.css or app.js change
+     shape. (The proper fix is content-hashed filenames from a build step;
+     this project has no build step on purpose, so the number is manual.) -->
+<link rel="stylesheet" href="style.css?v=2">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>&#128123;</text></svg>">
 </head>
 <body>
@@ -140,6 +146,6 @@
   </p>
 </footer>
 
-<script type="module" src="app.js"></script>
+<script type="module" src="app.js?v=2"></script>
 </body>
 </html>
