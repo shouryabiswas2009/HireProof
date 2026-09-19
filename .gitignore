@@ -1,0 +1,17 @@
+# Virtual environment: big, machine-specific, and recreated from requirements.txt
+.venv/
+
+# Python bytecode caches
+__pycache__/
+*.pyc
+
+# Your raw labeled postings. Job postings are the companies' copyrighted text,
+# so they stay on your computer and never go into the public repo.
+data/*.csv
+data/*.tmp
+
+# Editor / OS clutter
+.claude/
+.vscode/
+.idea/
+Thumbs.db
