@@ -8,7 +8,8 @@ scikit-learn, no numpy, no external AI services), trained on postings
 labelled by hand. Every score comes with a breakdown of which signals drove
 it, because a number on its own is not much use.
 
-**Live site:** _deployed below once GitHub Pages is enabled_
+**Live site: https://shouryabiswas2009.github.io/HireProof/**
+(the capital H and P matter &mdash; GitHub Pages URLs are case-sensitive)
 
 ## How it works, in one paragraph
 
@@ -65,6 +66,18 @@ Everything in `docs/` is the published website. To preview it locally:
 
 Then open http://localhost:5055.
 
+### 4. Publish an updated model
+
+After retraining, the site updates by pushing the new weights:
+
+```powershell
+git add docs/model.json docs/phrases.json
+git commit -m "Retrain on latest labelled data"
+git push
+```
+
+GitHub Pages redeploys automatically, usually within a minute.
+
 ## Tests
 
 ```powershell
@@ -73,6 +86,14 @@ Then open http://localhost:5055.
 
 Runs the Python suite and the JavaScript suite. Both must pass: feature
 extraction exists in both languages, and the tests check they agree.
+
+## Current status
+
+The public model is trained on **synthetic placeholder postings** written by
+hand (`data/demo_postings.json`), because the real labelled dataset is still
+being collected. It scores 100% in cross-validation, which is a warning sign
+rather than an achievement: those examples are far more cleanly separated
+than real postings ever are. Both the training report and the website say so.
 
 ## Layout
 
