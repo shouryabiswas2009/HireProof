@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2>All labeled postings</h2>
+
+{% if not postings %}
+  <p>Nothing here yet. <a href="{{ url_for('index') }}">Add your first posting.</a></p>
+{% endif %}
+
+{% for p in postings %}
+  <article class="card">
+    <p>
+      <span class="tag tag-{{ p.label }}">{{ p.label }}</span>
+      <span class="tag">{{ p.confidence }}</span>
+      <span class="hint">{{ p.added_at }}</span>
+    </p>
+    {# Only the first 300 characters; the full text is in the CSV. #}
+    <p class="excerpt">{{ p.text[:300] }}{% if p.text|length > 300 %}&hellip;{% endif %}</p>
+    {% if p.evidence %}
+      <p class="hint">
+        Evidence:
+        {% for key in p.evidence.split(";") %}{{ evidence_options.get(key, key) }}{% if not loop.last %}; {% endif %}{% endfor %}
+      </p>
+    {% endif %}
+    {% if p.notes %}<p class="hint">Notes: {{ p.notes }}</p>{% endif %}
+    <form method="post" action="{{ url_for('delete', posting_id=p.id) }}"
+          onsubmit="return confirm('Delete this posting?');">
+      <button type="submit" class="danger">Delete</button>
+    </form>
+  </article>
+{% endfor %}
+
+{% endblock %}

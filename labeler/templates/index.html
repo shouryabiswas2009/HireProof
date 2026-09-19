@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block content %}
+
+<section class="progress">
+  <p>
+    <strong>{{ stats.total }}</strong> of {{ target }} labeled
+    &middot; {{ stats.ghost }} ghost &middot; {{ stats.legit }} legit
+    &middot; {{ stats.text_only }} judged from wording alone
+  </p>
+  <progress max="{{ target }}" value="{{ [stats.total, target] | min }}"></progress>
+  {% if warning %}<p class="warning">{{ warning }}</p>{% endif %}
+</section>
+
+{% if error %}<p class="error">{{ error }}</p>{% endif %}
+
+<form method="post" action="{{ url_for('add') }}">
+  <label for="text">Paste the full job posting</label>
+  <textarea id="text" name="text" rows="16" required>{{ values["text"] }}</textarea>
+
+  <fieldset>
+    <legend>Your label</legend>
+    <label><input type="radio" name="label" value="ghost" required
+      {% if values["label"] == "ghost" %}checked{% endif %}> Ghost (probably no real intent to hire)</label>
+    <label><input type="radio" name="label" value="legit"
+      {% if values["label"] == "legit" %}checked{% endif %}> Legit (a real, active opening)</label>
+  </fieldset>
+
+  <fieldset>
+    <legend>How sure are you?</legend>
+    <label><input type="radio" name="confidence" value="sure"
+      {% if values["confidence"] != "unsure" %}checked{% endif %}> Sure</label>
+    <label><input type="radio" name="confidence" value="unsure"
+      {% if values["confidence"] == "unsure" %}checked{% endif %}> Unsure</label>
+  </fieldset>
+
+  <fieldset>
+    <legend>Why do you believe that label? (tick everything that applies)</legend>
+    {% for key, description in evidence_options.items() %}
+      <label><input type="checkbox" name="evidence" value="{{ key }}"
+        {% if key in values["evidence"] %}checked{% endif %}> {{ description }}</label>
+    {% endfor %}
+    <p class="hint">
+      Labels based only on the wording are the weakest, because the model would
+      just be learning your own gut feeling. Outside evidence makes a label more trustworthy.
+    </p>
+  </fieldset>
+
+  <label for="notes">Notes (optional)</label>
+  <input id="notes" name="notes" type="text" value="{{ values['notes'] }}">
+
+  <button type="submit">Save posting</button>
+</form>
+
+<p class="hint">
+  Postings are saved to <code>data/labeled_postings.csv</code> on this computer only.
+  That file is gitignored, so it is never uploaded to GitHub.
+</p>
+{% endblock %}

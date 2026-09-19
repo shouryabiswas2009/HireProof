@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ghost Job Labeler</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='labeler.css') }}">
+</head>
+<body>
+  <header>
+    <h1>Ghost Job Labeler</h1>
+    <nav>
+      <a href="{{ url_for('index') }}">Add posting</a>
+      <a href="{{ url_for('postings') }}">All postings ({{ stats.total }})</a>
+    </nav>
+  </header>
+  <main>
+    {# flash() messages are one-time notices like "Saved." #}
+    {% for message in get_flashed_messages() %}
+      <p class="notice">{{ message }}</p>
+    {% endfor %}
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

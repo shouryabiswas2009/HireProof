@@ -1,0 +1,34 @@
+/* Plain, readable styling for a tool only you will use. */
+body {
+  font-family: system-ui, sans-serif;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 0 16px 48px;
+  line-height: 1.5;
+  color: #1a1a1a;
+  background: #fafafa;
+}
+header { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; }
+nav a { margin-right: 16px; }
+textarea, input[type="text"] {
+  width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+  padding: 8px;
+  border: 1px solid #bbb;
+  border-radius: 6px;
+}
+label { display: block; margin: 6px 0; }
+fieldset { margin: 16px 0; border: 1px solid #ccc; border-radius: 6px; }
+progress { width: 100%; }
+button { font: inherit; padding: 8px 18px; border-radius: 6px; border: 1px solid #444; background: #222; color: #fff; cursor: pointer; }
+button.danger { background: #fff; color: #b00020; border-color: #b00020; }
+.notice { background: #e6f4ea; padding: 8px 12px; border-radius: 6px; }
+.error { background: #fdecea; color: #7a0012; padding: 8px 12px; border-radius: 6px; }
+.warning { background: #fff4e5; color: #6b4200; padding: 8px 12px; border-radius: 6px; }
+.hint { color: #666; font-size: 0.9em; }
+.card { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 4px 16px; margin: 12px 0; }
+.excerpt { white-space: pre-wrap; }
+.tag { display: inline-block; padding: 1px 10px; border-radius: 999px; background: #eee; font-size: 0.85em; }
+.tag-ghost { background: #ffd9d9; }
+.tag-legit { background: #d9f2df; }
