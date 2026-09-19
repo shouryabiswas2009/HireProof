@@ -1,0 +1,119 @@
+{
+  "_readme": "Shared test cases. tests/test_features.py (Python) and tests/js/test_features.mjs (JavaScript) both run these and must produce IDENTICAL numbers. That is what stops the two feature extractors from drifting apart, which would mean the live site feeds the model different numbers than it was trained on. Every posting below is FAKE, written for testing only. None of this is training data.",
+
+  "tolerance": 0.0001,
+
+  "cases": [
+    {
+      "name": "obvious_ghost_posting",
+      "_why": "Every ghost signal at once: no pay figure, evergreen wording, buzzwords, no duties, no contact, no dates.",
+      "text": "Join Our Talent Pool! We are always looking for passionate about technology self-starters to join our growing team. We are a fast-paced, dynamic environment where you will wear many hats and thrive in an ever-changing workplace. We are proactively building a talent pipeline for future opportunities across various locations. Competitive salary and unlimited potential for the right rockstar. There is no specific opening at this time, but we will keep your resume on file for future consideration. Apply now and make an impact!",
+      "expected": {
+        "has_salary_range": 0.0,
+        "vague_pay_phrase": 1.0,
+        "buzzword_density": 13.25301204819277,
+        "_buzzword_density_working": "11 distinct buzzwords in 83 words = 11 * 100 / 83",
+        "concrete_duty_density": 0.0,
+        "names_reporting_line": 0.0,
+        "has_contact_email": 0.0,
+        "evergreen_language": 1.0,
+        "multiple_openings_language": 1.0,
+        "has_deadline_or_start_date": 0.0,
+        "experience_mismatch": 0.0
+      }
+    },
+    {
+      "name": "obvious_legit_posting",
+      "_why": "The mirror image: a real pay range, a named manager, concrete duties, a contact and a start date.",
+      "text": "Backend Engineer, Payments Team. Salary: $95,000 - $115,000 per year. You will report to Dana Okafor, who leads the payments team of six engineers. In this role you will own the invoicing service, write and review code in Go, and take part in the on-call rotation one week in six. Our stack is Go, Postgres and Kubernetes. In your first 90 days you will ship your first change to production and lead one code review cycle per sprint. Applications close on 14 March. The anticipated start date is 1 May. Questions? Email dana.okafor@example.com and she will answer directly.",
+      "expected": {
+        "has_salary_range": 1.0,
+        "vague_pay_phrase": 0.0,
+        "buzzword_density": 0.0,
+        "names_reporting_line": 1.0,
+        "has_contact_email": 1.0,
+        "evergreen_language": 0.0,
+        "multiple_openings_language": 0.0,
+        "has_deadline_or_start_date": 1.0,
+        "experience_mismatch": 0.0
+      }
+    },
+    {
+      "name": "hourly_rate_counts_as_salary",
+      "_why": "Pay can be hourly. The pattern must catch $22.50/hr, not just annual figures.",
+      "text": "Warehouse Associate needed for our distribution centre. The rate is $22.50/hr for the day shift. You will pick and pack customer orders, operate a pallet jack, and keep the loading bay tidy. Start date is the first Monday of next month. This is a permanent position with a fixed weekly schedule of forty hours.",
+      "expected": {
+        "has_salary_range": 1.0,
+        "has_deadline_or_start_date": 1.0
+      }
+    },
+    {
+      "name": "funding_dollars_are_not_salary",
+      "_why": "A common false positive: postings brag about funding. '$40 million raised' must NOT count as a pay figure.",
+      "text": "We recently raised $40 million in our Series B round and our valuation passed $1 billion last quarter. Coffee is $2 in our subsidised cafeteria. We are hiring a Product Designer to work on our mobile application and design system. You will run usability sessions with real customers every second week and hand off specifications to the engineering team.",
+      "expected": {
+        "has_salary_range": 0.0
+      }
+    },
+    {
+      "name": "experience_mismatch_case",
+      "_why": "An 'entry level' title demanding 5+ years: the classic unfillable posting.",
+      "text": "Entry Level Software Developer. This junior position is perfect for a new graduate who is eager to learn and grow with our company. Requirements: 5+ years of professional experience with distributed systems, expert knowledge of three cloud platforms, and a proven track record of leading engineering teams. We offer a competitive salary and a friendly working atmosphere in our modern downtown office.",
+      "expected": {
+        "experience_mismatch": 1.0,
+        "has_salary_range": 0.0,
+        "vague_pay_phrase": 1.0
+      }
+    },
+    {
+      "name": "senior_role_with_experience_is_not_a_mismatch",
+      "_why": "The control for the case above: 8 years of experience is normal for a senior title, so the flag must stay off.",
+      "text": "Senior Staff Engineer, Infrastructure. We require 8+ years of industry experience building large scale distributed systems. You will own the migration of our data platform, set technical direction for three teams, and mentor senior engineers. You will report to the VP of Engineering. Base salary range is $180,000 to $210,000 depending on location.",
+      "expected": {
+        "experience_mismatch": 0.0,
+        "has_salary_range": 1.0,
+        "names_reporting_line": 1.0
+      }
+    },
+    {
+      "name": "density_not_raw_count",
+      "_why": "Two buzzwords in a very short posting must score a HIGHER density than the same two buzzwords buried in a long one. This is why we divide by length.",
+      "text": "We want a rockstar developer for our fast-paced team. Apply now.",
+      "expected": {
+        "buzzword_density": 18.181818181818183,
+        "concrete_duty_density": 0.0
+      }
+    },
+    {
+      "name": "repeated_phrase_counted_once",
+      "_why": "'fast-paced' five times is not five times more suspicious than once, so each distinct phrase counts once only.",
+      "text": "This is a fast-paced role in a fast-paced company with a fast-paced culture and a fast-paced team in a fast-paced industry. We move quickly and we expect you to keep up with our pace at all times without exception.",
+      "expected": {
+        "buzzword_density": 2.5641025641025643,
+        "_buzzword_density_working": "'fast-paced' appears 5 times but counts ONCE: 1 * 100 / 39 words"
+      }
+    },
+    {
+      "name": "line_breaks_and_casing",
+      "_why": "Phrases split across line breaks and written in capitals must still be found, since pasted text is messy.",
+      "text": "WE ARE A FAST-PACED,\r\n   DYNAMIC   ENVIRONMENT.\n\nYou will\nwear many hats. Our talent pool is always open for new applicants who want to join us at some point in the future when something opens up.",
+      "expected": {
+        "buzzword_density": 8.571428571428571,
+        "_buzzword_density_working": "3 buzzwords found despite the line breaks and capitals: 3 * 100 / 35 words",
+        "evergreen_language": 1.0
+      }
+    },
+    {
+      "name": "empty_text_does_not_crash",
+      "_why": "The website must not break if someone submits nothing. Guards the divide-by-zero in the density calculation.",
+      "text": "",
+      "expected": {
+        "has_salary_range": 0.0,
+        "buzzword_density": 0.0,
+        "concrete_duty_density": 0.0,
+        "log_word_count": 0.0,
+        "experience_mismatch": 0.0
+      }
+    }
+  ]
+}
