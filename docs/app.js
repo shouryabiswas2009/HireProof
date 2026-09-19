@@ -8,7 +8,7 @@ import { loadPhrases } from "./features.js";
 import { loadModel, score, band } from "./scorer.js";
 
 // Change this if you fork the project.
-const REPO_URL = "https://github.com/shouryabiswas2009/ghost-job-detector";
+const REPO_URL = "https://github.com/shouryabiswas2009/hireproof";
 
 // A deliberately mediocre posting for the "Load an example" button: it has
 // signals pointing both ways, so the demo shows a nuanced breakdown rather
