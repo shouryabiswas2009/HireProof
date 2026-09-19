@@ -1,19 +1,40 @@
 /*
- * Plain CSS, no framework. The page is one column of text and a form, so a
- * framework would be more to learn and explain than to write it directly.
- * Colours are defined once as variables at the top, then reused, and
- * redefined for dark mode near the bottom.
+ * Plain CSS, no framework. The page is one column of text, a form and one
+ * chart, so a framework would be more to learn and explain than to write
+ * this directly.
+ *
+ * Colours are defined once as variables here, then referenced by ROLE
+ * everywhere else, so light and dark mode swap in one place.
+ *
+ * The two data colours (--raise / --lower) are a diverging pair: a warm and
+ * a cool hue that read as opposites, with a neutral track between them.
+ * They were checked with a colour-vision validator against both surfaces
+ * rather than picked by eye: worst-case separation for colour-blind readers
+ * is well clear of the safe threshold in both modes. Colour is still never
+ * the only channel, though: bar direction, the legend and the row text all
+ * say the same thing.
  */
 
 :root {
-  --bg: #f6f7f9;
+  --bg: #f9f9f7;
   --panel: #ffffff;
-  --ink: #16181d;
-  --ink-soft: #5b6270;
-  --line: #dfe3e9;
-  --accent: #2f5fd0;
-  --ghost: #c2410c;   /* warm: raises risk */
-  --legit: #15803d;   /* green: lowers risk */
+  --ink: #0b0b0b;
+  --ink-soft: #52514e;
+  --ink-muted: #898781;
+  --line: #e1e0d9;
+  --accent: #2a78d6;
+
+  /* Diverging pair for the contribution chart. */
+  --raise: #e34948;   /* warm: pushed the score toward "ghost" */
+  --lower: #2a78d6;   /* cool: pulled the score toward "genuine" */
+  --track: #f0efec;   /* neutral midpoint, reads as "nothing" */
+
+  /* Status colours for the score band. Fixed, never themed. Each is always
+     shipped with an icon and words, never on its own. */
+  --status-good: #0ca30c;
+  --status-warn: #fab219;
+  --status-bad: #d03b3b;
+
   --warn-bg: #fff6e5;
   --warn-line: #f0c36d;
   --error-bg: #fdecea;
@@ -21,11 +42,32 @@
   --radius: 10px;
 }
 
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d0d0d;
+    --panel: #1c1f25;
+    --ink: #ffffff;
+    --ink-soft: #c3c2b7;
+    --ink-muted: #898781;
+    --line: #2f343d;
+    --accent: #3987e5;
+
+    --raise: #e66767;
+    --lower: #3987e5;
+    --track: #383835;
+
+    --warn-bg: #3a2f14;
+    --warn-line: #7a6427;
+    --error-bg: #3b1f1c;
+    --error-line: #7d3b34;
+  }
+}
+
 * { box-sizing: border-box; }
 
 body {
   margin: 0;
-  padding: 0 16px 64px;   /* 16px side gutter, so nothing touches the edge on a phone */
+  padding: 0 16px 64px;   /* 16px side gutter so nothing touches a phone edge */
   background: var(--bg);
   color: var(--ink);
   font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -34,17 +76,19 @@ body {
 
 main, .site-header, .site-footer { max-width: 760px; margin: 0 auto; }
 
-.site-header { padding: 40px 0 8px; }
-.site-header h1 { margin: 0 0 6px; font-size: 1.9rem; letter-spacing: -0.02em; }
+.site-header { padding: 44px 0 4px; }
+.site-header h1 { margin: 0 0 6px; font-size: 2rem; letter-spacing: -0.02em; }
 .tagline { margin: 0; color: var(--ink-soft); }
 
 .panel {
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  padding: 20px;
+  padding: 22px;
   margin: 20px 0;
 }
+
+h3 { margin: 26px 0 6px; font-size: 1.02rem; }
 
 .field-label { display: block; font-weight: 600; margin-bottom: 8px; }
 
@@ -59,7 +103,9 @@ textarea {
   color: var(--ink);
   resize: vertical;
 }
-textarea:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.word-count { margin: 6px 0 0; font-size: 0.82rem; color: var(--ink-muted); text-align: right; }
 
 .controls { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
 
@@ -74,8 +120,12 @@ button {
   cursor: pointer;
 }
 button:hover:not(:disabled) { filter: brightness(1.08); }
+button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 button:disabled { opacity: 0.5; cursor: not-allowed; }
 button.secondary { background: transparent; color: var(--accent); border-color: var(--line); }
+
+.privacy { margin: 14px 0 0; font-size: 0.88rem; color: var(--ink-soft); }
+.hint { font-size: 0.88rem; color: var(--ink-soft); }
 
 .input-error {
   margin: 10px 0 0;
@@ -86,81 +136,132 @@ button.secondary { background: transparent; color: var(--accent); border-color: 
   font-size: 0.9rem;
 }
 
-.privacy { margin: 14px 0 0; font-size: 0.88rem; color: var(--ink-soft); }
-.hint { font-size: 0.88rem; color: var(--ink-soft); }
-
 /* --- Banners --- */
-.banner {
-  border-radius: var(--radius);
-  padding: 14px 18px;
-  margin: 20px 0;
-  font-size: 0.93rem;
-}
+.banner { border-radius: var(--radius); padding: 14px 18px; margin: 20px 0; font-size: 0.93rem; }
 .banner-demo { background: var(--warn-bg); border: 1px solid var(--warn-line); }
 .banner-error { background: var(--error-bg); border: 1px solid var(--error-line); }
 
-/* --- The score --- */
-.verdict { text-align: center; padding-bottom: 8px; }
-.gauge {
+/* --- The score: hero figure + meter + status badge ---------------------
+   The number itself stays in normal ink. Colour lives on the meter, and
+   the badge pairs that colour with an icon and words, so a colour-blind
+   reader loses nothing. */
+.verdict { text-align: center; padding: 4px 0 8px; }
+
+.score-label {
+  margin: 0;
+  font-size: 0.82rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.score-number {
+  /* Hero figure: large, same sans as everything else, and PROPORTIONAL
+     figures (tabular-nums would make a number like 92 look loose here). */
+  margin: 2px 0 14px;
+  font-size: 3.4rem;
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+}
+
+.meter {
+  /* The unfilled track is a faint step of the fill's own colour, so the
+     state reads across the whole bar rather than only the filled part. */
   height: 10px;
-  background: var(--line);
   border-radius: 999px;
   overflow: hidden;
-  margin-bottom: 16px;
+  background: color-mix(in srgb, var(--meter-color, var(--ink-muted)) 16%, transparent);
+  max-width: 460px;
+  margin: 0 auto;
 }
-.gauge-fill {
+.meter-fill {
   height: 100%;
   width: 0;
-  background: var(--ink-soft);
   border-radius: 999px;
-  transition: width 0.4s ease;
+  background: var(--meter-color, var(--ink-muted));
+  transition: width 0.45s ease;
 }
-.verdict-low    .gauge-fill { background: var(--legit); }
-.verdict-medium .gauge-fill { background: #b45309; }
-.verdict-high   .gauge-fill { background: var(--ghost); }
 
-.score-number { margin: 0; font-size: 2.6rem; font-weight: 700; line-height: 1.1; }
-.verdict-low    .score-number { color: var(--legit); }
-.verdict-medium .score-number { color: #b45309; }
-.verdict-high   .score-number { color: var(--ghost); }
+.band { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 14px 0 2px; }
+.band-icon { display: inline-flex; color: var(--meter-color, var(--ink-soft)); }
+.band-icon svg { display: block; }
+.band-title { font-weight: 650; font-size: 1.02rem; }
+.verdict-blurb { margin: 0 auto; max-width: 48ch; color: var(--ink-soft); font-size: 0.93rem; }
 
-.verdict h2 { margin: 6px 0 4px; font-size: 1.1rem; }
-.verdict-blurb { margin: 0 auto; max-width: 46ch; color: var(--ink-soft); font-size: 0.93rem; }
+/* --- Legend --- */
+.legend { display: flex; gap: 18px; margin: 10px 0 4px; font-size: 0.85rem; color: var(--ink-soft); }
+.legend-item { display: inline-flex; align-items: center; gap: 7px; }
+.swatch { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+.swatch-raise { background: var(--raise); }
+.swatch-lower { background: var(--lower); }
 
-/* --- Contribution bars --- */
-.contributions { list-style: none; padding: 0; margin: 12px 0 0; }
-.contribution {
+/* --- Diverging contribution chart ------------------------------------
+   Every row shares one centre line at zero. A bar growing right raised the
+   score, left lowered it, and length is the size of the push. Direction is
+   carried by position as well as colour. */
+.contributions { list-style: none; padding: 0; margin: 8px 0 0; }
+
+.crow {
   display: grid;
-  /* Name, then a flexible bar, then the direction label. On a phone this
-     collapses to two rows (see the media query at the bottom). */
-  grid-template-columns: minmax(0, 15em) 1fr auto;
-  align-items: center;
-  gap: 12px;
-  padding: 7px 0;
-  border-bottom: 1px solid var(--line);
-  font-size: 0.92rem;
+  grid-template-columns: minmax(0, 16em) 1fr;
+  /* stretch, not center: when a label wraps to two lines the row grows, and
+     the chart column has to grow with it or the zero line leaves a gap. */
+  align-items: stretch;
+  gap: 14px;
+  /* No vertical padding here. The breathing room lives inside .crow-half
+     instead, so each row's slice of the zero line touches the next one and
+     they form ONE unbroken rule. Padding here would leave gaps and the
+     line would read as dashed, which looks like a threshold marker rather
+     than an axis. */
+  padding: 0;
 }
-.contribution:last-child { border-bottom: none; }
-.contribution-name { overflow-wrap: anywhere; }
-.bar-wrap { background: var(--line); border-radius: 999px; height: 9px; overflow: hidden; }
-.bar { display: block; height: 100%; border-radius: 999px; }
-.bar-ghost { background: var(--ghost); }
-.bar-legit { background: var(--legit); }
-.direction { font-size: 0.82rem; white-space: nowrap; }
-.toward-ghost { color: var(--ghost); }
-.toward-legit { color: var(--legit); }
+.crow-name {
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
+  align-self: center;   /* the label centres; only the chart column stretches */
+  padding: 6px 0;
+}
 
-/* --- Full feature table --- */
-.raw-details { margin-top: 20px; font-size: 0.9rem; }
-.raw-details summary { cursor: pointer; color: var(--accent); }
-.raw-table { width: 100%; border-collapse: collapse; margin-top: 12px; }
-.raw-table th, .raw-table td {
-  text-align: left;
-  padding: 6px 8px;
-  border-bottom: 1px solid var(--line);
+.crow-chart {
+  display: grid;
+  grid-template-columns: 1fr 1px 1fr;  /* left arm | zero line | right arm */
+  align-items: stretch;                /* lets the zero line fill the row */
+  min-width: 0;
 }
+/* Row height comes from here: a 14px bar with 6px of air above and below. */
+.crow-half { display: flex; min-height: 26px; align-items: center; }
+/* The left arm grows leftward from the centre, so its bar hugs the right. */
+.crow-left { justify-content: flex-end; }
+.crow-right { justify-content: flex-start; }
+
+/* The zero line: a solid hairline one step off the surface, never dashed. */
+.crow-axis { background: var(--line); }
+
+.bar { display: block; height: 14px; min-width: 2px; }
+/* Rounded at the data end, square where it meets the zero line. */
+.bar-lower { background: var(--lower); border-radius: 4px 0 0 4px; }
+.bar-raise { background: var(--raise); border-radius: 0 4px 4px 0; }
+
+.crow-empty { font-size: 0.88rem; color: var(--ink-soft); padding: 8px 0; }
+
+/* --- Table view (the twin of the chart; every exact value lives here) --- */
+.raw-details { margin-top: 22px; font-size: 0.9rem; }
+.raw-details summary, .signals-summary { cursor: pointer; color: var(--accent); font-weight: 600; }
+.raw-table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+.raw-table th, .raw-table td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); }
 .raw-table th { color: var(--ink-soft); font-weight: 600; }
-.raw-table td:nth-child(2), .raw-table td:nth-child(3) { text-align: right; font-variant-numeric: tabular-nums; }
+/* tabular-nums belongs HERE: these columns must align vertically. */
+.raw-table td:nth-child(2), .raw-table td:nth-child(3) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.table-note { margin-top: 10px; }
+
+/* --- "What this tool looks for" --- */
+.signal-list { margin: 10px 0 0; padding-left: 20px; font-size: 0.9rem; }
+.signal-list li { margin-bottom: 5px; }
 
 /* --- Disclaimer --- */
 .disclaimer h2 { margin-top: 0; font-size: 1.05rem; }
@@ -173,32 +274,18 @@ a { color: var(--accent); }
 
 /* --- Phones --- */
 @media (max-width: 560px) {
-  .contribution {
-    /* Stack: name across the top, then bar and label side by side. */
-    grid-template-columns: 1fr auto;
-    gap: 6px 10px;
-  }
-  .contribution-name { grid-column: 1 / -1; }
-  .score-number { font-size: 2.1rem; }
+  /* The label moves above its bar so the chart keeps its full width. Each
+     row is now visually separate anyway, so the zero line is dropped here
+     rather than left as a broken stub between labels. */
+  .crow { grid-template-columns: 1fr; gap: 0; padding: 5px 0; }
+  .crow-name { padding: 0 0 2px; }
+  .crow-axis { background: transparent; }
+  .score-number { font-size: 2.7rem; }
   .site-header { padding-top: 28px; }
+  .panel { padding: 18px 16px; }
 }
 
-/* --- Dark mode --- */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #14161a;
-    --panel: #1c1f25;
-    --ink: #e8eaee;
-    --ink-soft: #a2aab8;
-    --line: #2f343d;
-    --accent: #7ea6ff;
-    --ghost: #fb923c;
-    --legit: #4ade80;
-    --warn-bg: #3a2f14;
-    --warn-line: #7a6427;
-    --error-bg: #3b1f1c;
-    --error-line: #7d3b34;
-  }
-  .verdict-medium .gauge-fill, .verdict-medium .score-number { color: #fbbf24; background-color: initial; }
-  .verdict-medium .gauge-fill { background: #fbbf24; }
+/* Respect a reduced-motion preference. */
+@media (prefers-reduced-motion: reduce) {
+  .meter-fill { transition: none; }
 }

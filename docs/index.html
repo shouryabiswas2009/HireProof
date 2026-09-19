@@ -22,7 +22,7 @@
 <main>
 
   <!-- Shown only when the loaded model was trained on synthetic data.
-       scorer sets this from model.json, so it can never be forgotten. -->
+       app.js sets this from model.json, so it can never be forgotten. -->
   <div id="demo-banner" class="banner banner-demo" hidden>
     <strong>Demonstration model.</strong>
     <span id="demo-banner-text"></span>
@@ -30,7 +30,8 @@
 
   <section class="panel">
     <label for="posting" class="field-label">Job posting text</label>
-    <textarea id="posting" rows="14" placeholder="Paste the full text of a job posting here..."></textarea>
+    <textarea id="posting" rows="13" placeholder="Paste the full text of a job posting here..."></textarea>
+    <p id="word-count" class="word-count">0 words</p>
     <p id="input-error" class="input-error" hidden role="alert"></p>
     <div class="controls">
       <button id="score-button" type="button">Score this posting</button>
@@ -43,29 +44,61 @@
     </p>
   </section>
 
-  <section id="results" class="panel" hidden>
-    <div id="verdict" class="verdict">
-      <div class="gauge">
-        <div id="gauge-fill" class="gauge-fill"></div>
-      </div>
+  <section id="results" class="panel" hidden aria-live="polite">
+
+    <!-- The headline number. Deliberately in normal ink rather than a
+         status colour: the meter below carries the colour, and the badge
+         carries an icon plus words, so meaning is never colour-only. -->
+    <div class="verdict">
+      <p class="score-label">Resemblance to ghost postings</p>
       <p class="score-number"><span id="score-value">0%</span></p>
-      <h2 id="verdict-title"></h2>
+      <div class="meter" role="img" aria-labelledby="verdict-title">
+        <div id="meter-fill" class="meter-fill"></div>
+      </div>
+      <p class="band">
+        <span id="band-icon" class="band-icon" aria-hidden="true"></span>
+        <span id="verdict-title" class="band-title"></span>
+      </p>
       <p id="verdict-blurb" class="verdict-blurb"></p>
     </div>
 
     <h3>What drove this score</h3>
     <p class="hint">
-      Each row is one signal, and the bar shows how far it pushed the score.
-      Added together with the model&rsquo;s baseline, they produce the number above.
+      Each bar is one signal. Bars to the right pushed the score up, bars to
+      the left pulled it down, and the length is how hard. Added to the
+      model&rsquo;s starting point, they produce the number above.
     </p>
+
+    <p class="legend">
+      <span class="legend-item"><span class="swatch swatch-lower"></span>Lowers risk</span>
+      <span class="legend-item"><span class="swatch swatch-raise"></span>Raises risk</span>
+    </p>
+
     <ul id="contributions" class="contributions"></ul>
 
     <details class="raw-details">
-      <summary>Show every feature value</summary>
+      <summary>Table view &mdash; every signal and its exact value</summary>
       <table id="raw-table" class="raw-table">
-        <thead><tr><th>Signal</th><th>Value</th><th>Effect on score</th></tr></thead>
+        <thead>
+          <tr><th scope="col">Signal</th><th scope="col">Value</th><th scope="col">Effect</th></tr>
+        </thead>
         <tbody></tbody>
       </table>
+      <p class="hint table-note">
+        &ldquo;Effect&rdquo; is how much that signal moved the score: positive
+        pushes toward ghost, negative toward genuine.
+      </p>
+    </details>
+  </section>
+
+  <section class="panel">
+    <details>
+      <summary class="signals-summary">What this tool looks for</summary>
+      <p class="hint">
+        The model reads only these eleven signals. It cannot see the company,
+        the role, or whether anyone was ever hired.
+      </p>
+      <ul id="signal-list" class="signal-list"></ul>
     </details>
   </section>
 
