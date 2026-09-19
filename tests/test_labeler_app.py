@@ -37,7 +37,7 @@ class LabelerAppTests(unittest.TestCase):
                   "evidence": ["reposted", "no_reply"], "notes": "seen 3 times"},
             follow_redirects=True,
         )
-        self.assertIn(b"Saved.", response.data)
+        self.assertIn(b"Saved as ghost", response.data)
         saved = dataset.load_postings()
         self.assertEqual(len(saved), 1)
         self.assertEqual(saved[0]["label"], "ghost")
@@ -56,6 +56,45 @@ class LabelerAppTests(unittest.TestCase):
         posting_id = dataset.add_posting(SAMPLE, "legit", "sure", [])
         self.client.post(f"/delete/{posting_id}")
         self.assertEqual(dataset.load_postings(), [])
+
+    def test_no_nested_forms_on_the_add_page(self):
+        # A <form> inside another <form> is invalid HTML: the parser drops
+        # the inner one, so its button would silently submit the outer form.
+        # The undo button uses form="undo-form" to stay outside instead.
+        dataset.add_posting(SAMPLE, "legit", "sure", [])
+        page = self.client.get("/").data.decode()
+        first = page.index("<form")
+        second = page.index("<form", first + 1)
+        self.assertLess(page.index("</form>"), second,
+                        "a second <form> opens before the first one closes")
+
+    def test_source_url_is_stored(self):
+        self.client.post(
+            "/add",
+            data={"text": SAMPLE, "label": "legit", "confidence": "sure",
+                  "source_url": "https://example.com/job/7"},
+        )
+        self.assertEqual(
+            dataset.load_postings()[0]["source_url"], "https://example.com/job/7"
+        )
+
+    def test_saving_reports_what_the_model_would_have_said(self):
+        # The comparison is feedback only, and must appear AFTER saving so it
+        # cannot anchor the label. Here we just check it is reported at all.
+        response = self.client.post(
+            "/add",
+            data={"text": SAMPLE, "label": "legit", "confidence": "sure"},
+            follow_redirects=True,
+        )
+        self.assertIn(b"Saved as legit", response.data)
+        self.assertIn(b"Current model", response.data)
+
+    def test_add_page_never_reveals_a_prediction_before_labelling(self):
+        # Guards the core design decision: seeing the model's guess first
+        # would bias the dataset toward the model's existing opinions.
+        page = self.client.get("/").data
+        self.assertNotIn(b"Current model", page)
+        self.assertNotIn(b"ghost probability", page.lower())
 
 
 if __name__ == "__main__":

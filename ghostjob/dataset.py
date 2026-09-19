@@ -16,8 +16,12 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_PATH = REPO_ROOT / "data" / "labeled_postings.csv"
 
-# Column order in the CSV.
-FIELDS = ["id", "added_at", "label", "confidence", "evidence", "notes", "text"]
+# Column order in the CSV. source_url was added after the first version, so
+# load_postings() fills it in as empty for rows saved before it existed.
+FIELDS = [
+    "id", "added_at", "label", "confidence", "evidence",
+    "source_url", "notes", "text",
+]
 
 LABELS = ("ghost", "legit")
 CONFIDENCES = ("sure", "unsure")
@@ -71,7 +75,16 @@ def load_postings(path=None):
     # at the start) still loads correctly. newline="" is required by the
     # csv module so that line breaks INSIDE a posting are kept intact.
     with open(path, newline="", encoding="utf-8-sig") as f:
-        return list(csv.DictReader(f))
+        rows = list(csv.DictReader(f))
+
+    # Fill in any column added after this file was first written, so an old
+    # dataset keeps loading instead of raising KeyError somewhere downstream.
+    for row in rows:
+        for field in FIELDS:
+            row.setdefault(field, "")
+            if row[field] is None:
+                row[field] = ""
+    return rows
 
 
 def save_postings(postings, path=None):
@@ -92,7 +105,7 @@ def save_postings(postings, path=None):
     os.replace(tmp_path, path)
 
 
-def add_posting(text, label, confidence, evidence, notes="", path=None):
+def add_posting(text, label, confidence, evidence, notes="", source_url="", path=None):
     """Validate and save one new labeled posting. Returns its ID.
 
     Raises ValueError with a readable message if something is wrong, so the
@@ -125,6 +138,9 @@ def add_posting(text, label, confidence, evidence, notes="", path=None):
             "confidence": confidence,
             # A list can't go in one CSV cell, so join the keys with ";".
             "evidence": ";".join(evidence),
+            # Where you found it. Useful later for checking whether the same
+            # role gets reposted, which is real evidence rather than a hunch.
+            "source_url": source_url.strip(),
             "notes": notes.strip(),
             "text": text,
         }

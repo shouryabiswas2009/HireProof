@@ -22,8 +22,12 @@ class DatasetTests(unittest.TestCase):
         self.addCleanup(self._tmp.cleanup)
         self.path = Path(self._tmp.name) / "labeled.csv"
 
-    def add(self, text=SAMPLE, label="legit", confidence="sure", evidence=()):
-        return dataset.add_posting(text, label, confidence, list(evidence), path=self.path)
+    def add(self, text=SAMPLE, label="legit", confidence="sure", evidence=(),
+            source_url=""):
+        return dataset.add_posting(
+            text, label, confidence, list(evidence),
+            source_url=source_url, path=self.path,
+        )
 
     def test_missing_file_loads_as_empty_list(self):
         self.assertEqual(dataset.load_postings(self.path), [])
@@ -59,6 +63,24 @@ class DatasetTests(unittest.TestCase):
             self.add(confidence="very")
         with self.assertRaises(ValueError):
             self.add(evidence=["made_up_reason"])
+
+    def test_source_url_is_saved(self):
+        self.add(source_url="https://example.com/jobs/123")
+        loaded = dataset.load_postings(self.path)
+        self.assertEqual(loaded[0]["source_url"], "https://example.com/jobs/123")
+
+    def test_old_file_without_source_url_still_loads(self):
+        # A dataset written before source_url existed must keep working
+        # rather than raising KeyError once the column was added.
+        legacy = "id,added_at,label,confidence,evidence,notes,text\n"
+        legacy += "abc123,2026-01-01T00:00:00,ghost,sure,reposted,,Some posting text\n"
+        self.path.write_text(legacy, encoding="utf-8")
+        loaded = dataset.load_postings(self.path)
+        self.assertEqual(len(loaded), 1)
+        self.assertEqual(loaded[0]["source_url"], "")
+        self.assertEqual(loaded[0]["label"], "ghost")
+        # And summarize must not choke on the older row either.
+        self.assertEqual(dataset.summarize(loaded)["ghost"], 1)
 
     def test_delete(self):
         posting_id = self.add()

@@ -13,12 +13,14 @@
 
 {% if error %}<p class="error">{{ error }}</p>{% endif %}
 
-<form method="post" action="{{ url_for('add') }}">
+<form method="post" action="{{ url_for('add') }}" id="label-form">
   <label for="text">Paste the full job posting</label>
-  <textarea id="text" name="text" rows="16" required>{{ values["text"] }}</textarea>
+  {# autofocus so you can paste the moment the page loads, no clicking #}
+  <textarea id="text" name="text" rows="14" required autofocus
+            spellcheck="false">{{ values["text"] }}</textarea>
 
   <fieldset>
-    <legend>Your label</legend>
+    <legend>Your label <span class="key">Alt+G</span> / <span class="key">Alt+L</span></legend>
     <label><input type="radio" name="label" value="ghost" required
       {% if values["label"] == "ghost" %}checked{% endif %}> Ghost (probably no real intent to hire)</label>
     <label><input type="radio" name="label" value="legit"
@@ -26,7 +28,7 @@
   </fieldset>
 
   <fieldset>
-    <legend>How sure are you?</legend>
+    <legend>How sure are you? <span class="key">Alt+U</span> toggles</legend>
     <label><input type="radio" name="confidence" value="sure"
       {% if values["confidence"] != "unsure" %}checked{% endif %}> Sure</label>
     <label><input type="radio" name="confidence" value="unsure"
@@ -37,7 +39,8 @@
     <legend>Why do you believe that label? (tick everything that applies)</legend>
     {% for key, description in evidence_options.items() %}
       <label><input type="checkbox" name="evidence" value="{{ key }}"
-        {% if key in values["evidence"] %}checked{% endif %}> {{ description }}</label>
+        {% if key in values["evidence"] %}checked{% endif %}>
+        <span class="key">Alt+{{ loop.index }}</span> {{ description }}</label>
     {% endfor %}
     <p class="hint">
       Labels based only on the wording are the weakest, because the model would
@@ -45,14 +48,37 @@
     </p>
   </fieldset>
 
+  <label for="source_url">Link to the posting (optional)</label>
+  <input id="source_url" name="source_url" type="text" value="{{ values['source_url'] }}"
+         placeholder="Paste the URL so you can check later whether it gets reposted">
+
   <label for="notes">Notes (optional)</label>
   <input id="notes" name="notes" type="text" value="{{ values['notes'] }}">
 
-  <button type="submit">Save posting</button>
+  <div class="actions">
+    <button type="submit">Save posting <span class="key key-on-dark">Ctrl+Enter</span></button>
+    {% if last_id %}
+      {# The button lives here for layout, but belongs to the undo form
+         below via form="undo-form". A <form> cannot be nested inside
+         another <form>: the HTML parser silently discards the inner one,
+         so the button would post to the wrong place. #}
+      <button type="submit" form="undo-form" class="danger">Undo last save</button>
+    {% endif %}
+  </div>
 </form>
+
+{% if last_id %}
+  {# Quick undo, so a mis-click doesn't mean a trip to the list page. #}
+  <form method="post" id="undo-form" action="{{ url_for('delete', posting_id=last_id) }}"
+        onsubmit="return confirm('Delete the posting you just saved?');">
+    <input type="hidden" name="back" value="{{ url_for('index') }}">
+  </form>
+{% endif %}
 
 <p class="hint">
   Postings are saved to <code>data/labeled_postings.csv</code> on this computer only.
   That file is gitignored, so it is never uploaded to GitHub.
 </p>
+
+<script src="{{ url_for('static', filename='labeler.js') }}"></script>
 {% endblock %}

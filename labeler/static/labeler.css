@@ -32,3 +32,42 @@ button.danger { background: #fff; color: #b00020; border-color: #b00020; }
 .tag { display: inline-block; padding: 1px 10px; border-radius: 999px; background: #eee; font-size: 0.85em; }
 .tag-ghost { background: #ffd9d9; }
 .tag-legit { background: #d9f2df; }
+
+/* Keyboard shortcut hints. */
+.key {
+  display: inline-block;
+  padding: 0 5px;
+  border: 1px solid #c7c7c7;
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: #fafafa;
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 0.78em;
+  color: #555;
+}
+.key-on-dark { border-color: #666; background: #444; color: #eee; }
+
+.actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.inline { display: inline; }
+
+/* Toast confirming a keyboard shortcut fired, so a keystroke is never
+   silent. Bottom-right, out of the way of the form. */
+.key-feedback {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  padding: 9px 16px;
+  border-radius: 8px;
+  background: #222;
+  color: #fff;
+  font-size: 0.88rem;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  pointer-events: none;
+}
+.key-feedback.visible { opacity: 1; transform: translateY(0); }
+
+@media (prefers-reduced-motion: reduce) {
+  .key-feedback { transition: none; }
+}
