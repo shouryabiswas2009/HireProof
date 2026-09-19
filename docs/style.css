@@ -1,0 +1,204 @@
+/*
+ * Plain CSS, no framework. The page is one column of text and a form, so a
+ * framework would be more to learn and explain than to write it directly.
+ * Colours are defined once as variables at the top, then reused, and
+ * redefined for dark mode near the bottom.
+ */
+
+:root {
+  --bg: #f6f7f9;
+  --panel: #ffffff;
+  --ink: #16181d;
+  --ink-soft: #5b6270;
+  --line: #dfe3e9;
+  --accent: #2f5fd0;
+  --ghost: #c2410c;   /* warm: raises risk */
+  --legit: #15803d;   /* green: lowers risk */
+  --warn-bg: #fff6e5;
+  --warn-line: #f0c36d;
+  --error-bg: #fdecea;
+  --error-line: #e0a8a2;
+  --radius: 10px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: 0 16px 64px;   /* 16px side gutter, so nothing touches the edge on a phone */
+  background: var(--bg);
+  color: var(--ink);
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  line-height: 1.55;
+}
+
+main, .site-header, .site-footer { max-width: 760px; margin: 0 auto; }
+
+.site-header { padding: 40px 0 8px; }
+.site-header h1 { margin: 0 0 6px; font-size: 1.9rem; letter-spacing: -0.02em; }
+.tagline { margin: 0; color: var(--ink-soft); }
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin: 20px 0;
+}
+
+.field-label { display: block; font-weight: 600; margin-bottom: 8px; }
+
+textarea {
+  width: 100%;
+  font: inherit;
+  font-size: 0.95rem;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--ink);
+  resize: vertical;
+}
+textarea:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.controls { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+
+button {
+  font: inherit;
+  font-weight: 600;
+  padding: 10px 20px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+}
+button:hover:not(:disabled) { filter: brightness(1.08); }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+button.secondary { background: transparent; color: var(--accent); border-color: var(--line); }
+
+.input-error {
+  margin: 10px 0 0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--error-bg);
+  border: 1px solid var(--error-line);
+  font-size: 0.9rem;
+}
+
+.privacy { margin: 14px 0 0; font-size: 0.88rem; color: var(--ink-soft); }
+.hint { font-size: 0.88rem; color: var(--ink-soft); }
+
+/* --- Banners --- */
+.banner {
+  border-radius: var(--radius);
+  padding: 14px 18px;
+  margin: 20px 0;
+  font-size: 0.93rem;
+}
+.banner-demo { background: var(--warn-bg); border: 1px solid var(--warn-line); }
+.banner-error { background: var(--error-bg); border: 1px solid var(--error-line); }
+
+/* --- The score --- */
+.verdict { text-align: center; padding-bottom: 8px; }
+.gauge {
+  height: 10px;
+  background: var(--line);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+.gauge-fill {
+  height: 100%;
+  width: 0;
+  background: var(--ink-soft);
+  border-radius: 999px;
+  transition: width 0.4s ease;
+}
+.verdict-low    .gauge-fill { background: var(--legit); }
+.verdict-medium .gauge-fill { background: #b45309; }
+.verdict-high   .gauge-fill { background: var(--ghost); }
+
+.score-number { margin: 0; font-size: 2.6rem; font-weight: 700; line-height: 1.1; }
+.verdict-low    .score-number { color: var(--legit); }
+.verdict-medium .score-number { color: #b45309; }
+.verdict-high   .score-number { color: var(--ghost); }
+
+.verdict h2 { margin: 6px 0 4px; font-size: 1.1rem; }
+.verdict-blurb { margin: 0 auto; max-width: 46ch; color: var(--ink-soft); font-size: 0.93rem; }
+
+/* --- Contribution bars --- */
+.contributions { list-style: none; padding: 0; margin: 12px 0 0; }
+.contribution {
+  display: grid;
+  /* Name, then a flexible bar, then the direction label. On a phone this
+     collapses to two rows (see the media query at the bottom). */
+  grid-template-columns: minmax(0, 15em) 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.92rem;
+}
+.contribution:last-child { border-bottom: none; }
+.contribution-name { overflow-wrap: anywhere; }
+.bar-wrap { background: var(--line); border-radius: 999px; height: 9px; overflow: hidden; }
+.bar { display: block; height: 100%; border-radius: 999px; }
+.bar-ghost { background: var(--ghost); }
+.bar-legit { background: var(--legit); }
+.direction { font-size: 0.82rem; white-space: nowrap; }
+.toward-ghost { color: var(--ghost); }
+.toward-legit { color: var(--legit); }
+
+/* --- Full feature table --- */
+.raw-details { margin-top: 20px; font-size: 0.9rem; }
+.raw-details summary { cursor: pointer; color: var(--accent); }
+.raw-table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+.raw-table th, .raw-table td {
+  text-align: left;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--line);
+}
+.raw-table th { color: var(--ink-soft); font-weight: 600; }
+.raw-table td:nth-child(2), .raw-table td:nth-child(3) { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* --- Disclaimer --- */
+.disclaimer h2 { margin-top: 0; font-size: 1.05rem; }
+.disclaimer ul { margin: 0; padding-left: 20px; }
+.disclaimer li { margin-bottom: 10px; font-size: 0.93rem; }
+.model-facts { margin: 14px 0 0; font-size: 0.85rem; color: var(--ink-soft); }
+
+.site-footer { padding-top: 8px; font-size: 0.86rem; color: var(--ink-soft); }
+a { color: var(--accent); }
+
+/* --- Phones --- */
+@media (max-width: 560px) {
+  .contribution {
+    /* Stack: name across the top, then bar and label side by side. */
+    grid-template-columns: 1fr auto;
+    gap: 6px 10px;
+  }
+  .contribution-name { grid-column: 1 / -1; }
+  .score-number { font-size: 2.1rem; }
+  .site-header { padding-top: 28px; }
+}
+
+/* --- Dark mode --- */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14161a;
+    --panel: #1c1f25;
+    --ink: #e8eaee;
+    --ink-soft: #a2aab8;
+    --line: #2f343d;
+    --accent: #7ea6ff;
+    --ghost: #fb923c;
+    --legit: #4ade80;
+    --warn-bg: #3a2f14;
+    --warn-line: #7a6427;
+    --error-bg: #3b1f1c;
+    --error-line: #7d3b34;
+  }
+  .verdict-medium .gauge-fill, .verdict-medium .score-number { color: #fbbf24; background-color: initial; }
+  .verdict-medium .gauge-fill { background: #fbbf24; }
+}

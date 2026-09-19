@@ -23,7 +23,11 @@ from pathlib import Path
 from ghostjob import dataset, features, logreg
 
 REPO_ROOT = Path(__file__).resolve().parent
-MODEL_OUTPUT = REPO_ROOT / "web" / "model.json"
+# The published website lives in docs/. GitHub Pages can serve that folder
+# straight from the main branch, so there is no build pipeline to maintain.
+SITE_DIR = REPO_ROOT / "docs"
+MODEL_OUTPUT = SITE_DIR / "model.json"
+PHRASES_COPY = SITE_DIR / "phrases.json"
 DEMO_DATA = REPO_ROOT / "data" / "demo_postings.json"
 
 # Below this many postings, cross-validation results bounce around so much
@@ -266,6 +270,7 @@ def main():
         "n_legit": len(labels) - n_ghost,
         "feature_names": features.FEATURE_NAMES,
         "feature_labels": features.FEATURE_LABELS,
+        "feature_state_labels": features.FEATURE_STATE_LABELS,
         "weights": weights,
         "bias": bias,
         # The site must standardize incoming postings exactly as training
@@ -286,10 +291,20 @@ def main():
             "l2": args.l2,
         },
     }
-    MODEL_OUTPUT.parent.mkdir(parents=True, exist_ok=True)
+    SITE_DIR.mkdir(parents=True, exist_ok=True)
     with open(MODEL_OUTPUT, "w", encoding="utf-8") as f:
         json.dump(model, f, indent=2)
     print(f"  Wrote {MODEL_OUTPUT.relative_to(REPO_ROOT)}")
+
+    # Copy the phrase lists next to the model. The site needs them to build
+    # the same features, and copying at training time guarantees the site
+    # uses the exact lists this model was trained with, even if
+    # shared/phrases.json is edited afterwards.
+    with open(features.PHRASES_PATH, encoding="utf-8") as src:
+        phrases_text = src.read()
+    with open(PHRASES_COPY, "w", encoding="utf-8") as dst:
+        dst.write(phrases_text)
+    print(f"  Wrote {PHRASES_COPY.relative_to(REPO_ROOT)}")
     print()
 
 

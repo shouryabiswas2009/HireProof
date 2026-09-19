@@ -85,9 +85,9 @@ class ModelFileTests(unittest.TestCase):
     """The saved model must contain everything the website needs."""
 
     def setUp(self):
-        path = REPO_ROOT / "web" / "model.json"
+        path = REPO_ROOT / "docs" / "model.json"
         if not path.exists():
-            self.skipTest("web/model.json not built yet; run train.py --demo")
+            self.skipTest("docs/model.json not built yet; run train.py --demo")
         with open(path, encoding="utf-8") as f:
             self.model = json.load(f)
 

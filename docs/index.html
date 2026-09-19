@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ghost Job Detector</title>
+<meta name="description" content="Paste a job posting and see how closely its wording matches postings labelled as ghost jobs. Runs entirely in your browser.">
+<link rel="stylesheet" href="style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>&#128123;</text></svg>">
+</head>
+<body>
+
+<header class="site-header">
+  <h1>Ghost Job Detector</h1>
+  <p class="tagline">
+    Paste a job posting. See how closely its wording matches postings
+    labelled as &ldquo;ghost jobs&rdquo; &mdash; listings posted with no real
+    intent to hire.
+  </p>
+</header>
+
+<main>
+
+  <!-- Shown only when the loaded model was trained on synthetic data.
+       scorer sets this from model.json, so it can never be forgotten. -->
+  <div id="demo-banner" class="banner banner-demo" hidden>
+    <strong>Demonstration model.</strong>
+    <span id="demo-banner-text"></span>
+  </div>
+
+  <section class="panel">
+    <label for="posting" class="field-label">Job posting text</label>
+    <textarea id="posting" rows="14" placeholder="Paste the full text of a job posting here..."></textarea>
+    <p id="input-error" class="input-error" hidden role="alert"></p>
+    <div class="controls">
+      <button id="score-button" type="button">Score this posting</button>
+      <button id="example-button" type="button" class="secondary">Load an example</button>
+      <button id="clear-button" type="button" class="secondary">Clear</button>
+    </div>
+    <p class="privacy">
+      Your text never leaves this page. There is no server: the model runs
+      inside your browser, so nothing is uploaded, logged or stored.
+    </p>
+  </section>
+
+  <section id="results" class="panel" hidden>
+    <div id="verdict" class="verdict">
+      <div class="gauge">
+        <div id="gauge-fill" class="gauge-fill"></div>
+      </div>
+      <p class="score-number"><span id="score-value">0%</span></p>
+      <h2 id="verdict-title"></h2>
+      <p id="verdict-blurb" class="verdict-blurb"></p>
+    </div>
+
+    <h3>What drove this score</h3>
+    <p class="hint">
+      Each row is one signal, and the bar shows how far it pushed the score.
+      Added together with the model&rsquo;s baseline, they produce the number above.
+    </p>
+    <ul id="contributions" class="contributions"></ul>
+
+    <details class="raw-details">
+      <summary>Show every feature value</summary>
+      <table id="raw-table" class="raw-table">
+        <thead><tr><th>Signal</th><th>Value</th><th>Effect on score</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </details>
+  </section>
+
+  <section class="panel disclaimer">
+    <h2>Please read this before trusting the score</h2>
+    <ul>
+      <li>
+        <strong>This is a heuristic, not a detector.</strong> It compares
+        wording against a small set of postings labelled by hand, by one
+        person. It has no access to the company, the role, or whether anyone
+        was ever hired.
+      </li>
+      <li>
+        <strong>Nobody can know a posting is a ghost job from its text.</strong>
+        The training labels are educated guesses. A model trained on guesses
+        reproduces those guesses.
+      </li>
+      <li>
+        <strong>Do not let this talk you out of applying.</strong> Plenty of
+        real jobs are written badly, and plenty of ghost postings are written
+        well. A high score is a prompt to ask about timelines and the team,
+        not a reason to walk away.
+      </li>
+      <li>
+        <strong>It is biased toward what it was trained on.</strong> Postings
+        from other countries, industries or languages may score oddly.
+      </li>
+    </ul>
+    <p id="model-facts" class="model-facts"></p>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <p>
+    Built as a learning project: logistic regression written from scratch, no
+    machine-learning libraries, no external services.
+    <a id="repo-link" href="#">Source code and write-up on GitHub</a>.
+  </p>
+</footer>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>

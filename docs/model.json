@@ -1,0 +1,137 @@
+{
+  "_readme": "Written by train.py. Do not edit by hand. The website reads this file and scores postings in the visitor's browser.",
+  "trained_on": "demo",
+  "trained_date": "2026-09-19",
+  "n_examples": 30,
+  "n_ghost": 15,
+  "n_legit": 15,
+  "feature_names": [
+    "has_salary_range",
+    "vague_pay_phrase",
+    "log_word_count",
+    "buzzword_density",
+    "concrete_duty_density",
+    "names_reporting_line",
+    "has_contact_email",
+    "evergreen_language",
+    "multiple_openings_language",
+    "has_deadline_or_start_date",
+    "experience_mismatch"
+  ],
+  "feature_labels": {
+    "has_salary_range": "Pay figure given",
+    "vague_pay_phrase": "Vague pay wording ('competitive salary')",
+    "log_word_count": "Length of the posting",
+    "buzzword_density": "Buzzwords and filler phrases",
+    "concrete_duty_density": "Specific, concrete duties",
+    "names_reporting_line": "Names a team or manager",
+    "has_contact_email": "Contact email included",
+    "evergreen_language": "'Talent pool' / future-openings wording",
+    "multiple_openings_language": "Vague 'multiple openings' wording",
+    "has_deadline_or_start_date": "Deadline or start date given",
+    "experience_mismatch": "Junior title, senior experience demanded"
+  },
+  "feature_state_labels": {
+    "has_salary_range": {
+      "on": "Pay figure given",
+      "off": "No pay figure given"
+    },
+    "vague_pay_phrase": {
+      "on": "Vague pay wording ('competitive salary')",
+      "off": "No vague pay wording"
+    },
+    "log_word_count": {
+      "on": "Longer than the average posting",
+      "off": "Shorter than the average posting"
+    },
+    "buzzword_density": {
+      "on": "More buzzwords than average",
+      "off": "Fewer buzzwords than average"
+    },
+    "concrete_duty_density": {
+      "on": "More concrete, specific duties than average",
+      "off": "Fewer concrete, specific duties than average"
+    },
+    "names_reporting_line": {
+      "on": "Names a team or manager",
+      "off": "No team or manager named"
+    },
+    "has_contact_email": {
+      "on": "Contact email included",
+      "off": "No contact email"
+    },
+    "evergreen_language": {
+      "on": "'Talent pool' or future-openings wording",
+      "off": "No 'talent pool' wording"
+    },
+    "multiple_openings_language": {
+      "on": "Vague 'multiple openings' wording",
+      "off": "No 'multiple openings' wording"
+    },
+    "has_deadline_or_start_date": {
+      "on": "Deadline or start date given",
+      "off": "No deadline or start date"
+    },
+    "experience_mismatch": {
+      "on": "Junior title but senior experience demanded",
+      "off": "No junior/senior experience mismatch"
+    }
+  },
+  "weights": [
+    -0.6510334180795048,
+    0.6510334180795048,
+    -0.3260811798139649,
+    0.49389418269427227,
+    -0.33856277903188653,
+    -0.39741347667679733,
+    -0.45831961635481244,
+    0.394298473483101,
+    0.3209006466441176,
+    -0.6510334180795048,
+    0.20418824341041256
+  ],
+  "bias": 0.00020317206170844694,
+  "means": [
+    0.5,
+    0.5,
+    4.0991616944764875,
+    4.153577117061511,
+    1.7604724513336687,
+    0.5,
+    0.3333333333333333,
+    0.26666666666666666,
+    0.26666666666666666,
+    0.5,
+    0.1
+  ],
+  "stds": [
+    0.5,
+    0.5,
+    0.11035698252085753,
+    4.915607489821432,
+    2.632383500072122,
+    0.5,
+    0.47140452079103173,
+    0.44221663871405337,
+    0.44221663871405337,
+    0.5,
+    0.30000000000000004
+  ],
+  "metrics": {
+    "cv_accuracy": 1.0,
+    "cv_precision": 1.0,
+    "cv_recall": 1.0,
+    "cv_f1": 1.0,
+    "baseline_accuracy": 0.5
+  },
+  "warnings": [
+    "This model was trained on SYNTHETIC postings written by hand for this repo, not on real job adverts. It reflects the author's assumptions about ghost-job wording, nothing more. Treat the scores as a demonstration of the plumbing, not as evidence.",
+    "Only 30 labeled postings. Below about 60 the accuracy estimate swings wildly depending on which examples land in which fold, so do not read much into it. Aim for 200.",
+    "Cross-validated accuracy is 100%, which is implausibly high for this problem. That usually means the two groups in the dataset are far more cleanly separated than real postings ever are, not that the model is excellent. Expect a much lower and more believable number once real, ambiguous postings replace this data."
+  ],
+  "hyperparameters": {
+    "learning_rate": 0.1,
+    "epochs": 3000,
+    "l2": 1.0
+  }
+}

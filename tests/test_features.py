@@ -47,6 +47,18 @@ class FeatureShapeTests(unittest.TestCase):
             set(features.FEATURE_NAMES), set(features.FEATURE_LABELS.keys())
         )
 
+    def test_every_feature_has_both_state_labels(self):
+        # The breakdown needs wording for a feature being present AND for it
+        # being absent, because absence moves the score too.
+        self.assertEqual(
+            set(features.FEATURE_NAMES), set(features.FEATURE_STATE_LABELS.keys())
+        )
+        for name, states in features.FEATURE_STATE_LABELS.items():
+            self.assertIn("on", states, name)
+            self.assertIn("off", states, name)
+            # The two must differ, or the row would read the same either way.
+            self.assertNotEqual(states["on"], states["off"], name)
+
     def test_extract_returns_exactly_the_named_features(self):
         result = features.extract_features("Some short posting text here.")
         self.assertEqual(set(result.keys()), set(features.FEATURE_NAMES))

@@ -1,0 +1,121 @@
+{
+  "_readme": "The single source of truth for every word list and pattern used to turn a job posting into numbers. ghostjob/features.py (training) and web/features.js (the live site) BOTH read this file, so the two can never drift apart. Regexes here must be valid in Python AND JavaScript: stick to \\b, \\d, \\s, character classes, alternation and non-capturing groups (?:...). Do not use lookbehind or named groups, which differ between the two languages.",
+  "version": 1,
+
+  "phrase_lists": {
+    "_readme": "Matched as plain lowercase substrings against normalized text (lowercased, whitespace collapsed). No regex, so there is nothing to get wrong twice. Substring matching also catches plurals for free: 'rockstar' matches 'rockstars'.",
+
+    "buzzwords": [
+      "fast-paced", "fast paced", "wear many hats", "wears many hats",
+      "dynamic environment", "dynamic team", "rockstar", "rock star",
+      "ninja", "guru", "wizard", "work hard play hard",
+      "self-starter", "self starter", "go-getter", "hit the ground running",
+      "think outside the box", "synergy", "results-driven", "results driven",
+      "detail-oriented", "detail oriented", "team player",
+      "passionate about", "thrive in", "fluid environment",
+      "ever-changing", "ever changing", "other duties as assigned",
+      "and more", "among other things", "family atmosphere", "like a family",
+      "unlimited potential", "sky is the limit", "exciting opportunity",
+      "growing team", "make an impact", "change the world",
+      "disruptive", "game-changer", "game changer"
+    ],
+
+    "concrete_duty": [
+      "you will build", "you will design", "you will write", "you will own",
+      "you will lead", "you will maintain", "you will develop",
+      "you'll build", "you'll design", "you'll write", "you'll own",
+      "in this role you will", "day-to-day", "day to day",
+      "responsible for managing", "responsible for building",
+      "responsible for maintaining", "first 30 days", "first 90 days",
+      "in your first", "our stack", "tech stack", "we use",
+      "the team uses", "codebase", "on-call", "sprint", "code review",
+      "pull request", "deploy", "our customers are", "reporting on",
+      "collaborate with the", "partner with the", "work alongside the"
+    ],
+
+    "reporting_line": [
+      "reports to", "reporting to", "you will report", "you'll report",
+      "hiring manager", "you will work directly with",
+      "you'll work directly with", "work directly with our",
+      "join the", "part of the", "member of the", "within the",
+      "this role sits", "team of", "our team of", "led by"
+    ],
+
+    "vague_pay": [
+      "competitive salary", "competitive compensation", "competitive pay",
+      "competitive wage", "competitive rate", "salary commensurate",
+      "commensurate with experience", "doe", "depending on experience",
+      "attractive package", "attractive salary", "generous compensation",
+      "market rate", "negotiable salary", "salary negotiable"
+    ],
+
+    "evergreen": [
+      "talent pool", "talent pipeline", "talent community",
+      "future opportunities", "future openings", "future roles",
+      "always looking", "always accepting", "always hiring",
+      "ongoing basis", "general application", "general interest",
+      "open application", "speculative application",
+      "keep your resume on file", "keep your cv on file",
+      "on file for future", "we may contact you",
+      "no specific opening", "evergreen", "pipeline role",
+      "when a position becomes available", "as roles become available",
+      "register your interest", "expression of interest",
+      "proactively building", "get to know you"
+    ],
+
+    "multiple_openings": [
+      "multiple positions", "multiple openings", "multiple roles",
+      "several positions", "several openings", "various positions",
+      "various roles", "various locations", "multiple locations",
+      "numerous openings", "all levels", "levels from",
+      "and other locations", "nationwide", "across the country",
+      "openings available", "positions available"
+    ],
+
+    "deadline_or_start": [
+      "apply by", "applications close", "application deadline",
+      "closing date", "deadline to apply", "must apply by",
+      "start date", "starting date", "anticipated start",
+      "expected start", "immediate start", "start immediately",
+      "starting immediately", "asap start", "as soon as possible",
+      "interviews will begin", "interviews begin",
+      "interview process begins", "first round of interviews",
+      "posting closes", "this posting will close",
+      "target start", "onboarding begins"
+    ],
+
+    "entry_level": [
+      "entry level", "entry-level", "junior", "jr.", "intern",
+      "internship", "co-op", "coop", "new grad", "new graduate",
+      "recent graduate", "graduate role", "graduate position",
+      "trainee", "apprentice", "no experience required",
+      "no experience necessary", "0-2 years", "0-1 years",
+      "associate level"
+    ]
+  },
+
+  "patterns": {
+    "_readme": "Regular expressions, applied to the normalized text with case-insensitive matching. Each is written to be valid in both Python and JavaScript.",
+
+    "salary_amount": {
+      "regex": "\\$\\s?\\d{1,3}(?:\\.\\d{1,2})?\\s?(?:\\/|per\\s|an\\s)\\s?(?:hr|hour|hourly)|\\$\\s?\\d{2,3}\\s?k\\b|\\$\\s?\\d{2,3},\\d{3}|\\d{2,3},\\d{3}\\s?(?:-|to|\\u2013)\\s?\\d{2,3},\\d{3}|(?:salary|compensation|pay|base|rate|range)[^.]{0,40}?\\d{2,3},?\\d{3}",
+      "description": "A real pay figure: an hourly rate ($45/hr), an annual amount ($80k, $80,000), a bare range (80,000-95,000), or a number near a pay word. Deliberately does NOT match a bare '$5' or '$10 million', so funding announcements and perks are not mistaken for salary."
+    },
+
+    "contact_email": {
+      "regex": "[a-z0-9._%+\\-]+@[a-z0-9.\\-]+\\.[a-z]{2,}",
+      "description": "An email address, suggesting a named human to reach. Runs on lowercased text, so no uppercase ranges are needed."
+    },
+
+    "years_required": {
+      "regex": "(\\d{1,2})\\s?\\+?\\s?(?:-|to|\\u2013)?\\s?(?:\\d{1,2})?\\s?(?:\\+)?\\s?years?(?:\\s?(?:of|\\u2019s|'s))?\\s?(?:relevant\\s|professional\\s|industry\\s|hands-on\\s)?experience",
+      "description": "Captures the first number in phrases like '5+ years of experience' or '3-5 years experience'. Used with the entry_level list to spot a posting that asks for senior experience at a junior title."
+    }
+  },
+
+  "thresholds": {
+    "_readme": "Numbers that would otherwise be buried in the code.",
+    "experience_mismatch_years": 3,
+    "_experience_mismatch_years_note": "An 'entry level' posting demanding this many years or more counts as a mismatch. 3 is the common rule of thumb for an unfillable posting."
+  }
+}

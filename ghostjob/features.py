@@ -60,8 +60,7 @@ FEATURE_NAMES = [
     "experience_mismatch",
 ]
 
-# Plain-English labels for the score breakdown shown to visitors. Written
-# from the reader's point of view, not the programmer's.
+# Plain-English names for the full feature table on the website.
 FEATURE_LABELS = {
     "has_salary_range": "Pay figure given",
     "vague_pay_phrase": "Vague pay wording ('competitive salary')",
@@ -74,6 +73,65 @@ FEATURE_LABELS = {
     "multiple_openings_language": "Vague 'multiple openings' wording",
     "has_deadline_or_start_date": "Deadline or start date given",
     "experience_mismatch": "Junior title, senior experience demanded",
+}
+
+# Labels for the score breakdown, which must describe what this posting
+# ACTUALLY SAYS, not just name the feature.
+#
+# WHY BOTH FORMS ARE NEEDED: a feature contributes to the score through its
+# absence just as much as through its presence. A posting with no salary
+# figure gets pushed toward "ghost" by has_salary_range, and labelling that
+# row "Pay figure given" would tell the reader the exact opposite of the
+# truth. So each feature carries wording for both states, and the site picks
+# whichever matches the posting in front of it.
+#
+# "on" is used when the posting is above the training average for this
+# feature, "off" when it is below.
+FEATURE_STATE_LABELS = {
+    "has_salary_range": {
+        "on": "Pay figure given",
+        "off": "No pay figure given",
+    },
+    "vague_pay_phrase": {
+        "on": "Vague pay wording ('competitive salary')",
+        "off": "No vague pay wording",
+    },
+    "log_word_count": {
+        "on": "Longer than the average posting",
+        "off": "Shorter than the average posting",
+    },
+    "buzzword_density": {
+        "on": "More buzzwords than average",
+        "off": "Fewer buzzwords than average",
+    },
+    "concrete_duty_density": {
+        "on": "More concrete, specific duties than average",
+        "off": "Fewer concrete, specific duties than average",
+    },
+    "names_reporting_line": {
+        "on": "Names a team or manager",
+        "off": "No team or manager named",
+    },
+    "has_contact_email": {
+        "on": "Contact email included",
+        "off": "No contact email",
+    },
+    "evergreen_language": {
+        "on": "'Talent pool' or future-openings wording",
+        "off": "No 'talent pool' wording",
+    },
+    "multiple_openings_language": {
+        "on": "Vague 'multiple openings' wording",
+        "off": "No 'multiple openings' wording",
+    },
+    "has_deadline_or_start_date": {
+        "on": "Deadline or start date given",
+        "off": "No deadline or start date",
+    },
+    "experience_mismatch": {
+        "on": "Junior title but senior experience demanded",
+        "off": "No junior/senior experience mismatch",
+    },
 }
 
 
