@@ -33,6 +33,10 @@ DEMO_DATA = REPO_ROOT / "data" / "demo_postings.json"
 # Below this many postings, cross-validation results bounce around so much
 # that they are not worth quoting. This is a judgement call, not a law.
 MIN_USABLE = 60
+
+# A hard floor, unlike MIN_USABLE which only warns. Fewer than this in
+# EITHER class and training is not worth doing: see refuse_if_untrainable.
+MIN_PER_CLASS = 5
 # The number we are aiming for. Roughly 10+ examples per feature (we have
 # 11 features) is a common rule of thumb for not overfitting.
 TARGET = 200
@@ -63,6 +67,54 @@ def load_demo_data():
     labels = [1 if p["label"] == "ghost" else 0 for p in postings]
     evidence = [[] for _ in postings]
     return texts, labels, evidence, "demo"
+
+
+def refuse_if_untrainable(labels):
+    """Stop before training when the data cannot support a model at all.
+
+    WHY THIS IS A HARD STOP rather than another warning: with only one
+    class present, gradient descent has nothing to separate. Every weight
+    stays at zero, the model answers the same thing for every posting, and
+    cross-validation reports 100% accuracy because "always guess ghost" is
+    right on a dataset where everything is ghost. That number looks like
+    success and is completely empty.
+
+    Worse, the resulting all-zero model would overwrite a working one and
+    the website would score every posting identically. Refusing to write
+    is the safe failure.
+    """
+    n = len(labels)
+    n_ghost = sum(labels)
+    n_legit = n - n_ghost
+
+    if n_ghost == 0 or n_legit == 0:
+        present = "ghost" if n_ghost else "legit"
+        missing = "legit" if n_ghost else "ghost"
+        print()
+        print("  CANNOT TRAIN: every posting is labelled '" + present + "'.")
+        print()
+        print(f"  You have {n} postings, all of one class. A classifier needs")
+        print(f"  examples of BOTH to learn any difference. With one class it")
+        print(f"  simply answers '{present}' every time and scores 100%, which")
+        print("  means nothing.")
+        print()
+        print(f"  Go and label some '{missing}' postings, then run this again.")
+        print("  The existing model has been left untouched.")
+        sys.exit(1)
+
+    smaller = min(n_ghost, n_legit)
+    if smaller < MIN_PER_CLASS:
+        rarer = "ghost" if n_ghost < n_legit else "legit"
+        print()
+        print(f"  CANNOT TRAIN: only {smaller} '{rarer}' posting(s).")
+        print()
+        print(f"  At least {MIN_PER_CLASS} of each class are needed before the")
+        print("  result is worth looking at, and before cross-validation can")
+        print("  put any of them in a test fold.")
+        print()
+        print(f"  Label more '{rarer}' postings, then run this again.")
+        print("  The existing model has been left untouched.")
+        sys.exit(1)
 
 
 def collect_warnings(labels, evidence, kind, cv_accuracy=None):
@@ -143,7 +195,7 @@ def print_report(kind, labels, cv, baseline_accuracy, weights, means, stds, warn
     print()
 
     print("  HOW WELL DOES IT DO?")
-    print("  (5-fold cross-validation: the model is always scored on postings")
+    print(f"  ({len(cv['folds'])}-fold cross-validation: the model is always scored on postings")
     print("   it did not train on, which is the only honest way to measure.)")
     print()
     mean = cv["mean"]
@@ -224,6 +276,10 @@ def main():
 
     texts, labels, evidence, kind = load_demo_data() if args.demo else load_real_data()
 
+    # Refuse before doing any work, so a hopeless dataset cannot overwrite
+    # a working model with an empty one.
+    refuse_if_untrainable(labels)
+
     # Text -> numbers. This is the only place the raw postings are used.
     rows = [features.features_as_list(text) for text in texts]
 
@@ -235,10 +291,15 @@ def main():
     baseline_accuracy = max(n_ghost, len(labels) - n_ghost) / len(labels)
 
     # Honest performance estimate, standardizing inside each fold.
+    # k cannot exceed the smaller class, or a fold ends up with none of
+    # that class in it and its precision/recall are meaningless.
+    n_ghost_for_k = sum(labels)
+    folds = max(2, min(5, min(n_ghost_for_k, len(labels) - n_ghost_for_k)))
+
     cv = logreg.cross_validate(
         rows,
         labels,
-        k=5,
+        k=folds,
         epochs=args.epochs,
         learning_rate=args.learning_rate,
         l2=args.l2,

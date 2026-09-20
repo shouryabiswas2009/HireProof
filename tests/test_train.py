@@ -65,6 +65,41 @@ class WarningTests(unittest.TestCase):
         self.assertNotIn("implausibly high", text)
 
 
+class UntrainableGuardTests(unittest.TestCase):
+    """train.py must refuse rather than write a meaningless model.
+
+    The case that prompted this: three postings, all labelled ghost. Every
+    weight trained to exactly 0.000, and cross-validation reported 100%
+    accuracy because "always say ghost" is right when everything is ghost.
+    It looked like a success and would have overwritten a working model
+    with one that scores every posting identically.
+    """
+
+    def assert_refuses(self, labels):
+        with self.assertRaises(SystemExit) as caught:
+            train.refuse_if_untrainable(labels)
+        self.assertEqual(caught.exception.code, 1)
+
+    def test_refuses_when_every_posting_is_ghost(self):
+        self.assert_refuses([1, 1, 1])
+
+    def test_refuses_when_every_posting_is_legit(self):
+        self.assert_refuses([0] * 40)
+
+    def test_refuses_when_one_class_is_too_small_to_validate(self):
+        # Plenty of data overall, but too few of the rarer class for any
+        # fold to contain one.
+        self.assert_refuses([1] * 50 + [0] * (train.MIN_PER_CLASS - 1))
+
+    def test_allows_a_small_but_balanced_dataset(self):
+        # Should not raise: thin, but both classes are represented enough
+        # to learn and validate. The warnings cover the "thin" part.
+        train.refuse_if_untrainable([1] * train.MIN_PER_CLASS + [0] * train.MIN_PER_CLASS)
+
+    def test_allows_a_healthy_dataset(self):
+        train.refuse_if_untrainable([1] * 60 + [0] * 55)
+
+
 class DemoDataTests(unittest.TestCase):
     def test_demo_data_loads_and_is_balanced(self):
         texts, labels, evidence, kind = train.load_demo_data()
