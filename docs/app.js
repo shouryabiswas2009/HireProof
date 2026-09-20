@@ -237,7 +237,7 @@ function animateScore(target) {
     elements.scoreValue.textContent = `${target}%`;
     return;
   }
-  const duration = 700;
+  const duration = 1200;
   const start = performance.now();
 
   // Cancel any run still in flight, or two overlapping loops fight over

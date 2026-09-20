@@ -28,10 +28,11 @@
   --bg-elevated: #ffffff;
   --ink: #12131a;
   --ink-soft: #565a6b;
-  /* Dark enough to clear WCAG AA (4.5:1) as normal text on both the page
-     and the card. A lighter grey looked nicer but measured about 3.2:1,
-     which fails for the word count, the privacy note and the footer. */
-  --ink-muted: #6b7080;
+  /* Dark enough to clear WCAG AA (4.5:1) as normal text on the composited
+     glass card. Darkened a second time when the background was made
+     stronger: a bolder blob behind a translucent card eats contrast, and
+     this buys the headroom for it (measures 5.13:1 in the worst case). */
+  --ink-muted: #5f6476;
   --line: #e6e7ee;
   --line-soft: #f0f1f5;
 
@@ -63,9 +64,9 @@
   --shadow-lg: 0 1px 2px rgba(18, 19, 26, 0.05), 0 8px 28px rgba(18, 19, 26, 0.08);
   --shadow-accent: 0 1px 2px rgba(79, 70, 229, 0.2), 0 6px 18px rgba(79, 70, 229, 0.25);
 
-  --grid-dot: rgba(18, 19, 26, 0.09);
-  --mote: rgba(79, 70, 229, 0.55);
-  --spot: rgba(79, 70, 229, 0.10);
+  --grid-dot: rgba(18, 19, 26, 0.16);
+  --mote: rgba(79, 70, 229, 0.85);
+  --spot: rgba(79, 70, 229, 0.20);
   /* Card opacity; the remainder is background showing through. Not a
      taste value: text contrast is measured against the composited card,
      and a card sitting over the brightest blob drops the muted grey to
@@ -119,9 +120,9 @@
     --shadow-lg: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 32px rgba(0, 0, 0, 0.45);
     --shadow-accent: 0 1px 2px rgba(0, 0, 0, 0.4), 0 6px 18px rgba(129, 140, 248, 0.22);
 
-    --grid-dot: rgba(255, 255, 255, 0.07);
-    --mote: rgba(165, 180, 252, 0.6);
-    --spot: rgba(129, 140, 248, 0.11);
+    --grid-dot: rgba(255, 255, 255, 0.13);
+    --mote: rgba(165, 180, 252, 0.95);
+    --spot: rgba(129, 140, 248, 0.22);
     --glass: 0.78;   /* dark measures 5.76:1 worst case */
   }
 }
@@ -164,57 +165,57 @@ body {
   position: absolute;
   display: block;
   border-radius: 50%;
-  filter: blur(90px);
-  opacity: 0.55;
+  filter: blur(80px);
+  opacity: 0.85;
   will-change: transform;
 }
 .blob-1 {
-  width: 46vw; height: 46vw; min-width: 320px; min-height: 320px;
-  top: -14vw; left: -8vw;
-  background: radial-gradient(circle, rgba(79, 70, 229, 0.55), transparent 68%);
-  animation: drift-1 26s ease-in-out infinite;
+  width: 58vw; height: 58vw; min-width: 380px; min-height: 380px;
+  top: -16vw; left: -12vw;
+  background: radial-gradient(circle, rgba(79, 70, 229, 0.80), transparent 68%);
+  animation: drift-1 16s ease-in-out infinite;
 }
 .blob-2 {
-  width: 38vw; height: 38vw; min-width: 260px; min-height: 260px;
-  top: -6vw; right: -6vw;
-  background: radial-gradient(circle, rgba(226, 73, 72, 0.38), transparent 68%);
-  animation: drift-2 34s ease-in-out infinite;
+  width: 48vw; height: 48vw; min-width: 320px; min-height: 320px;
+  top: -8vw; right: -10vw;
+  background: radial-gradient(circle, rgba(226, 73, 72, 0.62), transparent 68%);
+  animation: drift-2 21s ease-in-out infinite;
 }
 .blob-3 {
-  width: 34vw; height: 34vw; min-width: 240px; min-height: 240px;
-  top: 34vh; left: 42vw;
-  background: radial-gradient(circle, rgba(147, 51, 234, 0.30), transparent 68%);
-  animation: drift-3 42s ease-in-out infinite;
+  width: 46vw; height: 46vw; min-width: 300px; min-height: 300px;
+  top: 30vh; left: 38vw;
+  background: radial-gradient(circle, rgba(147, 51, 234, 0.58), transparent 68%);
+  animation: drift-3 26s ease-in-out infinite;
 }
 
 /* Deliberately un-round numbers and three different durations, so the
    three loops never line up into an obvious pulse. */
 @keyframes drift-1 {
   0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
-  33%      { transform: translate3d(6vw, 4vh, 0) scale(1.12); }
-  66%      { transform: translate3d(-3vw, 7vh, 0) scale(0.94); }
+  33%      { transform: translate3d(12vw, 9vh, 0) scale(1.25); }
+  66%      { transform: translate3d(-7vw, 15vh, 0) scale(0.85); }
 }
 @keyframes drift-2 {
   0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
-  40%      { transform: translate3d(-7vw, 6vh, 0) scale(1.15); }
-  70%      { transform: translate3d(2vw, -3vh, 0) scale(0.9); }
+  40%      { transform: translate3d(-14vw, 13vh, 0) scale(1.3); }
+  70%      { transform: translate3d(5vw, -7vh, 0) scale(0.8); }
 }
 @keyframes drift-3 {
   0%, 100% { transform: translate3d(0, 0, 0) scale(0.95); }
-  50%      { transform: translate3d(-9vw, -6vh, 0) scale(1.2); }
+  50%      { transform: translate3d(-18vw, -13vh, 0) scale(1.35); }
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .blob-1 {
-    background: radial-gradient(circle, rgba(129, 140, 248, 0.42), transparent 68%);
+    background: radial-gradient(circle, rgba(129, 140, 248, 0.72), transparent 68%);
   }
   :root:not([data-theme="light"]) .blob-2 {
-    background: radial-gradient(circle, rgba(230, 103, 103, 0.30), transparent 68%);
+    background: radial-gradient(circle, rgba(230, 103, 103, 0.55), transparent 68%);
   }
   :root:not([data-theme="light"]) .blob-3 {
-    background: radial-gradient(circle, rgba(168, 85, 247, 0.28), transparent 68%);
+    background: radial-gradient(circle, rgba(168, 85, 247, 0.52), transparent 68%);
   }
-  :root:not([data-theme="light"]) .blob { opacity: 0.5; }
+  :root:not([data-theme="light"]) .blob { opacity: 0.8; }
 }
 
 
@@ -232,7 +233,7 @@ body {
   background-size: 34px 34px;
   -webkit-mask-image: radial-gradient(ellipse 90% 65% at 50% 0%, #000 30%, transparent 85%);
   mask-image: radial-gradient(ellipse 90% 65% at 50% 0%, #000 30%, transparent 85%);
-  animation: grid-drift 24s linear infinite;
+  animation: grid-drift 14s linear infinite;
   will-change: transform;
 }
 @keyframes grid-drift {
@@ -258,24 +259,37 @@ body {
 /* Each mote gets its own column, speed and start offset. Spreading these
    by hand (rather than one shared timing) is what stops them reading as a
    marching row. */
-.mote:nth-child(1)  { left:  6%; animation-duration: 26s; animation-delay:  -2s; }
-.mote:nth-child(2)  { left: 14%; animation-duration: 34s; animation-delay:  -9s; width: 2px; height: 2px; }
-.mote:nth-child(3)  { left: 23%; animation-duration: 29s; animation-delay: -17s; }
-.mote:nth-child(4)  { left: 31%; animation-duration: 38s; animation-delay:  -5s; width: 4px; height: 4px; }
-.mote:nth-child(5)  { left: 42%; animation-duration: 24s; animation-delay: -21s; width: 2px; height: 2px; }
-.mote:nth-child(6)  { left: 50%; animation-duration: 33s; animation-delay: -13s; }
-.mote:nth-child(7)  { left: 58%; animation-duration: 28s; animation-delay:  -7s; width: 2px; height: 2px; }
-.mote:nth-child(8)  { left: 67%; animation-duration: 40s; animation-delay: -25s; width: 4px; height: 4px; }
-.mote:nth-child(9)  { left: 75%; animation-duration: 31s; animation-delay:  -3s; }
-.mote:nth-child(10) { left: 83%; animation-duration: 36s; animation-delay: -19s; width: 2px; height: 2px; }
-.mote:nth-child(11) { left: 91%; animation-duration: 27s; animation-delay: -11s; }
-.mote:nth-child(12) { left: 97%; animation-duration: 42s; animation-delay: -30s; width: 2px; height: 2px; }
+/* Each mote gets its own column, speed and start offset. Spreading these
+   by hand (rather than one shared timing) is what stops them reading as
+   a marching row. Negative delays start each one mid-flight, so the
+   screen is already populated on the first frame instead of filling up
+   over the first twenty seconds. */
+.mote:nth-child(1 ) { left: 4%; animation-duration: 13s; animation-delay: -1s; }
+.mote:nth-child(2 ) { left: 9%; animation-duration: 17s; animation-delay: -5s; width: 2px; height: 2px; }
+.mote:nth-child(3 ) { left: 15%; animation-duration: 15s; animation-delay: -9s; width: 4px; height: 4px; }
+.mote:nth-child(4 ) { left: 21%; animation-duration: 19s; animation-delay: -3s; }
+.mote:nth-child(5 ) { left: 26%; animation-duration: 12s; animation-delay: -11s; width: 2px; height: 2px; }
+.mote:nth-child(6 ) { left: 32%; animation-duration: 16s; animation-delay: -7s; }
+.mote:nth-child(7 ) { left: 37%; animation-duration: 14s; animation-delay: -14s; width: 4px; height: 4px; }
+.mote:nth-child(8 ) { left: 43%; animation-duration: 20s; animation-delay: -2s; width: 2px; height: 2px; }
+.mote:nth-child(9 ) { left: 48%; animation-duration: 13s; animation-delay: -16s; }
+.mote:nth-child(10) { left: 54%; animation-duration: 18s; animation-delay: -6s; }
+.mote:nth-child(11) { left: 59%; animation-duration: 15s; animation-delay: -12s; width: 2px; height: 2px; }
+.mote:nth-child(12) { left: 65%; animation-duration: 21s; animation-delay: -4s; width: 4px; height: 4px; }
+.mote:nth-child(13) { left: 70%; animation-duration: 14s; animation-delay: -18s; }
+.mote:nth-child(14) { left: 76%; animation-duration: 17s; animation-delay: -8s; width: 2px; height: 2px; }
+.mote:nth-child(15) { left: 81%; animation-duration: 16s; animation-delay: -13s; }
+.mote:nth-child(16) { left: 86%; animation-duration: 19s; animation-delay: -10s; width: 4px; height: 4px; }
+.mote:nth-child(17) { left: 90%; animation-duration: 13s; animation-delay: -15s; width: 2px; height: 2px; }
+.mote:nth-child(18) { left: 94%; animation-duration: 18s; animation-delay: -17s; }
+.mote:nth-child(19) { left: 97%; animation-duration: 15s; animation-delay: -19s; }
+.mote:nth-child(20) { left: 12%; animation-duration: 20s; animation-delay: -20s; width: 2px; height: 2px; }
 
 @keyframes float-up {
   0%        { transform: translate3d(0, 0, 0);            opacity: 0; }
-  10%       { opacity: 0.55; }
-  90%       { opacity: 0.55; }
-  100%      { transform: translate3d(14px, -104vh, 0);    opacity: 0; }
+  10%       { opacity: 0.9; }
+  85%       { opacity: 0.9; }
+  100%      { transform: translate3d(26px, -104vh, 0);   opacity: 0; }
 }
 
 /* ---- Cursor spotlight -----------------------------------------------
@@ -285,9 +299,9 @@ body {
   position: absolute;
   top: 0;
   left: 0;
-  width: 520px;
-  height: 520px;
-  margin: -260px 0 0 -260px;   /* centre it on the cursor */
+  width: 680px;
+  height: 680px;
+  margin: -340px 0 0 -340px;   /* centre it on the cursor */
   border-radius: 50%;
   background: radial-gradient(circle, var(--spot) 0%, transparent 62%);
   opacity: 0;
@@ -304,7 +318,7 @@ body {
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  opacity: 0.035;
+  opacity: 0.05;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 @media (prefers-color-scheme: dark) {
@@ -325,13 +339,13 @@ body {
 
 /* The hero animates in on load, each piece slightly after the one above,
    so the eye is led down the page rather than hit with everything at once. */
-.js .hero > * { animation: rise-in 0.65s cubic-bezier(0.22, 1, 0.36, 1) backwards; }
-.js .hero .eyebrow  { animation-delay: 0.05s; }
-.js .hero h1        { animation-delay: 0.14s; }
-.js .hero .tagline  { animation-delay: 0.23s; }
+.js .hero > * { animation: rise-in 0.85s cubic-bezier(0.16, 1, 0.3, 1) backwards; }
+.js .hero .eyebrow  { animation-delay: 0.06s; }
+.js .hero h1        { animation-delay: 0.20s; }
+.js .hero .tagline  { animation-delay: 0.36s; }
 
 @keyframes rise-in {
-  from { opacity: 0; transform: translateY(16px); }
+  from { opacity: 0; transform: translateY(30px) scale(0.97); }
   to   { opacity: 1; transform: none; }
 }
 
@@ -378,7 +392,7 @@ body {
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-  animation: hue-slide 9s ease-in-out infinite;
+  animation: hue-slide 5.5s ease-in-out infinite;
 }
 @keyframes hue-slide {
   0%, 100% { background-position: 0% 50%; }
@@ -451,7 +465,7 @@ body {
   -webkit-mask-composite: xor;
   mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   mask-composite: exclude;
-  animation: spin-border 7s linear infinite;
+  animation: spin-border 4s linear infinite;
   pointer-events: none;
 }
 @keyframes spin-border {
@@ -464,17 +478,21 @@ body {
 .card {
   transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
 }
-.card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+.card:hover {
+  transform: translateY(-4px) scale(1.006);
+  box-shadow: var(--shadow-lg);
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--line));
+}
 
 /* Scroll reveal. Elements start slightly down and transparent; app.js adds
    .in-view when they scroll into frame. The starting state is only applied
    when JS is present (html.js), so with JavaScript disabled everything
    stays visible instead of being permanently invisible. */
-.js .reveal { opacity: 0; transform: translateY(14px); }
+.js .reveal { opacity: 0; transform: translateY(30px) scale(0.985); }
 .js .reveal.in-view {
   opacity: 1;
   transform: none;
-  transition: opacity 0.5s ease, transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: opacity 0.6s ease, transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .card-head {
@@ -608,9 +626,9 @@ textarea:focus {
 
 /* ------------------------------------- The score: hero figure + meter */
 
-.js .card-result { animation: result-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) backwards; }
+.js .card-result { animation: result-in 0.6s cubic-bezier(0.16, 1, 0.3, 1) backwards; }
 @keyframes result-in {
-  from { opacity: 0; transform: translateY(10px) scale(0.995); }
+  from { opacity: 0; transform: translateY(26px) scale(0.97); }
   to   { opacity: 1; transform: none; }
 }
 
@@ -651,7 +669,7 @@ textarea:focus {
   width: 0;
   border-radius: 999px;
   background: var(--meter-color, var(--ink-muted));
-  transition: width 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: width 0.95s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .band {
@@ -736,8 +754,8 @@ textarea:focus {
    on the GPU. The per-row delay is set from app.js as --i. */
 .js .bar {
   transform-origin: left center;
-  animation: bar-grow 0.5s cubic-bezier(0.22, 1, 0.36, 1) backwards;
-  animation-delay: calc(var(--i, 0) * 45ms);
+  animation: bar-grow 0.75s cubic-bezier(0.34, 1.4, 0.5, 1) backwards;
+  animation-delay: calc(var(--i, 0) * 70ms);
 }
 .js .bar-lower { transform-origin: right center; }
 @keyframes bar-grow {
@@ -747,10 +765,13 @@ textarea:focus {
 
 /* The row labels fade in just behind their bars. */
 .js .crow .crow-name {
-  animation: fade-in 0.5s ease backwards;
-  animation-delay: calc(var(--i, 0) * 45ms + 60ms);
+  animation: slide-label 0.6s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  animation-delay: calc(var(--i, 0) * 70ms + 80ms);
 }
-@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slide-label {
+  from { opacity: 0; transform: translateX(-10px); }
+  to   { opacity: 1; transform: none; }
+}
 
 .crow-empty { font-size: 0.87rem; color: var(--ink-soft); padding: 10px 0; }
 
