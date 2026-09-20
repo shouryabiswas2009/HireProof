@@ -29,10 +29,15 @@ ROOT = Path(__file__).resolve().parent
 # Each entry: the file, and the patterns whose ?v= number must be updated.
 TARGETS = {
     "docs/index.html": [r'(style\.css\?v=)(\d+)', r'(app\.js\?v=)(\d+)'],
-    "docs/app.js": [r'(\./features\.js\?v=)(\d+)', r'(\./scorer\.js\?v=)(\d+)'],
+    "docs/app.js": [
+        r'(\./features\.js\?v=)(\d+)',
+        r'(\./scorer\.js\?v=)(\d+)',
+        r'(\./highlight\.js\?v=)(\d+)',
+    ],
     "docs/scorer.js": [r'(\./features\.js\?v=)(\d+)'],
     "tests/js/test_features.mjs": [r'(features\.js\?v=)(\d+)'],
     "tests/js/predict.mjs": [r'(features\.js\?v=)(\d+)', r'(scorer\.js\?v=)(\d+)'],
+    "tests/js/test_highlight.mjs": [r'(features\.js\?v=)(\d+)'],
 }
 
 

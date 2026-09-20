@@ -4,8 +4,9 @@
  * only moves values onto the screen.
  */
 
-import { loadPhrases } from "./features.js?v=9";
-import { loadModel, score, band } from "./scorer.js?v=9";
+import { loadPhrases } from "./features.js?v=10";
+import { loadModel, score, band } from "./scorer.js?v=10";
+import { annotate } from "./highlight.js?v=10";
 
 // Change this if you fork the project.
 const REPO_URL = "https://github.com/shouryabiswas2009/hireproof";
@@ -183,6 +184,8 @@ setUpThemeToggle();
 applyMotionSetting();
 setUpMotionToggle();
 
+let PHRASE_CONFIG = null;
+
 const elements = {
   textarea: document.getElementById("posting"),
   wordCount: document.getElementById("word-count"),
@@ -204,6 +207,9 @@ const elements = {
   modelFacts: document.getElementById("model-facts"),
   repoLink: document.getElementById("repo-link"),
   inputError: document.getElementById("input-error"),
+  annotatedText: document.getElementById("annotated-text"),
+  missingWrap: document.getElementById("missing-signals-wrap"),
+  missingChips: document.getElementById("missing-signals"),
 };
 
 /** Show the honest facts about which model is loaded. */
@@ -255,6 +261,7 @@ function contributionRow(item, largest, index) {
 
   const li = document.createElement("li");
   li.className = "crow";
+  li.dataset.signal = item.name;
   // The stylesheet turns this into an animation-delay, so the bars appear
   // one after another down the list rather than all at once.
   li.style.setProperty("--i", index);
@@ -395,11 +402,95 @@ function render(result) {
     elements.rawTableBody.appendChild(tr);
   }
 
+  renderAnnotatedText(result);
+
   elements.results.hidden = false;
   elements.results.scrollIntoView({
     behavior: motionEnabled() ? "smooth" : "auto",
     block: "start",
   });
+}
+
+/**
+ * Mark up the posting with the phrases that fired, and list the signals
+ * that fired by being ABSENT.
+ *
+ * The absent ones need their own treatment rather than a highlight,
+ * because there is nothing in the text to point at — and they are often
+ * the strongest drivers. "No pay figure given" was the second biggest
+ * factor on the example posting, and highlighting can say nothing about
+ * it. Listing them as chips is the honest way to show a missing thing.
+ */
+function renderAnnotatedText(result) {
+  if (!PHRASE_CONFIG) return;
+
+  // Colour each highlight by what its feature did to THIS posting, rather
+  // than by a fixed opinion about the phrase.
+  const direction = {};
+  for (const item of result.contributions) {
+    direction[item.name] = item.contribution >= 0 ? 1 : -1;
+  }
+
+  // rawFeatures gates the highlights: a pattern can match words for a
+  // feature that never actually fired (see annotate()).
+  const { html } = annotate(
+    elements.textarea.value, PHRASE_CONFIG, direction, result.rawFeatures
+  );
+  elements.annotatedText.innerHTML = html;
+
+  /*
+   * An "absent" signal is one whose raw value is 0 (the thing simply is
+   * not there) and which pushed the score UP by being missing. Density
+   * features are excluded: "fewer buzzwords than average" is not a
+   * missing thing, it is a low count.
+   */
+  const missing = result.contributions.filter(
+    (item) =>
+      item.rawValue === 0 &&
+      item.contribution > 0.01 &&
+      !item.name.endsWith("_density") &&
+      item.name !== "log_word_count"
+  );
+
+  elements.missingChips.replaceChildren();
+  for (const item of missing) {
+    const chip = document.createElement("span");
+    chip.className = "chip";
+    chip.dataset.signal = item.name;
+    chip.textContent = item.label;
+    elements.missingChips.appendChild(chip);
+  }
+  elements.missingWrap.hidden = missing.length === 0;
+}
+
+/**
+ * Hovering a bar dims every highlight except that signal's, so you can see
+ * exactly which words produced it. Done with one listener on the list
+ * rather than one per row: fewer listeners, and it keeps working when the
+ * rows are replaced on the next score.
+ */
+function setUpSignalFocus() {
+  const block = document.querySelector(".annotated-block");
+  if (!block) return;
+
+  const focus = (signal) => {
+    if (signal) block.dataset.focus = signal;
+    else delete block.dataset.focus;
+  };
+
+  elements.contributions.addEventListener("pointerover", (event) => {
+    const row = event.target.closest(".crow");
+    focus(row ? row.dataset.signal : null);
+  });
+  elements.contributions.addEventListener("pointerleave", () => focus(null));
+
+  // Keyboard users get the same thing by tabbing, since the rows are
+  // focusable via the table view; this covers the pointer case only.
+  elements.contributions.addEventListener("focusin", (event) => {
+    const row = event.target.closest(".crow");
+    if (row) focus(row.dataset.signal);
+  });
+  elements.contributions.addEventListener("focusout", () => focus(null));
 }
 
 function handleScore() {
@@ -527,11 +618,13 @@ async function start() {
   try {
     // Both files are needed before anything can be scored: the phrase lists
     // to build features, and the model to weigh them.
-    const [, model] = await Promise.all([loadPhrases(), loadModel()]);
+    const [phraseConfig, model] = await Promise.all([loadPhrases(), loadModel()]);
+    PHRASE_CONFIG = phraseConfig;
     describeModel(model);
     elements.scoreButton.disabled = false;
     setUpScrollReveal();
     setUpSpotlight();
+    setUpSignalFocus();
   } catch (error) {
     // Fail loudly and honestly rather than showing a broken page.
     elements.scoreButton.disabled = true;

@@ -816,6 +816,86 @@ textarea:focus {
   margin-top: 6px;
 }
 
+/* --------------------------------------------- Annotated posting text */
+
+.annotated-block { margin-top: 26px; }
+.annotated-block h2 { margin: 0 0 4px; font-size: 1.05rem; letter-spacing: -0.015em; }
+
+.annotated-text {
+  margin-top: 14px;
+  padding: 16px 18px;
+  max-height: 420px;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--bg);
+  font-size: 0.9rem;
+  line-height: 1.75;
+  /* pre-wrap keeps the paragraph breaks from the pasted posting, which
+     is most of what makes it still look like a job advert. */
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* A highlight is a tinted background plus an underline, so the mark does
+   not rely on colour alone to be visible. */
+.hl {
+  border-radius: 3px;
+  padding: 0.5px 2px;
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 2px;
+  transition: background-color 0.15s ease, opacity 0.15s ease;
+}
+.hl-raise {
+  background: color-mix(in srgb, var(--raise) 22%, transparent);
+  text-decoration-color: var(--raise);
+}
+.hl-lower {
+  background: color-mix(in srgb, var(--lower) 22%, transparent);
+  text-decoration-color: var(--lower);
+}
+
+/* Hovering a bar sets data-focus on the block; everything that is not
+   that signal fades back so the relevant words stand out. */
+.annotated-block[data-focus] .hl { opacity: 0.22; }
+.annotated-block[data-focus="has_salary_range"]           .hl[data-signal="has_salary_range"],
+.annotated-block[data-focus="has_contact_email"]          .hl[data-signal="has_contact_email"],
+.annotated-block[data-focus="experience_mismatch"]        .hl[data-signal="experience_mismatch"],
+.annotated-block[data-focus="buzzword_density"]           .hl[data-signal="buzzword_density"],
+.annotated-block[data-focus="concrete_duty_density"]      .hl[data-signal="concrete_duty_density"],
+.annotated-block[data-focus="names_reporting_line"]       .hl[data-signal="names_reporting_line"],
+.annotated-block[data-focus="vague_pay_phrase"]           .hl[data-signal="vague_pay_phrase"],
+.annotated-block[data-focus="evergreen_language"]         .hl[data-signal="evergreen_language"],
+.annotated-block[data-focus="multiple_openings_language"] .hl[data-signal="multiple_openings_language"],
+.annotated-block[data-focus="has_deadline_or_start_date"] .hl[data-signal="has_deadline_or_start_date"] {
+  opacity: 1;
+  outline: 2px solid currentColor;
+  outline-offset: 1px;
+}
+
+/* Absent signals: outlined chips, never filled. The empty look is the
+   point — there is no text to highlight because the thing is missing. */
+.missing-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 14px 0 0;
+}
+.missing-label { font-size: 0.85rem; color: var(--ink-soft); font-weight: 600; }
+.missing-chips { display: inline-flex; flex-wrap: wrap; gap: 7px; }
+.chip {
+  display: inline-block;
+  padding: 3px 11px;
+  border-radius: 999px;
+  border: 1px dashed color-mix(in srgb, var(--raise) 55%, var(--line));
+  background: transparent;
+  color: var(--ink-soft);
+  font-size: 0.8rem;
+}
+
 /* -------------------------------------------------- Drawers and tables */
 
 .drawer { margin-top: 20px; }
@@ -893,6 +973,7 @@ a:hover { text-decoration-color: currentColor; }
      row is visually separate then, so the zero line is dropped rather than
      left as a broken stub between labels. */
   .crow { grid-template-columns: 1fr auto; gap: 0 8px; padding: 7px 0; }
+  .annotated-text { max-height: 320px; padding: 13px 14px; }
   .crow-name { grid-column: 1 / -1; padding: 0 0 3px; }
   .crow-chart { padding-right: 0; }
   .crow-axis { background: transparent; }

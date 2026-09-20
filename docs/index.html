@@ -12,7 +12,7 @@
      page. BUMP THIS NUMBER whenever index.html, style.css or app.js change
      shape. (The proper fix is content-hashed filenames from a build step;
      this project has no build step on purpose, so the number is manual.) -->
-<link rel="stylesheet" href="style.css?v=9">
+<link rel="stylesheet" href="style.css?v=10">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>&#128123;</text></svg>">
 </head>
 <body>
@@ -172,6 +172,24 @@
 
       <ul id="contributions" class="contributions"></ul>
 
+      <!-- The posting itself, with the matched phrases marked. Absent
+           signals get a separate list, because there is no phrase to
+           point at and they are often the strongest drivers. -->
+      <div class="annotated-block">
+        <h2>Where these signals appear</h2>
+        <p class="hint">
+          Phrases the model matched are marked below.
+          <strong>Hover a bar above</strong> to pick out just that signal.
+        </p>
+
+        <p id="missing-signals-wrap" class="missing-wrap" hidden>
+          <span class="missing-label">Not found in the posting:</span>
+          <span id="missing-signals" class="missing-chips"></span>
+        </p>
+
+        <div id="annotated-text" class="annotated-text"></div>
+      </div>
+
       <details class="drawer">
         <summary>Table view &mdash; every signal and its exact value</summary>
         <div class="drawer-body">
@@ -263,6 +281,6 @@
 
 </div>
 
-<script type="module" src="app.js?v=9"></script>
+<script type="module" src="app.js?v=10"></script>
 </body>
 </html>
