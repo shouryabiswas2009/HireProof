@@ -42,6 +42,18 @@ const BAND_COLORS = {
   high: "var(--status-bad)",
 };
 
+// Tell the stylesheet JavaScript is running. Animations that start an
+// element invisible are scoped to .js, so with JS disabled (or if this
+// script fails to load) everything renders plainly and visibly instead of
+// staying blank forever.
+document.documentElement.classList.add("js");
+
+// Honour the OS "reduce motion" setting in JS too. CSS handles the
+// declarative animations; this covers the ones we drive by hand, like the
+// counting score, which CSS cannot switch off.
+const prefersReducedMotion =
+  window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
 const elements = {
   textarea: document.getElementById("posting"),
   wordCount: document.getElementById("word-count"),
@@ -108,12 +120,15 @@ function updateWordCount() {
  * comparable across rows. Scaling each row to its own maximum would make
  * every row look equally important.
  */
-function contributionRow(item, largest) {
+function contributionRow(item, largest, index) {
   const towardGhost = item.contribution > 0;
   const width = largest > 0 ? (Math.abs(item.contribution) / largest) * 100 : 0;
 
   const li = document.createElement("li");
   li.className = "crow";
+  // The stylesheet turns this into an animation-delay, so the bars appear
+  // one after another down the list rather than all at once.
+  li.style.setProperty("--i", index);
   // Native tooltip with the exact number. The table view below carries the
   // same values, so nothing is only reachable by hovering.
   li.title = `${item.label}: ${towardGhost ? "+" : ""}${item.contribution.toFixed(3)}`;
@@ -142,11 +157,41 @@ function contributionRow(item, largest) {
   return li;
 }
 
+/**
+ * Count the score up from zero.
+ *
+ * Worth the few lines: a number that climbs makes the reader watch it and
+ * gives the meter beside it something to move with. It is capped at a
+ * short duration so it never delays reading the actual answer, and it is
+ * skipped entirely under reduced motion.
+ */
+function animateScore(target) {
+  if (prefersReducedMotion) {
+    elements.scoreValue.textContent = `${target}%`;
+    return;
+  }
+  const duration = 700;
+  const start = performance.now();
+
+  // Cancel any run still in flight, or two overlapping loops fight over
+  // the same element and the number visibly jitters.
+  if (animateScore.frame) cancelAnimationFrame(animateScore.frame);
+
+  function step(now) {
+    const t = Math.min((now - start) / duration, 1);
+    // Ease-out cubic: fast at first, settling at the end.
+    const eased = 1 - Math.pow(1 - t, 3);
+    elements.scoreValue.textContent = `${Math.round(eased * target)}%`;
+    if (t < 1) animateScore.frame = requestAnimationFrame(step);
+  }
+  animateScore.frame = requestAnimationFrame(step);
+}
+
 function render(result) {
   const percent = Math.round(result.probability * 100);
   const verdict = band(result.probability);
 
-  elements.scoreValue.textContent = `${percent}%`;
+  animateScore(percent);
   elements.meterFill.style.width = `${percent}%`;
   // One custom property drives the meter fill, its track and the badge icon.
   elements.verdict.style.setProperty("--meter-color", BAND_COLORS[verdict.key]);
@@ -167,9 +212,9 @@ function render(result) {
       "No signal stood out: this posting sits close to the training average on every one.";
     elements.contributions.appendChild(li);
   } else {
-    for (const item of meaningful) {
-      elements.contributions.appendChild(contributionRow(item, largest));
-    }
+    meaningful.forEach((item, index) => {
+      elements.contributions.appendChild(contributionRow(item, largest, index));
+    });
   }
 
   // The table view: every feature, including the ones that did nothing.
@@ -224,6 +269,41 @@ function handleScore() {
   }
 }
 
+/**
+ * Fade sections in as they scroll into view.
+ *
+ * IntersectionObserver rather than a scroll listener: the browser reports
+ * visibility itself instead of us recalculating positions on every scroll
+ * frame, which is both simpler and much cheaper.
+ *
+ * Each element is unobserved once shown, so the effect plays once and
+ * content never fades back out while scrolling up.
+ */
+function setUpScrollReveal() {
+  // #results is excluded: it is hidden until a posting is scored and has
+  // its own entrance animation. Giving it opacity:0 from .reveal as well
+  // would race with that and could leave it blank.
+  const targets = document.querySelectorAll("main > .card:not(#results)");
+  if (prefersReducedMotion || !("IntersectionObserver" in window)) return;
+
+  targets.forEach((el) => el.classList.add("reveal"));
+
+  const observer = new IntersectionObserver(
+    (entries) => {
+      for (const entry of entries) {
+        if (!entry.isIntersecting) continue;
+        entry.target.classList.add("in-view");
+        observer.unobserve(entry.target);
+      }
+    },
+    // Trigger slightly before the element's top edge reaches the viewport
+    // bottom, so it has finished appearing by the time it is read.
+    { rootMargin: "0px 0px -40px 0px", threshold: 0.05 }
+  );
+
+  targets.forEach((el) => observer.observe(el));
+}
+
 async function start() {
   try {
     // Both files are needed before anything can be scored: the phrase lists
@@ -231,6 +311,7 @@ async function start() {
     const [, model] = await Promise.all([loadPhrases(), loadModel()]);
     describeModel(model);
     elements.scoreButton.disabled = false;
+    setUpScrollReveal();
   } catch (error) {
     // Fail loudly and honestly rather than showing a broken page.
     elements.scoreButton.disabled = true;

@@ -12,14 +12,21 @@
      page. BUMP THIS NUMBER whenever index.html, style.css or app.js change
      shape. (The proper fix is content-hashed filenames from a build step;
      this project has no build step on purpose, so the number is manual.) -->
-<link rel="stylesheet" href="style.css?v=3">
+<link rel="stylesheet" href="style.css?v=4">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>&#128123;</text></svg>">
 </head>
 <body>
 
-<!-- A soft coloured glow behind the top of the page. Purely decorative, so
-     it is aria-hidden and sits behind everything with pointer-events off. -->
-<div class="aurora" aria-hidden="true"></div>
+<!-- Decorative only: a slowly drifting colour field plus a fine grain
+     overlay. Both sit behind everything, ignore pointer events, and are
+     hidden from screen readers. All motion stops under
+     prefers-reduced-motion. -->
+<div class="aurora" aria-hidden="true">
+  <span class="blob blob-1"></span>
+  <span class="blob blob-2"></span>
+  <span class="blob blob-3"></span>
+</div>
+<div class="grain" aria-hidden="true"></div>
 
 <div class="shell">
 
@@ -185,6 +192,6 @@
 
 </div>
 
-<script type="module" src="app.js?v=3"></script>
+<script type="module" src="app.js?v=4"></script>
 </body>
 </html>

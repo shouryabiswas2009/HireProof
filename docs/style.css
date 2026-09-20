@@ -129,25 +129,93 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-/* The decorative glow behind the hero. position:fixed so it never adds to
-   the scrollable area and can't cause a horizontal scrollbar. */
+/* ------------------------------------------------ Animated background
+   A slow-drifting colour field. Three blobs, each on its own duration and
+   direction, so the pattern never visibly repeats. position:fixed keeps it
+   out of the scroll area so it can't create a scrollbar, and the whole
+   thing is inert: aria-hidden, pointer-events:none, behind everything.
+
+   Only transform and opacity are animated. Those two are the properties a
+   browser can composite on the GPU without recalculating layout, so this
+   costs almost nothing per frame; animating width/left/background would
+   force a relayout on every tick and make the page stutter. */
 .aurora {
   position: fixed;
-  inset: -20% -10% auto -10%;
-  height: 520px;
+  inset: 0;
+  overflow: hidden;
   pointer-events: none;
   z-index: 0;
-  background:
-    radial-gradient(42% 55% at 22% 0%, rgba(79, 70, 229, 0.16), transparent 70%),
-    radial-gradient(38% 50% at 78% 8%, rgba(226, 73, 72, 0.10), transparent 70%);
-  filter: blur(6px);
+}
+.blob {
+  position: absolute;
+  display: block;
+  border-radius: 50%;
+  filter: blur(90px);
+  opacity: 0.55;
+  will-change: transform;
+}
+.blob-1 {
+  width: 46vw; height: 46vw; min-width: 320px; min-height: 320px;
+  top: -14vw; left: -8vw;
+  background: radial-gradient(circle, rgba(79, 70, 229, 0.55), transparent 68%);
+  animation: drift-1 26s ease-in-out infinite;
+}
+.blob-2 {
+  width: 38vw; height: 38vw; min-width: 260px; min-height: 260px;
+  top: -6vw; right: -6vw;
+  background: radial-gradient(circle, rgba(226, 73, 72, 0.38), transparent 68%);
+  animation: drift-2 34s ease-in-out infinite;
+}
+.blob-3 {
+  width: 34vw; height: 34vw; min-width: 240px; min-height: 240px;
+  top: 34vh; left: 42vw;
+  background: radial-gradient(circle, rgba(147, 51, 234, 0.30), transparent 68%);
+  animation: drift-3 42s ease-in-out infinite;
+}
+
+/* Deliberately un-round numbers and three different durations, so the
+   three loops never line up into an obvious pulse. */
+@keyframes drift-1 {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  33%      { transform: translate3d(6vw, 4vh, 0) scale(1.12); }
+  66%      { transform: translate3d(-3vw, 7vh, 0) scale(0.94); }
+}
+@keyframes drift-2 {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  40%      { transform: translate3d(-7vw, 6vh, 0) scale(1.15); }
+  70%      { transform: translate3d(2vw, -3vh, 0) scale(0.9); }
+}
+@keyframes drift-3 {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(0.95); }
+  50%      { transform: translate3d(-9vw, -6vh, 0) scale(1.2); }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .blob-1 {
+    background: radial-gradient(circle, rgba(129, 140, 248, 0.42), transparent 68%);
+  }
+  :root:not([data-theme="light"]) .blob-2 {
+    background: radial-gradient(circle, rgba(230, 103, 103, 0.30), transparent 68%);
+  }
+  :root:not([data-theme="light"]) .blob-3 {
+    background: radial-gradient(circle, rgba(168, 85, 247, 0.28), transparent 68%);
+  }
+  :root:not([data-theme="light"]) .blob { opacity: 0.5; }
+}
+
+/* A faint film grain over the gradients. Large flat gradients tend to show
+   colour banding on 8-bit displays; a little noise breaks the bands up and
+   also stops the background looking like plastic. */
+.grain {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .aurora {
-    background:
-      radial-gradient(42% 55% at 22% 0%, rgba(129, 140, 248, 0.20), transparent 70%),
-      radial-gradient(38% 50% at 78% 8%, rgba(230, 103, 103, 0.13), transparent 70%);
-  }
+  :root:not([data-theme="light"]) .grain { opacity: 0.055; }
 }
 
 .shell {
@@ -161,6 +229,18 @@ body {
 /* ---------------------------------------------------------------- Hero */
 
 .hero { padding: 72px 0 34px; }
+
+/* The hero animates in on load, each piece slightly after the one above,
+   so the eye is led down the page rather than hit with everything at once. */
+.js .hero > * { animation: rise-in 0.65s cubic-bezier(0.22, 1, 0.36, 1) backwards; }
+.js .hero .eyebrow  { animation-delay: 0.05s; }
+.js .hero h1        { animation-delay: 0.14s; }
+.js .hero .tagline  { animation-delay: 0.23s; }
+
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: none; }
+}
 
 .eyebrow {
   display: inline-flex;
@@ -180,6 +260,11 @@ body {
   width: 7px; height: 7px; border-radius: 50%;
   background: var(--status-good);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--status-good) 20%, transparent);
+  animation: pulse 2.6s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--status-good) 20%, transparent); }
+  50%      { box-shadow: 0 0 0 6px color-mix(in srgb, var(--status-good) 6%, transparent); }
 }
 
 .hero h1 {
@@ -192,10 +277,19 @@ body {
   margin: 0 0 16px;
 }
 .gradient-text {
-  background: linear-gradient(100deg, var(--accent), #9333ea 55%, var(--raise));
+  /* Oversized background plus a moving position = the colours slide
+     through the letterforms. Animating background-position is cheap here
+     because the painted area is only the text itself. */
+  background: linear-gradient(100deg, var(--accent), #9333ea 40%, var(--raise) 70%, var(--accent));
+  background-size: 250% 100%;
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+  animation: hue-slide 9s ease-in-out infinite;
+}
+@keyframes hue-slide {
+  0%, 100% { background-position: 0% 50%; }
+  50%      { background-position: 100% 50%; }
 }
 
 .tagline {
@@ -218,6 +312,24 @@ body {
 }
 .card-input { box-shadow: var(--shadow-lg); }
 .card-result { box-shadow: var(--shadow-lg); }
+
+/* A small lift on hover. transform and box-shadow only, so it composites
+   on the GPU rather than re-running layout. */
+.card {
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+}
+.card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+
+/* Scroll reveal. Elements start slightly down and transparent; app.js adds
+   .in-view when they scroll into frame. The starting state is only applied
+   when JS is present (html.js), so with JavaScript disabled everything
+   stays visible instead of being permanently invisible. */
+.js .reveal { opacity: 0; transform: translateY(14px); }
+.js .reveal.in-view {
+  opacity: 1;
+  transform: none;
+  transition: opacity 0.5s ease, transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
 
 .card-head {
   display: flex;
@@ -274,7 +386,25 @@ textarea:focus {
 .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .btn:disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; transform: none; }
 
-.btn-primary { background: var(--accent); color: var(--accent-ink); box-shadow: var(--shadow-accent); }
+.btn-primary {
+  background: var(--accent);
+  color: var(--accent-ink);
+  box-shadow: var(--shadow-accent);
+  position: relative;
+  overflow: hidden;   /* clips the sheen to the button */
+}
+/* A light sweep that crosses the button on hover. Purely a affordance
+   cue: it makes the primary action feel like the live one on the page. */
+.btn-primary::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 -60%;
+  width: 45%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.28), transparent);
+  transform: skewX(-18deg);
+  transition: left 0.55s ease;
+}
+.btn-primary:hover:not(:disabled)::after { left: 115%; }
 .btn-primary:hover:not(:disabled) { background: var(--accent-hover); transform: translateY(-1px); }
 .btn-primary:active:not(:disabled) { transform: translateY(0); }
 
@@ -331,6 +461,12 @@ textarea:focus {
 }
 
 /* ------------------------------------- The score: hero figure + meter */
+
+.js .card-result { animation: result-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) backwards; }
+@keyframes result-in {
+  from { opacity: 0; transform: translateY(10px) scale(0.995); }
+  to   { opacity: 1; transform: none; }
+}
 
 .verdict { text-align: center; padding: 6px 0 4px; }
 
@@ -445,6 +581,31 @@ textarea:focus {
 .bar-lower { background: var(--lower); border-radius: 4px 0 0 4px; }
 .bar-raise { background: var(--raise); border-radius: 0 4px 4px 0; }
 
+/* Bars grow OUT FROM THE ZERO LINE, which is the honest direction: the
+   animation traces the same movement the data means. transform-origin is
+   set to whichever end touches the centre.
+
+   scaleX is used rather than animating width because the width is already
+   set inline from the data; scaling leaves that untouched and composites
+   on the GPU. The per-row delay is set from app.js as --i. */
+.js .bar {
+  transform-origin: left center;
+  animation: bar-grow 0.5s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  animation-delay: calc(var(--i, 0) * 45ms);
+}
+.js .bar-lower { transform-origin: right center; }
+@keyframes bar-grow {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+
+/* The row labels fade in just behind their bars. */
+.js .crow .crow-name {
+  animation: fade-in 0.5s ease backwards;
+  animation-delay: calc(var(--i, 0) * 45ms + 60ms);
+}
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+
 .crow-empty { font-size: 0.87rem; color: var(--ink-soft); padding: 10px 0; }
 
 /* -------------------------------------------------- Drawers and tables */
@@ -506,6 +667,12 @@ a:hover { text-decoration-color: currentColor; }
 /* -------------------------------------------------------------- Phones */
 
 @media (max-width: 580px) {
+  /* A large blur radius is one of the most expensive things to composite,
+     and phones are exactly where that hurts. Drop the third layer and
+     soften the blur: the effect still reads, at roughly half the cost. */
+  .blob-3 { display: none; }
+  .blob { filter: blur(60px); }
+
   .shell { padding: 0 16px 60px; }
   .hero { padding: 48px 0 26px; }
   .card { padding: 20px 17px; border-radius: 15px; }
@@ -523,10 +690,39 @@ a:hover { text-decoration-color: currentColor; }
   .controls .btn { flex: 1 1 auto; justify-content: center; }
 }
 
-/* Respect a reduced-motion preference. */
+/* ------------------------------------------- Reduced motion
+   Some people get motion sick from drifting backgrounds and sliding
+   content, so every animation on this page is switched off when the OS
+   asks for reduced motion.
+
+   The subtle part: several elements START invisible (opacity 0) and are
+   only made visible BY their animation. Simply cancelling animations
+   would leave those permanently blank, so this block also restores them
+   to their finished state. Shortening durations to 0.01ms is not enough
+   either: an infinite background loop still runs, just very fast, which
+   is worse than leaving it alone. */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
-    transition-duration: 0.01ms !important;
-    animation-duration: 0.01ms !important;
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
   }
+
+  /* Anything whose visible state depends on an animation or on JS adding
+     a class must be shown outright. */
+  .js .reveal,
+  .js .hero > *,
+  .js .crow .crow-name {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  .js .bar { transform: none !important; }
+
+  /* The drifting colour field is the main motion on the page: hold it
+     still rather than removing it, so the design still looks intentional. */
+  .blob { animation: none !important; }
+
+  /* The gradient headline would otherwise freeze mid-slide on an
+     off-centre colour stop; pin it to the start of the ramp. */
+  .gradient-text { background-position: 0% 50% !important; }
 }
