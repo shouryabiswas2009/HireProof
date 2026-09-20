@@ -304,6 +304,59 @@ function setUpScrollReveal() {
   targets.forEach((el) => observer.observe(el));
 }
 
+/**
+ * A soft glow that follows the cursor.
+ *
+ * Two details that make it feel right rather than cheap:
+ *
+ * 1. It EASES toward the pointer instead of being pinned to it. Locking it
+ *    to the exact cursor position reads as a stuck decal; trailing very
+ *    slightly behind reads as light.
+ * 2. The mousemove handler only records coordinates. The actual move
+ *    happens in a requestAnimationFrame loop, so however often the mouse
+ *    fires we touch the DOM at most once per frame.
+ *
+ * Skipped entirely for touch input and for reduced motion.
+ */
+function setUpSpotlight() {
+  const spotlight = document.getElementById("spotlight");
+  if (!spotlight || prefersReducedMotion) return;
+  // A coarse pointer means touch, where there is no cursor to follow.
+  if (!window.matchMedia("(pointer: fine)").matches) return;
+
+  let targetX = window.innerWidth / 2;
+  let targetY = window.innerHeight / 2;
+  let x = targetX;
+  let y = targetY;
+  let running = false;
+
+  function frame() {
+    // Move a fraction of the remaining distance each frame: fast when far
+    // away, slowing as it arrives.
+    x += (targetX - x) * 0.12;
+    y += (targetY - y) * 0.12;
+    spotlight.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+
+    // Stop the loop once it has essentially caught up, so an idle page
+    // isn't burning a frame callback forever.
+    if (Math.abs(targetX - x) > 0.5 || Math.abs(targetY - y) > 0.5) {
+      requestAnimationFrame(frame);
+    } else {
+      running = false;
+    }
+  }
+
+  window.addEventListener("pointermove", (event) => {
+    targetX = event.clientX;
+    targetY = event.clientY;
+    spotlight.classList.add("on");
+    if (!running) {
+      running = true;
+      requestAnimationFrame(frame);
+    }
+  }, { passive: true });
+}
+
 async function start() {
   try {
     // Both files are needed before anything can be scored: the phrase lists
@@ -312,6 +365,7 @@ async function start() {
     describeModel(model);
     elements.scoreButton.disabled = false;
     setUpScrollReveal();
+    setUpSpotlight();
   } catch (error) {
     // Fail loudly and honestly rather than showing a broken page.
     elements.scoreButton.disabled = true;

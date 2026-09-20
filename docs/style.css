@@ -63,6 +63,15 @@
   --shadow-lg: 0 1px 2px rgba(18, 19, 26, 0.05), 0 8px 28px rgba(18, 19, 26, 0.08);
   --shadow-accent: 0 1px 2px rgba(79, 70, 229, 0.2), 0 6px 18px rgba(79, 70, 229, 0.25);
 
+  --grid-dot: rgba(18, 19, 26, 0.09);
+  --mote: rgba(79, 70, 229, 0.55);
+  --spot: rgba(79, 70, 229, 0.10);
+  /* Card opacity; the remainder is background showing through. Not a
+     taste value: text contrast is measured against the composited card,
+     and a card sitting over the brightest blob drops the muted grey to
+     4.47:1 at 0.80 — just under the 4.5 AA floor. 0.86 measures 4.61. */
+  --glass: 0.86;
+
   --radius-lg: 18px;
   --radius-md: 12px;
   --radius-sm: 9px;
@@ -109,6 +118,11 @@
     --shadow-md: 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 14px rgba(0, 0, 0, 0.35);
     --shadow-lg: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 32px rgba(0, 0, 0, 0.45);
     --shadow-accent: 0 1px 2px rgba(0, 0, 0, 0.4), 0 6px 18px rgba(129, 140, 248, 0.22);
+
+    --grid-dot: rgba(255, 255, 255, 0.07);
+    --mote: rgba(165, 180, 252, 0.6);
+    --spot: rgba(129, 140, 248, 0.11);
+    --glass: 0.78;   /* dark measures 5.76:1 worst case */
   }
 }
 
@@ -139,7 +153,7 @@ body {
    browser can composite on the GPU without recalculating layout, so this
    costs almost nothing per frame; animating width/left/background would
    force a relayout on every tick and make the page stutter. */
-.aurora {
+.bg {
   position: fixed;
   inset: 0;
   overflow: hidden;
@@ -202,6 +216,85 @@ body {
   }
   :root:not([data-theme="light"]) .blob { opacity: 0.5; }
 }
+
+
+/* ---- Dot grid -------------------------------------------------------
+   A faint pinned-dot texture. It gives the colour field something to sit
+   against, so the background reads as designed rather than as a blur.
+   The mask fades it out toward the bottom so it never competes with the
+   text below. Drifting exactly one tile per loop makes the motion
+   seamless: at the end of the cycle the pattern lines up with where it
+   began, so there is no visible jump. */
+.grid-layer {
+  position: absolute;
+  inset: -40px;
+  background-image: radial-gradient(circle, var(--grid-dot) 1px, transparent 1px);
+  background-size: 34px 34px;
+  -webkit-mask-image: radial-gradient(ellipse 90% 65% at 50% 0%, #000 30%, transparent 85%);
+  mask-image: radial-gradient(ellipse 90% 65% at 50% 0%, #000 30%, transparent 85%);
+  animation: grid-drift 24s linear infinite;
+  will-change: transform;
+}
+@keyframes grid-drift {
+  from { transform: translate3d(0, 0, 0); }
+  to   { transform: translate3d(34px, 34px, 0); }
+}
+
+/* ---- Floating motes -------------------------------------------------
+   A dozen slow specks rising through the page. Enough to make the
+   background feel alive, few enough to stay cheap and not distract. */
+.motes { position: absolute; inset: 0; overflow: hidden; }
+.mote {
+  position: absolute;
+  bottom: -12px;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--mote);
+  opacity: 0;
+  animation: float-up linear infinite;
+  will-change: transform, opacity;
+}
+/* Each mote gets its own column, speed and start offset. Spreading these
+   by hand (rather than one shared timing) is what stops them reading as a
+   marching row. */
+.mote:nth-child(1)  { left:  6%; animation-duration: 26s; animation-delay:  -2s; }
+.mote:nth-child(2)  { left: 14%; animation-duration: 34s; animation-delay:  -9s; width: 2px; height: 2px; }
+.mote:nth-child(3)  { left: 23%; animation-duration: 29s; animation-delay: -17s; }
+.mote:nth-child(4)  { left: 31%; animation-duration: 38s; animation-delay:  -5s; width: 4px; height: 4px; }
+.mote:nth-child(5)  { left: 42%; animation-duration: 24s; animation-delay: -21s; width: 2px; height: 2px; }
+.mote:nth-child(6)  { left: 50%; animation-duration: 33s; animation-delay: -13s; }
+.mote:nth-child(7)  { left: 58%; animation-duration: 28s; animation-delay:  -7s; width: 2px; height: 2px; }
+.mote:nth-child(8)  { left: 67%; animation-duration: 40s; animation-delay: -25s; width: 4px; height: 4px; }
+.mote:nth-child(9)  { left: 75%; animation-duration: 31s; animation-delay:  -3s; }
+.mote:nth-child(10) { left: 83%; animation-duration: 36s; animation-delay: -19s; width: 2px; height: 2px; }
+.mote:nth-child(11) { left: 91%; animation-duration: 27s; animation-delay: -11s; }
+.mote:nth-child(12) { left: 97%; animation-duration: 42s; animation-delay: -30s; width: 2px; height: 2px; }
+
+@keyframes float-up {
+  0%        { transform: translate3d(0, 0, 0);            opacity: 0; }
+  10%       { opacity: 0.55; }
+  90%       { opacity: 0.55; }
+  100%      { transform: translate3d(14px, -104vh, 0);    opacity: 0; }
+}
+
+/* ---- Cursor spotlight -----------------------------------------------
+   A soft light that trails the pointer. app.js positions it; it stays
+   invisible until the first mouse move, so touch devices never see it. */
+.spotlight {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 520px;
+  height: 520px;
+  margin: -260px 0 0 -260px;   /* centre it on the cursor */
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--spot) 0%, transparent 62%);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  will-change: transform;
+}
+.spotlight.on { opacity: 1; }
 
 /* A faint film grain over the gradients. Large flat gradients tend to show
    colour banding on 8-bit displays; a little noise breaks the bands up and
@@ -303,14 +396,67 @@ body {
 /* --------------------------------------------------------------- Cards */
 
 .card {
-  background: var(--bg-elevated);
+  /* Frosted glass: partly transparent, with the backdrop blurred behind
+     it. This is what makes the moving background feel part of the design
+     instead of something hidden behind opaque boxes.
+
+     The opacity is deliberately high (see --glass). Text contrast is
+     measured against the card, so the more background bleeds through the
+     less predictable that becomes. 0.80 keeps the worst case comfortably
+     inside AA while still showing the colour moving underneath. */
+  background: color-mix(in srgb, var(--bg-elevated) calc(var(--glass) * 100%), transparent);
+  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  backdrop-filter: blur(16px) saturate(1.4);
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
   padding: 24px;
   margin: 18px 0;
   box-shadow: var(--shadow-md);
 }
-.card-input { box-shadow: var(--shadow-lg); }
+
+/* Browsers without backdrop-filter get a solid card instead of a
+   washed-out transparent one that could fail contrast. */
+@supports not (backdrop-filter: blur(1px)) {
+  .card { background: var(--bg-elevated); }
+}
+/* A light travelling around the edge of the input card, marking it as the
+   live thing on the page. Built from a conic gradient clipped to a 1px
+   ring by two masks that cancel each other out everywhere except the
+   border. @property is what makes the angle animatable at all: a plain
+   custom property is just a string to the browser, so it would jump from
+   0 to 360 instead of sweeping. Where @property is unsupported the ring
+   still renders, just without rotating. */
+@property --angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+.card-input { box-shadow: var(--shadow-lg); position: relative; }
+
+.card-input::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: conic-gradient(
+    from var(--angle),
+    transparent 0%,
+    var(--accent) 8%,
+    transparent 22%,
+    transparent 100%
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  animation: spin-border 7s linear infinite;
+  pointer-events: none;
+}
+@keyframes spin-border {
+  to { --angle: 360deg; }
+}
 .card-result { box-shadow: var(--shadow-lg); }
 
 /* A small lift on hover. transform and box-shadow only, so it composites
@@ -672,6 +818,10 @@ a:hover { text-decoration-color: currentColor; }
      soften the blur: the effect still reads, at roughly half the cost. */
   .blob-3 { display: none; }
   .blob { filter: blur(60px); }
+  /* backdrop-filter on several stacked cards is heavy on phones, and the
+     grid texture is barely visible at this size anyway. */
+  .grid-layer { display: none; }
+  .card { -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
 
   .shell { padding: 0 16px 60px; }
   .hero { padding: 48px 0 26px; }
@@ -718,9 +868,21 @@ a:hover { text-decoration-color: currentColor; }
   }
   .js .bar { transform: none !important; }
 
-  /* The drifting colour field is the main motion on the page: hold it
-     still rather than removing it, so the design still looks intentional. */
-  .blob { animation: none !important; }
+  /* The decorative layers are held still rather than removed, so the
+     design still looks intentional when motion is off. */
+  .blob, .grid-layer { animation: none !important; }
+
+  /* The motes only exist as movement, and they start at opacity 0, so
+     freezing them would leave twelve invisible dots doing nothing.
+     Remove them outright instead. */
+  .motes { display: none !important; }
+
+  /* The cursor spotlight is a moving light by definition. */
+  .spotlight { display: none !important; }
+
+  /* The border ring would freeze mid-sweep with a bright arc stuck on one
+     corner, which looks like a rendering fault. Hide the ring instead. */
+  .card-input::before { display: none !important; }
 
   /* The gradient headline would otherwise freeze mid-slide on an
      off-centre colour stop; pin it to the start of the ramp. */
