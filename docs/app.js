@@ -48,11 +48,78 @@ const BAND_COLORS = {
 // staying blank forever.
 document.documentElement.classList.add("js");
 
-// Honour the OS "reduce motion" setting in JS too. CSS handles the
-// declarative animations; this covers the ones we drive by hand, like the
-// counting score, which CSS cannot switch off.
-const prefersReducedMotion =
-  window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+// ---------------------------------------------------------------- Motion
+// Whether animation runs depends on two things: what the operating system
+// asks for, and whether the visitor overrode it with the footer toggle.
+// The system preference is the default; the toggle only wins when someone
+// deliberately sets it.
+//
+// This matters more than it sounds. Plenty of people switch Windows
+// animations off for speed rather than because motion bothers them, and
+// browsers report that as prefers-reduced-motion, so they were getting a
+// completely static page with no way to ask for anything else.
+const MOTION_KEY = "hireproof:motion";
+const motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+/** The visitor's saved choice: "on", "off", or null for "follow the OS". */
+function savedMotionChoice() {
+  try {
+    return localStorage.getItem(MOTION_KEY);
+  } catch {
+    // Private browsing and blocked storage both throw here. Falling back
+    // to the system preference is the right answer, not a crash.
+    return null;
+  }
+}
+
+function motionEnabled() {
+  const choice = savedMotionChoice();
+  if (choice === "on") return true;
+  if (choice === "off") return false;
+  return !motionQuery.matches;
+}
+
+/** Stamp the decision onto <html> so the stylesheet can act on it. */
+function applyMotionSetting() {
+  const on = motionEnabled();
+  document.documentElement.dataset.motion = on ? "on" : "off";
+
+  const button = document.getElementById("motion-toggle");
+  if (button) {
+    button.setAttribute("aria-pressed", String(on));
+    document.getElementById("motion-label").textContent =
+      on ? "Animations on" : "Animations off";
+    button.title = on
+      ? "Turn the background animation off"
+      : "Turn the background animation on";
+  }
+}
+
+function setUpMotionToggle() {
+  const button = document.getElementById("motion-toggle");
+  if (!button) return;
+
+  button.addEventListener("click", () => {
+    const next = motionEnabled() ? "off" : "on";
+    try {
+      localStorage.setItem(MOTION_KEY, next);
+    } catch {
+      // Can't persist it; still honour the choice for this page view.
+    }
+    applyMotionSetting();
+  });
+
+  // If the visitor has made no explicit choice, follow the system when it
+  // changes rather than staying on a stale decision.
+  motionQuery.addEventListener("change", () => {
+    if (savedMotionChoice() === null) applyMotionSetting();
+  });
+}
+
+// Decide before anything renders, so there is no flash of animation for
+// someone who has asked not to see it.
+applyMotionSetting();
+setUpMotionToggle();
 
 const elements = {
   textarea: document.getElementById("posting"),
@@ -166,7 +233,7 @@ function contributionRow(item, largest, index) {
  * skipped entirely under reduced motion.
  */
 function animateScore(target) {
-  if (prefersReducedMotion) {
+  if (!motionEnabled()) {
     elements.scoreValue.textContent = `${target}%`;
     return;
   }
@@ -236,7 +303,10 @@ function render(result) {
   }
 
   elements.results.hidden = false;
-  elements.results.scrollIntoView({ behavior: "smooth", block: "start" });
+  elements.results.scrollIntoView({
+    behavior: motionEnabled() ? "smooth" : "auto",
+    block: "start",
+  });
 }
 
 function handleScore() {
@@ -284,7 +354,7 @@ function setUpScrollReveal() {
   // its own entrance animation. Giving it opacity:0 from .reveal as well
   // would race with that and could leave it blank.
   const targets = document.querySelectorAll("main > .card:not(#results)");
-  if (prefersReducedMotion || !("IntersectionObserver" in window)) return;
+  if (!("IntersectionObserver" in window)) return;
 
   targets.forEach((el) => el.classList.add("reveal"));
 
@@ -320,7 +390,7 @@ function setUpScrollReveal() {
  */
 function setUpSpotlight() {
   const spotlight = document.getElementById("spotlight");
-  if (!spotlight || prefersReducedMotion) return;
+  if (!spotlight) return;
   // A coarse pointer means touch, where there is no cursor to follow.
   if (!window.matchMedia("(pointer: fine)").matches) return;
 
@@ -347,6 +417,9 @@ function setUpSpotlight() {
   }
 
   window.addEventListener("pointermove", (event) => {
+    // Checked per event rather than once at setup, so flipping the toggle
+    // takes effect immediately instead of needing a reload.
+    if (!motionEnabled()) return;
     targetX = event.clientX;
     targetY = event.clientY;
     spotlight.classList.add("on");

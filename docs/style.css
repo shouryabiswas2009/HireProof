@@ -840,51 +840,92 @@ a:hover { text-decoration-color: currentColor; }
   .controls .btn { flex: 1 1 auto; justify-content: center; }
 }
 
-/* ------------------------------------------- Reduced motion
-   Some people get motion sick from drifting backgrounds and sliding
-   content, so every animation on this page is switched off when the OS
-   asks for reduced motion.
+/* ------------------------------------------- Motion switch
+   Whether motion runs is decided in app.js and stamped onto <html> as
+   data-motion, because TWO things feed into it: the operating system's
+   reduced-motion preference and the visitor's own choice from the footer
+   toggle. A media query alone cannot express "the system asks for reduced
+   motion, but this person asked for animation anyway", which matters:
+   plenty of people have Windows animations switched off without being
+   motion sensitive, and they were seeing a completely static page.
 
-   The subtle part: several elements START invisible (opacity 0) and are
-   only made visible BY their animation. Simply cancelling animations
-   would leave those permanently blank, so this block also restores them
-   to their finished state. Shortening durations to 0.01ms is not enough
-   either: an infinite background loop still runs, just very fast, which
-   is worse than leaving it alone. */
+   The system preference is still the DEFAULT. The toggle only overrides it
+   for someone who deliberately asks.
+
+   The subtle part: several elements start invisible (opacity 0) and are
+   only revealed BY their animation, so switching motion off has to restore
+   them to their finished state rather than just cancelling the animation.
+   Shortening durations to 0.01ms is not enough either: an infinite
+   background loop still runs, just very fast, which is worse. */
+html[data-motion="off"] *,
+html[data-motion="off"] *::before,
+html[data-motion="off"] *::after {
+  animation: none !important;
+  transition: none !important;
+  scroll-behavior: auto !important;
+}
+
+/* Anything whose visible state depends on an animation must be shown. */
+html[data-motion="off"] .reveal,
+html[data-motion="off"] .hero > *,
+html[data-motion="off"] .crow-name {
+  opacity: 1 !important;
+  transform: none !important;
+}
+html[data-motion="off"] .bar { transform: none !important; }
+
+/* These three exist ONLY as movement. Frozen motes are twelve invisible
+   dots doing nothing, and a frozen border ring leaves a bright arc stuck
+   on one corner that reads as a rendering fault, so remove them. */
+html[data-motion="off"] .motes,
+html[data-motion="off"] .spotlight,
+html[data-motion="off"] .card-input::before { display: none !important; }
+
+/* The drifting colour field and grid are held still rather than removed,
+   so the design still looks deliberate with motion off. */
+html[data-motion="off"] .gradient-text { background-position: 0% 50% !important; }
+
+/* Fallback for visitors without JavaScript, where data-motion is never
+   set: honour the system preference on its own. */
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation: none !important;
-    transition: none !important;
-    scroll-behavior: auto !important;
-  }
+  html:not(.js) .blob,
+  html:not(.js) .grid-layer,
+  html:not(.js) .gradient-text,
+  html:not(.js) .eyebrow-dot,
+  html:not(.js) .card-input::before { animation: none !important; }
+  html:not(.js) .motes,
+  html:not(.js) .spotlight { display: none !important; }
+}
 
-  /* Anything whose visible state depends on an animation or on JS adding
-     a class must be shown outright. */
-  .js .reveal,
-  .js .hero > *,
-  .js .crow .crow-name {
-    opacity: 1 !important;
-    transform: none !important;
-  }
-  .js .bar { transform: none !important; }
-
-  /* The decorative layers are held still rather than removed, so the
-     design still looks intentional when motion is off. */
-  .blob, .grid-layer { animation: none !important; }
-
-  /* The motes only exist as movement, and they start at opacity 0, so
-     freezing them would leave twelve invisible dots doing nothing.
-     Remove them outright instead. */
-  .motes { display: none !important; }
-
-  /* The cursor spotlight is a moving light by definition. */
-  .spotlight { display: none !important; }
-
-  /* The border ring would freeze mid-sweep with a bright arc stuck on one
-     corner, which looks like a rendering fault. Hide the ring instead. */
-  .card-input::before { display: none !important; }
-
-  /* The gradient headline would otherwise freeze mid-slide on an
-     off-centre colour stop; pin it to the start of the ramp. */
-  .gradient-text { background-position: 0% 50% !important; }
+/* ---- The toggle itself ---- */
+.motion-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 13px 5px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bg-elevated) 70%, transparent);
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 550;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+.motion-toggle:hover { color: var(--ink); border-color: var(--ink-muted); }
+.motion-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.motion-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ink-muted);
+  transition: background-color 0.15s ease, box-shadow 0.15s ease;
+}
+/* aria-pressed is the source of truth for the state, so the styling keys
+   off it rather than a separate class that could drift out of sync. */
+.motion-toggle[aria-pressed="true"] .motion-dot {
+  background: var(--status-good);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--status-good) 22%, transparent);
+}
 }

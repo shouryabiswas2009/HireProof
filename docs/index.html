@@ -12,7 +12,7 @@
      page. BUMP THIS NUMBER whenever index.html, style.css or app.js change
      shape. (The proper fix is content-hashed filenames from a build step;
      this project has no build step on purpose, so the number is manual.) -->
-<link rel="stylesheet" href="style.css?v=5">
+<link rel="stylesheet" href="style.css?v=6">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>&#128123;</text></svg>">
 </head>
 <body>
@@ -196,6 +196,15 @@
 
   <footer class="site-footer">
     <p>
+      <!-- Lets someone turn the animation on even though their system asks
+           for reduced motion, or off even though it doesn't. Defaults to
+           whatever the system says. -->
+      <button id="motion-toggle" type="button" class="motion-toggle" aria-pressed="false">
+        <span class="motion-dot" aria-hidden="true"></span>
+        <span id="motion-label">Animations off</span>
+      </button>
+    </p>
+    <p>
       A learning project: logistic regression written from scratch &mdash; no
       machine-learning libraries, no external services, no tracking.
     </p>
@@ -209,6 +218,6 @@
 
 </div>
 
-<script type="module" src="app.js?v=5"></script>
+<script type="module" src="app.js?v=6"></script>
 </body>
 </html>
