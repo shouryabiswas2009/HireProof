@@ -115,6 +115,38 @@ function selectTab(name, { moveFocus = false, updateHash = true } = {}) {
   }
 }
 
+/**
+ * Give the sticky bar a backdrop only once content is scrolling under it.
+ *
+ * At the top of the page the bar has nothing to sit over, so a panel
+ * there just cuts a rectangle out of the background. It earns its
+ * backdrop the moment text would otherwise run underneath.
+ *
+ * Implemented with IntersectionObserver on a sentinel rather than a
+ * scroll listener: the browser reports the crossing itself instead of us
+ * reading scrollY on every scroll frame.
+ */
+function setUpStickyBar() {
+  const bar = document.querySelector(".topbar");
+  if (!bar) return;
+
+  if (!("IntersectionObserver" in window)) {
+    bar.classList.add("scrolled");   // safe fallback: always legible
+    return;
+  }
+
+  // A zero-height marker just above the bar. While it is visible we are
+  // at the top of the page; once it scrolls away, we are not.
+  const sentinel = document.createElement("div");
+  sentinel.setAttribute("aria-hidden", "true");
+  sentinel.style.cssText = "position:absolute;top:0;height:1px;width:1px;";
+  document.body.prepend(sentinel);
+
+  new IntersectionObserver(
+    ([entry]) => bar.classList.toggle("scrolled", !entry.isIntersecting)
+  ).observe(sentinel);
+}
+
 function setUpTabs() {
   const tablist = document.querySelector('[role="tablist"]');
   if (!tablist) return;
@@ -159,6 +191,8 @@ function setUpTabs() {
     new ResizeObserver(moveIndicator).observe(tablist);
   }
   window.addEventListener("resize", moveIndicator);
+
+  setUpStickyBar();
 
   selectTab(tabFromHash(), { updateHash: false });
   // One more pass after layout settles, in case the first measurement ran

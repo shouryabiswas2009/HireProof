@@ -327,49 +327,85 @@ body {
   align-items: center;
   gap: 18px;
   flex-wrap: wrap;
-  padding: 12px 0;
+  padding: 14px 0;
   margin-bottom: 4px;
-  /* Translucent so the moving background shows through, with a blur so
-     text scrolling underneath never makes the tabs hard to read. */
-  background: color-mix(in srgb, var(--bg) 78%, transparent);
-  -webkit-backdrop-filter: blur(14px);
-  backdrop-filter: blur(14px);
-  border-bottom: 1px solid var(--line);
+  /* Transparent at rest. The old version painted a dark slab across the
+     top, which cut a hard rectangle out of the drifting background and
+     read as a box sitting on the page rather than part of it. The backdrop
+     only appears once content is actually scrolling underneath, which is
+     the only moment it is needed for legibility. */
+  background: transparent;
+  border-bottom: 1px solid transparent;
+  transition: background-color 0.25s ease, border-color 0.25s ease,
+              backdrop-filter 0.25s ease;
+}
+/* app.js adds .scrolled past the first few pixels. */
+.topbar.scrolled {
+  background: color-mix(in srgb, var(--bg) 72%, transparent);
+  border-bottom-color: var(--line);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  backdrop-filter: blur(14px) saturate(1.2);
 }
 @supports not (backdrop-filter: blur(1px)) {
-  .topbar { background: var(--bg); }
+  .topbar.scrolled { background: var(--bg); }
 }
+
+/* -------------------------------------------------------------- Brand */
 
 .brand {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 9px;
   text-decoration: none;
   color: var(--ink);
   font-weight: 700;
-  letter-spacing: -0.02em;
-  font-size: 1.02rem;
+  font-size: 1.04rem;
+  letter-spacing: -0.025em;
+  border-radius: 10px;
 }
-.brand-mark { font-size: 1.15rem; line-height: 1; }
+.brand:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+
+/* The mark sits in a tinted rounded square, which gives the wordmark
+   something to align to and stops it floating next to bare text. */
+.brand-mark {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
+  color: var(--accent);
+  transition: transform 0.2s cubic-bezier(0.34, 1.4, 0.5, 1),
+              background-color 0.2s ease;
+}
+.brand:hover .brand-mark {
+  transform: translateY(-1px) rotate(-6deg);
+  background: color-mix(in srgb, var(--accent) 24%, transparent);
+}
+/* The eyes are punched out in the page colour rather than drawn, so they
+   stay correct in both themes without a second set of values. */
+.brand-eye { fill: var(--bg); }
+.brand-name { line-height: 1; }
+
+/* --------------------------------------------------------------- Tabs */
 
 .tabs {
   position: relative;          /* the pill is positioned against this */
   display: flex;
   gap: 2px;
   margin-left: auto;
-  padding: 4px;
-  border-radius: 999px;
-  border: 1px solid var(--line);
-  background: color-mix(in srgb, var(--bg-elevated) 55%, transparent);
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
+  /* No container box. A bordered, filled capsule around the tabs put a
+     second rectangle inside the bar and made the whole thing look boxed
+     in. The sliding pill is the only chrome the tab strip needs. */
   overflow-x: auto;
-  scrollbar-width: none;       /* no scrollbar on the phone-width strip */
+  scrollbar-width: none;
+  /* Room for the pill's shadow, which a scroll container would clip. */
+  padding: 4px 2px;
+  margin-right: -2px;
 }
 .tabs::-webkit-scrollbar { display: none; }
 
-/* The moving pill. It sits UNDER the buttons (z-index 0 against their 1)
-   so the label stays crisp on top of it rather than being repainted. */
 .tab-indicator {
   position: absolute;
   z-index: 0;
@@ -377,6 +413,7 @@ body {
   left: 0;
   bottom: 4px;
   width: 0;
+  pointer-events: none;
   border-radius: 999px;
   background: var(--accent);
   box-shadow: 0 1px 2px var(--shadow-tint),
