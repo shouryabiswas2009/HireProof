@@ -20,58 +20,81 @@
  */
 
 :root {
-  color-scheme: light;
+  /* THEMING.
+     Every colour below is written once as light-dark(light, dark). The
+     browser picks which half to use from `color-scheme`, so there is no
+     second copy of the palette to keep in sync — the usual way this is
+     done is duplicating the whole block inside a media query and inside
+     an attribute selector, which drifts the moment you edit one of them.
+
+     `color-scheme: light dark` here means "follow the operating system".
+     The two rules below let the footer switch pin it either way. */
+  color-scheme: light dark;
 
   /* Neutrals: slightly warm, never pure black on pure white, which is
      harsh to read. */
-  --bg: #f7f7f9;
-  --bg-elevated: #ffffff;
-  --ink: #12131a;
-  --ink-soft: #565a6b;
+  --bg:          light-dark(#f7f7f9, #0b0c10);
+  --bg-elevated: light-dark(#ffffff, #15171e);
+  --ink:         light-dark(#12131a, #f2f3f7);
+  --ink-soft:    light-dark(#565a6b, #a5aab9);
   /* Dark enough to clear WCAG AA (4.5:1) as normal text on the composited
-     glass card. Darkened a second time when the background was made
-     stronger: a bolder blob behind a translucent card eats contrast, and
-     this buys the headroom for it (measures 5.13:1 in the worst case). */
-  --ink-muted: #5f6476;
-  --line: #e6e7ee;
-  --line-soft: #f0f1f5;
+     glass card. Darkened once already when the background was made
+     stronger: a bolder blob behind a translucent card eats contrast.
+     Worst case measures 5.08:1 light, 5.06:1 dark. */
+  --ink-muted:   light-dark(#5f6476, #8f95a6);
+  --line:        light-dark(#e6e7ee, #262933);
+  --line-soft:   light-dark(#f0f1f5, #1d2029);
 
-  --accent: #4f46e5;
-  --accent-hover: #4338ca;
-  --accent-soft: #eef2ff;
-  --accent-ink: #ffffff;
+  --accent:       light-dark(#4f46e5, #818cf8);
+  --accent-hover: light-dark(#4338ca, #a5b4fc);
+  --accent-soft:  light-dark(#eef2ff, #1e1f3a);
+  --accent-ink:   light-dark(#ffffff, #14152b);
 
   /* Validated diverging pair for the contribution chart. */
-  --raise: #e34948;
-  --lower: #2a78d6;
+  --raise: light-dark(#e34948, #e66767);
+  --lower: light-dark(#2a78d6, #3987e5);
 
-  /* Status colours for the score band. Always shipped with an icon and
-     words, never on their own. */
-  --status-good: #0ca30c;
-  --status-warn: #d98a04;
-  --status-bad: #d03b3b;
+  /* Status colours for the score band and gauge zones. Always shipped
+     with an icon and words, never on their own. */
+  --status-good: light-dark(#0ca30c, #34d058);
+  --status-warn: light-dark(#d98a04, #fab219);
+  --status-bad:  light-dark(#d03b3b, #f87171);
 
-  --warn-bg: #fffaf0;
-  --warn-line: #f5dfae;
-  --warn-ink: #7a5807;
-  --error-bg: #fdf0ef;
-  --error-line: #f0c4c0;
-  --error-ink: #8c2f27;
+  --warn-bg:    light-dark(#fffaf0, #241c0c);
+  --warn-line:  light-dark(#f5dfae, #4a3a12);
+  --warn-ink:   light-dark(#7a5807, #f0c36d);
+  --error-bg:   light-dark(#fdf0ef, #2a1614);
+  --error-line: light-dark(#f0c4c0, #5a2b26);
+  --error-ink:  light-dark(#8c2f27, #f2a9a2);
 
+  /* Shadow colour varies by theme; the geometry does not. */
+  --shadow-tint: light-dark(rgba(18, 19, 26, 0.05), rgba(0, 0, 0, 0.4));
+  --shadow-tint-2: light-dark(rgba(18, 19, 26, 0.05), rgba(0, 0, 0, 0.35));
+  --shadow-tint-3: light-dark(rgba(18, 19, 26, 0.08), rgba(0, 0, 0, 0.45));
   /* Layered shadows read as real depth; one flat shadow reads as a sticker. */
-  --shadow-sm: 0 1px 2px rgba(18, 19, 26, 0.05);
-  --shadow-md: 0 1px 2px rgba(18, 19, 26, 0.05), 0 4px 12px rgba(18, 19, 26, 0.05);
-  --shadow-lg: 0 1px 2px rgba(18, 19, 26, 0.05), 0 8px 28px rgba(18, 19, 26, 0.08);
-  --shadow-accent: 0 1px 2px rgba(79, 70, 229, 0.2), 0 6px 18px rgba(79, 70, 229, 0.25);
+  --shadow-sm: 0 1px 2px var(--shadow-tint);
+  --shadow-md: 0 1px 2px var(--shadow-tint), 0 4px 12px var(--shadow-tint-2);
+  --shadow-lg: 0 1px 2px var(--shadow-tint), 0 8px 28px var(--shadow-tint-3);
+  --shadow-accent: 0 1px 2px var(--shadow-tint),
+                   0 6px 18px light-dark(rgba(79, 70, 229, 0.25), rgba(129, 140, 248, 0.22));
 
-  --grid-dot: rgba(18, 19, 26, 0.16);
-  --mote: rgba(79, 70, 229, 0.85);
-  --spot: rgba(79, 70, 229, 0.20);
+  --grid-dot: light-dark(rgba(18, 19, 26, 0.16), rgba(255, 255, 255, 0.13));
+  --mote:     light-dark(rgba(79, 70, 229, 0.85), rgba(165, 180, 252, 0.95));
+  --spot:     light-dark(rgba(79, 70, 229, 0.20), rgba(129, 140, 248, 0.22));
+
+  /* Blob colours, as tokens so the gradients below need no theme rules. */
+  --blob-1: light-dark(rgba(79, 70, 229, 0.80), rgba(129, 140, 248, 0.72));
+  --blob-2: light-dark(rgba(226, 73, 72, 0.62), rgba(230, 103, 103, 0.55));
+  --blob-3: light-dark(rgba(147, 51, 234, 0.58), rgba(168, 85, 247, 0.52));
+
   /* Card opacity; the remainder is background showing through. Not a
-     taste value: text contrast is measured against the composited card,
-     and a card sitting over the brightest blob drops the muted grey to
-     4.47:1 at 0.80 — just under the 4.5 AA floor. 0.86 measures 4.61. */
+     taste value: contrast is measured against the COMPOSITED card, and a
+     card over the brightest blob drops the muted grey below the 4.5 AA
+     floor if this goes much lower. light-dark() only works for colours,
+     so the two values are set by the rules underneath instead. */
   --glass: 0.86;
+  --blob-opacity: 0.85;
+  --grain-opacity: 0.05;
 
   --radius-lg: 18px;
   --radius-md: 12px;
@@ -81,51 +104,31 @@
           "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
+/* The footer switch pins the theme; without it, color-scheme above just
+   follows the operating system. */
+:root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="dark"]  { color-scheme: dark; }
+
+/* The three non-colour values light-dark() cannot express. Each needs a
+   media-query copy (for "follow the OS") and an attribute copy (for the
+   switch), because they are numbers rather than colours. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --glass: 0.78;
+    --blob-opacity: 0.8;
+    --grain-opacity: 0.055;
+  }
+}
+:root[data-theme="dark"] {
+  --glass: 0.78;
+  --blob-opacity: 0.8;
+  --grain-opacity: 0.055;
+}
+
+
 /* Dark mode is chosen, not an automatic inversion: the neutrals are
    re-picked for a dark surface and the accent is lightened so it still
    clears contrast against it. */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    color-scheme: dark;
-
-    --bg: #0b0c10;
-    --bg-elevated: #15171e;
-    --ink: #f2f3f7;
-    --ink-soft: #a5aab9;
-    --ink-muted: #8f95a6;   /* same 4.5:1 rule, measured on the dark card */
-    --line: #262933;
-    --line-soft: #1d2029;
-
-    --accent: #818cf8;
-    --accent-hover: #a5b4fc;
-    --accent-soft: #1e1f3a;
-    --accent-ink: #14152b;
-
-    --raise: #e66767;
-    --lower: #3987e5;
-
-    --status-good: #34d058;
-    --status-warn: #fab219;
-    --status-bad: #f87171;
-
-    --warn-bg: #241c0c;
-    --warn-line: #4a3a12;
-    --warn-ink: #f0c36d;
-    --error-bg: #2a1614;
-    --error-line: #5a2b26;
-    --error-ink: #f2a9a2;
-
-    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
-    --shadow-md: 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 14px rgba(0, 0, 0, 0.35);
-    --shadow-lg: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 32px rgba(0, 0, 0, 0.45);
-    --shadow-accent: 0 1px 2px rgba(0, 0, 0, 0.4), 0 6px 18px rgba(129, 140, 248, 0.22);
-
-    --grid-dot: rgba(255, 255, 255, 0.13);
-    --mote: rgba(165, 180, 252, 0.95);
-    --spot: rgba(129, 140, 248, 0.22);
-    --glass: 0.78;   /* dark measures 5.76:1 worst case */
-  }
-}
 
 * { box-sizing: border-box; }
 
@@ -166,25 +169,25 @@ body {
   display: block;
   border-radius: 50%;
   filter: blur(80px);
-  opacity: 0.85;
+  opacity: var(--blob-opacity);
   will-change: transform;
 }
 .blob-1 {
   width: 58vw; height: 58vw; min-width: 380px; min-height: 380px;
   top: -16vw; left: -12vw;
-  background: radial-gradient(circle, rgba(79, 70, 229, 0.80), transparent 68%);
+  background: radial-gradient(circle, var(--blob-1), transparent 68%);
   animation: drift-1 16s ease-in-out infinite;
 }
 .blob-2 {
   width: 48vw; height: 48vw; min-width: 320px; min-height: 320px;
   top: -8vw; right: -10vw;
-  background: radial-gradient(circle, rgba(226, 73, 72, 0.62), transparent 68%);
+  background: radial-gradient(circle, var(--blob-2), transparent 68%);
   animation: drift-2 21s ease-in-out infinite;
 }
 .blob-3 {
   width: 46vw; height: 46vw; min-width: 300px; min-height: 300px;
   top: 30vh; left: 38vw;
-  background: radial-gradient(circle, rgba(147, 51, 234, 0.58), transparent 68%);
+  background: radial-gradient(circle, var(--blob-3), transparent 68%);
   animation: drift-3 26s ease-in-out infinite;
 }
 
@@ -205,18 +208,6 @@ body {
   50%      { transform: translate3d(-18vw, -13vh, 0) scale(1.35); }
 }
 
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .blob-1 {
-    background: radial-gradient(circle, rgba(129, 140, 248, 0.72), transparent 68%);
-  }
-  :root:not([data-theme="light"]) .blob-2 {
-    background: radial-gradient(circle, rgba(230, 103, 103, 0.55), transparent 68%);
-  }
-  :root:not([data-theme="light"]) .blob-3 {
-    background: radial-gradient(circle, rgba(168, 85, 247, 0.52), transparent 68%);
-  }
-  :root:not([data-theme="light"]) .blob { opacity: 0.8; }
-}
 
 
 /* ---- Dot grid -------------------------------------------------------
@@ -318,11 +309,8 @@ body {
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  opacity: 0.05;
+  opacity: var(--grain-opacity);
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .grain { opacity: 0.055; }
 }
 
 .shell {
@@ -721,7 +709,7 @@ textarea:focus {
 
 .crow {
   display: grid;
-  grid-template-columns: minmax(0, 15em) 1fr;
+  grid-template-columns: minmax(0, 13em) 1fr auto;
   /* stretch, not center: when a label wraps to two lines the row grows, and
      the chart column must grow with it or the zero line leaves a gap. */
   align-items: stretch;
@@ -793,7 +781,40 @@ textarea:focus {
   to   { opacity: 1; transform: none; }
 }
 
+/* The amount column: a comparable strength word plus the cost in points. */
+.crow-amount {
+  align-self: center;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  min-width: 5.4em;
+  padding-left: 10px;
+  line-height: 1.25;
+}
+.strength {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.strength-strong   { color: var(--ink); }
+.strength-moderate { color: var(--ink-soft); }
+.strength-slight   { color: var(--ink-muted); }
+.points {
+  font-size: 0.78rem;
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+
 .crow-empty { font-size: 0.87rem; color: var(--ink-soft); padding: 10px 0; }
+.crow-more {
+  font-size: 0.82rem;
+  color: var(--ink-muted);
+  padding: 12px 0 2px 8px;
+  border-top: 1px solid var(--line-soft);
+  margin-top: 6px;
+}
 
 /* -------------------------------------------------- Drawers and tables */
 
@@ -871,8 +892,8 @@ a:hover { text-decoration-color: currentColor; }
   /* The label moves above its bar so the chart keeps its full width. Each
      row is visually separate then, so the zero line is dropped rather than
      left as a broken stub between labels. */
-  .crow { grid-template-columns: 1fr; gap: 0; padding: 7px 0; }
-  .crow-name { padding: 0 0 3px; }
+  .crow { grid-template-columns: 1fr auto; gap: 0 8px; padding: 7px 0; }
+  .crow-name { grid-column: 1 / -1; padding: 0 0 3px; }
   .crow-chart { padding-right: 0; }
   .crow-axis { background: transparent; }
   .crow:hover { background: transparent; }
@@ -939,7 +960,7 @@ html[data-motion="off"] .gradient-text { background-position: 0% 50% !important;
 }
 
 /* ---- The toggle itself ---- */
-.motion-toggle {
+.pill-btn {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -954,8 +975,13 @@ html[data-motion="off"] .gradient-text { background-position: 0% 50% !important;
   cursor: pointer;
   transition: border-color 0.15s ease, color 0.15s ease;
 }
-.motion-toggle:hover { color: var(--ink); border-color: var(--ink-muted); }
-.motion-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.pill-btn:hover { color: var(--ink); border-color: var(--ink-muted); }
+.pill-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* The footer switches sit side by side. */
+.site-footer p:first-child { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.pill-icon { display: inline-flex; color: var(--ink-muted); }
+.pill-icon svg { display: block; }
+
 .motion-dot {
   width: 7px;
   height: 7px;
@@ -965,7 +991,12 @@ html[data-motion="off"] .gradient-text { background-position: 0% 50% !important;
 }
 /* aria-pressed is the source of truth for the state, so the styling keys
    off it rather than a separate class that could drift out of sync. */
-.motion-toggle[aria-pressed="true"] .motion-dot {
+.pill-btn[aria-pressed="true"] /* The footer switches sit side by side. */
+.site-footer p:first-child { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.pill-icon { display: inline-flex; color: var(--ink-muted); }
+.pill-icon svg { display: block; }
+
+.motion-dot {
   background: var(--status-good);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--status-good) 22%, transparent);
 }

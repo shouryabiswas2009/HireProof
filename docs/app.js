@@ -4,8 +4,8 @@
  * only moves values onto the screen.
  */
 
-import { loadPhrases } from "./features.js";
-import { loadModel, score, band } from "./scorer.js";
+import { loadPhrases } from "./features.js?v=9";
+import { loadModel, score, band } from "./scorer.js?v=9";
 
 // Change this if you fork the project.
 const REPO_URL = "https://github.com/shouryabiswas2009/hireproof";
@@ -14,6 +14,11 @@ const REPO_URL = "https://github.com/shouryabiswas2009/hireproof";
 // essentially at the training average for that signal, so drawing a bar
 // for it would imply a factor that did not really apply.
 const MEANINGFUL = 0.01;
+
+// How many signals the chart shows. The rest stay in the table view below,
+// so nothing is hidden — but a chart of eleven near-identical bars buries
+// the two or three that actually decided the answer.
+const TOP_N = 5;
 
 // A deliberately mediocre posting for the "Load an example" button: it has
 // signals pointing both ways, so the demo shows a nuanced breakdown rather
@@ -116,8 +121,65 @@ function setUpMotionToggle() {
   });
 }
 
+// ----------------------------------------------------------------- Theme
+// Three states, not two: light, dark, or follow the operating system.
+// "System" has to be a real option rather than just the starting value,
+// otherwise someone who tries the switch can never get back to having the
+// page track their OS when it flips at sunset.
+//
+// The stylesheet does the actual work through light-dark(), so all this
+// has to do is set `color-scheme` via a data-theme attribute.
+const THEME_KEY = "hireproof:theme";
+const THEMES = ["system", "light", "dark"];
+
+const THEME_ICONS = {
+  system: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="19" height="13" rx="2"/><line x1="8" y1="20.5" x2="16" y2="20.5"/></svg>`,
+  light: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>`,
+  dark: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z"/></svg>`,
+};
+
+function savedTheme() {
+  try {
+    const value = localStorage.getItem(THEME_KEY);
+    return THEMES.includes(value) ? value : "system";
+  } catch {
+    return "system";
+  }
+}
+
+function applyTheme() {
+  const theme = savedTheme();
+  // Removing the attribute (rather than setting "system") lets the
+  // stylesheet's `color-scheme: light dark` fall back to the OS.
+  if (theme === "system") {
+    delete document.documentElement.dataset.theme;
+  } else {
+    document.documentElement.dataset.theme = theme;
+  }
+  const icon = document.getElementById("theme-icon");
+  const label = document.getElementById("theme-label");
+  if (icon) icon.innerHTML = THEME_ICONS[theme];
+  if (label) label.textContent = `Theme: ${theme}`;
+}
+
+function setUpThemeToggle() {
+  const button = document.getElementById("theme-toggle");
+  if (!button) return;
+  button.addEventListener("click", () => {
+    const next = THEMES[(THEMES.indexOf(savedTheme()) + 1) % THEMES.length];
+    try {
+      localStorage.setItem(THEME_KEY, next);
+    } catch {
+      // Can't persist; still honour it for this page view.
+    }
+    applyTheme();
+  });
+}
+
 // Decide before anything renders, so there is no flash of animation for
 // someone who has asked not to see it.
+applyTheme();
+setUpThemeToggle();
 applyMotionSetting();
 setUpMotionToggle();
 
@@ -219,8 +281,17 @@ function contributionRow(item, largest, index) {
   bar.style.width = `${width}%`;
   (towardGhost ? right : left).appendChild(bar);
 
+  // The amount, in the reader's units. Strength ranks signals against one
+  // another; points say what it cost on the actual score.
+  const amount = document.createElement("span");
+  amount.className = "crow-amount";
+  const sign = item.points >= 0 ? "+" : "−";   // real minus sign
+  amount.innerHTML =
+    `<span class="strength strength-${item.strength}">${item.strength}</span>` +
+    `<span class="points">${sign}${Math.abs(item.points).toFixed(1)} pts</span>`;
+
   chart.append(left, axis, right);
-  li.append(name, chart);
+  li.append(name, chart, amount);
   return li;
 }
 
@@ -289,9 +360,21 @@ function render(result) {
       "No signal stood out: this posting sits close to the training average on every one.";
     elements.contributions.appendChild(li);
   } else {
-    meaningful.forEach((item, index) => {
+    const shown = meaningful.slice(0, TOP_N);
+    shown.forEach((item, index) => {
       elements.contributions.appendChild(contributionRow(item, largest, index));
     });
+
+    // Say what was left out, rather than quietly truncating.
+    const hidden = meaningful.length - shown.length;
+    if (hidden > 0) {
+      const li = document.createElement("li");
+      li.className = "crow-more";
+      li.textContent =
+        `${hidden} more signal${hidden === 1 ? "" : "s"} moved the score by less. ` +
+        `All eleven are in the table below.`;
+      elements.contributions.appendChild(li);
+    }
   }
 
   // The table view: every feature, including the ones that did nothing.

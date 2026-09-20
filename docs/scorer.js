@@ -17,7 +17,7 @@
  * couple of hundred training examples.
  */
 
-import { extractFeatures } from "./features.js";
+import { extractFeatures } from "./features.js?v=9";
 
 let MODEL = null;
 
@@ -97,9 +97,50 @@ function score(text) {
     });
   });
 
+  const probability = sigmoid(z);
+
+  /*
+   * Turn each contribution into PERCENTAGE POINTS, which is the only unit
+   * a reader can actually use.
+   *
+   * The raw contribution is in log-odds. "+0.912" is meaningless to a
+   * visitor, and it cannot be converted to a fixed number of points,
+   * because the same log-odds step moves the score a lot in the middle of
+   * the range and barely at all near 0% or 100%.
+   *
+   * So instead of converting the units, we answer a question: "what would
+   * the score have been if this posting were merely AVERAGE on this one
+   * signal?" That is sigmoid(z - contribution). The gap between that and
+   * the real score is this signal's effect, in points.
+   *
+   * IMPORTANT CAVEAT, and worth understanding rather than hiding: these
+   * deltas do NOT add up to the total. The sigmoid is a curve, not a
+   * straight line, so removing two signals together is not the same as
+   * the sum of removing each alone. Each number is a correct answer to
+   * "what does this one signal cost?" and that is all it claims.
+   */
+  for (const item of contributions) {
+    const withoutIt = sigmoid(z - item.contribution);
+    item.points = (probability - withoutIt) * 100;
+
+    /*
+     * A strength word, graded on the LOG-ODDS rather than the points.
+     *
+     * Why both? Because the points figure collapses at the extremes. A
+     * posting already sitting at 98% cannot be pushed much higher by
+     * anything, so every signal shows as "+2 points" even when one of
+     * them is doing far more work than the others. Log-odds does not
+     * flatten like that, so it is the fair way to rank signals against
+     * each other; points remain the honest answer to "what did this cost
+     * me on the actual score".
+     */
+    const size = Math.abs(item.contribution);
+    item.strength = size >= 0.6 ? "strong" : size >= 0.3 ? "moderate" : "slight";
+  }
+
   contributions.sort((a, b) => Math.abs(b.contribution) - Math.abs(a.contribution));
 
-  return { probability: sigmoid(z), z, contributions, rawFeatures };
+  return { probability, z, contributions, rawFeatures };
 }
 
 /**
