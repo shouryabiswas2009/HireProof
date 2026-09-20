@@ -14,7 +14,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { normalizeWithMap, findMatches, annotate } from "../../docs/highlight.js";
-import { initPhrases, normalize } from "../../docs/features.js?v=13";
+import { initPhrases, normalize } from "../../docs/features.js?v=14";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(here, "..", "..");

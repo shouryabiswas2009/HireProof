@@ -115,36 +115,81 @@ function selectTab(name, { moveFocus = false, updateHash = true } = {}) {
   }
 }
 
-/**
- * Give the sticky bar a backdrop only once content is scrolling under it.
+/*
+ * Header behaviour.
  *
- * At the top of the page the bar has nothing to sit over, so a panel
- * there just cuts a rectangle out of the background. It earns its
- * backdrop the moment text would otherwise run underneath.
- *
- * Implemented with IntersectionObserver on a sentinel rather than a
- * scroll listener: the browser reports the crossing itself instead of us
- * reading scrollY on every scroll frame.
+ * A pinned bar always covers whatever scrolls beneath it, and with a
+ * backdrop dark enough to stay legible that reads as a slab sitting on
+ * the text. So the bar retracts while you read downward and returns as
+ * soon as you scroll up, which is when you are looking for navigation
+ * anyway. At the very top it has nothing to sit over, so it drops the
+ * backdrop entirely and lets the background through.
  */
+
+const BAR_AT_TOP = 8;    // px of scroll before the backdrop appears
+const BAR_DEADZONE = 5;  // ignore jitter and trackpad bounce
+
+/**
+ * Decide what the header should look like. Pure: takes numbers, returns a
+ * decision, touches nothing.
+ *
+ * Split out from the DOM on purpose. The event handler defers its work
+ * into requestAnimationFrame, which does not run in a background tab, so
+ * driving this through a real browser is awkward to test. As a plain
+ * function the rules can be checked directly.
+ */
+function nextBarState({ y, lastY, wasHidden }) {
+  const position = Math.max(y, 0);          // iOS overscrolls negative
+  const atTop = position <= BAR_AT_TOP;
+  const movedDown = position > lastY + BAR_DEADZONE;
+  const movedUp = position < lastY - BAR_DEADZONE;
+
+  let hidden = wasHidden;
+  if (atTop) hidden = false;                // always visible at the top
+  else if (movedDown) hidden = true;        // reading downward
+  else if (movedUp) hidden = false;         // looking back up
+
+  return {
+    stuck: !atTop,
+    hidden,
+    // Only move the reference point once we act on it, so a slow scroll
+    // accumulates toward the deadzone instead of never reaching it.
+    lastY: movedDown || movedUp ? position : lastY,
+  };
+}
+
 function setUpStickyBar() {
   const bar = document.querySelector(".topbar");
   if (!bar) return;
 
-  if (!("IntersectionObserver" in window)) {
-    bar.classList.add("scrolled");   // safe fallback: always legible
-    return;
+  let lastY = window.scrollY;
+  let queued = false;
+
+  function apply() {
+    queued = false;
+    const state = nextBarState({
+      y: window.scrollY,
+      lastY,
+      wasHidden: bar.classList.contains("is-hidden"),
+    });
+    lastY = state.lastY;
+    bar.classList.toggle("is-stuck", state.stuck);
+    bar.classList.toggle("is-hidden", state.hidden);
   }
 
-  // A zero-height marker just above the bar. While it is visible we are
-  // at the top of the page; once it scrolls away, we are not.
-  const sentinel = document.createElement("div");
-  sentinel.setAttribute("aria-hidden", "true");
-  sentinel.style.cssText = "position:absolute;top:0;height:1px;width:1px;";
-  document.body.prepend(sentinel);
+  window.addEventListener(
+    "scroll",
+    () => {
+      // Scroll can fire many times per frame; touching the DOM in each one
+      // is the classic way to make a page feel sticky while scrolling.
+      if (queued) return;
+      queued = true;
+      requestAnimationFrame(apply);
+    },
+    { passive: true }   // we will not preventDefault, so the browser need not wait
+  );
 
-  new IntersectionObserver(
-    ([entry]) => bar.classList.toggle("scrolled", !entry.isIntersecting)
-  ).observe(sentinel);
+  apply();
 }
 
 function setUpTabs() {
@@ -200,4 +245,4 @@ function setUpTabs() {
   requestAnimationFrame(moveIndicator);
 }
 
-export { setUpTabs, selectTab, moveIndicator, TAB_IDS };
+export { setUpTabs, selectTab, moveIndicator, nextBarState, TAB_IDS };
