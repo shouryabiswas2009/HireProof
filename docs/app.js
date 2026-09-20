@@ -4,9 +4,10 @@
  * only moves values onto the screen.
  */
 
-import { loadPhrases } from "./features.js?v=10";
-import { loadModel, score, band } from "./scorer.js?v=10";
-import { annotate } from "./highlight.js?v=10";
+import { loadPhrases } from "./features.js?v=11";
+import { loadModel, score, band } from "./scorer.js?v=11";
+import { annotate } from "./highlight.js?v=11";
+import { setUpTabs } from "./tabs.js?v=11";
 
 // Change this if you fork the project.
 const REPO_URL = "https://github.com/shouryabiswas2009/hireproof";
@@ -215,6 +216,8 @@ const elements = {
 /** Show the honest facts about which model is loaded. */
 function describeModel(model) {
   elements.repoLink.href = REPO_URL;
+  const repoLink2 = document.getElementById("repo-link-2");
+  if (repoLink2) repoLink2.href = REPO_URL;
 
   if (model.trained_on === "demo") {
     elements.demoBanner.hidden = false;
@@ -240,6 +243,146 @@ function describeModel(model) {
     li.textContent = model.feature_labels[name] || name;
     elements.signalList.appendChild(li);
   }
+}
+
+
+/* ------------------------------------------------------- The model tab
+ * Everything here is read out of model.json rather than written by hand,
+ * so the page always describes the model the site is actually running. If
+ * someone retrains and pushes new weights, this updates itself.
+ */
+
+/** One labelled number. */
+function statTile(label, value, note) {
+  const tile = document.createElement("div");
+  tile.className = "stat";
+  tile.innerHTML =
+    `<span class="stat-value"></span>` +
+    `<span class="stat-label"></span>` +
+    (note ? `<span class="stat-note"></span>` : "");
+  // textContent rather than template interpolation: these values come from
+  // a JSON file, and building HTML out of them would be an injection route
+  // the moment that file is ever generated from posting text.
+  tile.querySelector(".stat-value").textContent = value;
+  tile.querySelector(".stat-label").textContent = label;
+  if (note) tile.querySelector(".stat-note").textContent = note;
+  return tile;
+}
+
+function renderModelTab(model) {
+  const metrics = model.metrics || {};
+  const pct = (x) => `${Math.round((x || 0) * 100)}%`;
+
+  // --- Training data -------------------------------------------------
+  const stats = document.getElementById("model-stats");
+  if (stats) {
+    stats.replaceChildren(
+      statTile("Postings labelled", String(model.n_examples), `trained ${model.trained_date}`),
+      statTile("Ghost", String(model.n_ghost), share(model.n_ghost, model.n_examples)),
+      statTile("Genuine", String(model.n_legit), share(model.n_legit, model.n_examples)),
+      statTile("Signals used", String(model.feature_names.length), "per posting")
+    );
+  }
+
+  // --- Performance ----------------------------------------------------
+  const metricRow = document.getElementById("model-metrics");
+  if (metricRow) {
+    const lift = (metrics.cv_accuracy || 0) - (metrics.baseline_accuracy || 0);
+    metricRow.replaceChildren(
+      statTile("Accuracy", pct(metrics.cv_accuracy), "cross-validated"),
+      statTile("Baseline", pct(metrics.baseline_accuracy), "always guess the commonest"),
+      statTile("Beats baseline by", (lift >= 0 ? "+" : "−") + pct(Math.abs(lift)),
+               lift <= 0.01 ? "no real edge" : "the number that matters"),
+      statTile("Precision", pct(metrics.cv_precision), "of those called ghost, this share were"),
+      statTile("Recall", pct(metrics.cv_recall), "of real ghost postings, this share caught")
+    );
+  }
+
+  // --- Learned weights, as a diverging chart --------------------------
+  const list = document.getElementById("model-weights");
+  if (list) {
+    const rows = model.feature_names
+      .map((name, i) => ({
+        name,
+        label: model.feature_labels[name] || name,
+        weight: model.weights[i],
+      }))
+      .sort((a, b) => Math.abs(b.weight) - Math.abs(a.weight));
+
+    const largest = Math.abs(rows[0]?.weight || 0);
+    list.replaceChildren();
+    rows.forEach((row, index) => {
+      list.appendChild(
+        weightRow(row, largest, index)
+      );
+    });
+  }
+
+  // --- Whatever the training run complained about ---------------------
+  const card = document.getElementById("model-warnings-card");
+  const warnings = document.getElementById("model-warnings");
+  if (card && warnings && (model.warnings || []).length) {
+    warnings.replaceChildren();
+    for (const text of model.warnings) {
+      const li = document.createElement("li");
+      li.textContent = text;
+      warnings.appendChild(li);
+    }
+    card.hidden = false;
+  }
+
+  const banner = document.getElementById("model-banner");
+  if (banner && model.trained_on === "demo") {
+    document.getElementById("model-banner-text").textContent =
+      "These numbers come from synthetic postings written by hand to test the " +
+      "system. They show the pipeline working; they are not a real result.";
+    banner.hidden = false;
+  }
+}
+
+function share(part, whole) {
+  if (!whole) return "";
+  return `${Math.round((part / whole) * 100)}% of the set`;
+}
+
+/** A row of the learned-weights chart; same shape as the score breakdown. */
+function weightRow(row, largest, index) {
+  const towardGhost = row.weight > 0;
+  const width = largest > 0 ? (Math.abs(row.weight) / largest) * 100 : 0;
+
+  const li = document.createElement("li");
+  li.className = "crow";
+  li.style.setProperty("--i", index);
+  li.title = `${row.label}: ${towardGhost ? "+" : ""}${row.weight.toFixed(3)}`;
+
+  const name = document.createElement("span");
+  name.className = "crow-name";
+  name.textContent = row.label;
+
+  const chart = document.createElement("span");
+  chart.className = "crow-chart";
+  const left = document.createElement("span");
+  left.className = "crow-half crow-left";
+  const axis = document.createElement("span");
+  axis.className = "crow-axis";
+  const right = document.createElement("span");
+  right.className = "crow-half crow-right";
+
+  const bar = document.createElement("span");
+  bar.className = towardGhost ? "bar bar-raise" : "bar bar-lower";
+  bar.style.width = `${width}%`;
+  (towardGhost ? right : left).appendChild(bar);
+
+  const amount = document.createElement("span");
+  amount.className = "crow-amount";
+  const points = document.createElement("span");
+  points.className = "points";
+  points.textContent = (row.weight >= 0 ? "+" : "−") + Math.abs(row.weight).toFixed(2);
+  amount.appendChild(points);
+
+  chart.append(left, axis, right);
+  li.append(name, chart, amount);
+  return li;
 }
 
 /** Live word count, so it is obvious whether enough text was pasted. */
@@ -621,6 +764,7 @@ async function start() {
     const [phraseConfig, model] = await Promise.all([loadPhrases(), loadModel()]);
     PHRASE_CONFIG = phraseConfig;
     describeModel(model);
+    renderModelTab(model);
     elements.scoreButton.disabled = false;
     setUpScrollReveal();
     setUpSpotlight();
@@ -652,4 +796,5 @@ elements.clearButton.addEventListener("click", () => {
 
 elements.scoreButton.disabled = true;
 updateWordCount();
+setUpTabs();
 start();

@@ -12,7 +12,7 @@
      page. BUMP THIS NUMBER whenever index.html, style.css or app.js change
      shape. (The proper fix is content-hashed filenames from a build step;
      this project has no build step on purpose, so the number is manual.) -->
-<link rel="stylesheet" href="style.css?v=10">
+<link rel="stylesheet" href="style.css?v=11">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>&#128123;</text></svg>">
 </head>
 <body>
@@ -55,213 +55,423 @@
 
 <div class="shell">
 
-  <header class="hero">
-    <p class="eyebrow">
-      <span class="eyebrow-dot" aria-hidden="true"></span>
-      Runs entirely in your browser
-    </p>
-    <h1>Is this job posting<br><span class="gradient-text">actually real?</span></h1>
-    <p class="tagline">
-      Paste a job posting and HireProof scores how closely its wording matches
-      postings labelled as <strong>ghost jobs</strong> &mdash; listings put up
-      with no real intent to hire.
-    </p>
+  <header class="topbar">
+    <a class="brand" href="#check">
+      <span class="brand-mark" aria-hidden="true">&#128123;</span>
+      <span class="brand-name">HireProof</span>
+    </a>
+
+    <!-- A real ARIA tab pattern, not just styled links: the browser and a
+         screen reader both need to know these buttons control the panels
+         below. Each tab owns a panel by id, arrow keys move between them,
+         and only the active tab sits in the page's tab order (a roving
+         tabindex) so Tab jumps from the tablist straight into the panel
+         rather than walking through every tab first. -->
+    <nav class="tabs" role="tablist" aria-label="Sections">
+      <button class="tab" role="tab" id="tab-check" aria-controls="panel-check" aria-selected="true"  tabindex="0">Check a posting</button>
+      <button class="tab" role="tab" id="tab-model" aria-controls="panel-model" aria-selected="false" tabindex="-1">The model</button>
+      <button class="tab" role="tab" id="tab-how"   aria-controls="panel-how"   aria-selected="false" tabindex="-1">How it works</button>
+      <button class="tab" role="tab" id="tab-about" aria-controls="panel-about" aria-selected="false" tabindex="-1">About</button>
+    </nav>
   </header>
 
   <main>
 
-    <!-- Shown only when the loaded model was trained on synthetic data.
-         app.js sets this from model.json, so it can never be forgotten. -->
-    <div id="demo-banner" class="banner banner-demo" hidden>
-      <span class="banner-badge">Demo model</span>
-      <span id="demo-banner-text"></span>
-    </div>
+    <!-- ============================= CHECK ============================= -->
+    <section class="panel-view" id="panel-check" role="tabpanel" aria-labelledby="tab-check" tabindex="-1">
+
+      <div class="hero">
+        <p class="eyebrow">
+          <span class="eyebrow-dot" aria-hidden="true"></span>
+          Runs entirely in your browser
+        </p>
+        <h1>Is this job posting<br><span class="gradient-text">actually real?</span></h1>
+        <p class="tagline">
+          Paste a job posting and HireProof scores how closely its wording
+          matches postings labelled as <strong>ghost jobs</strong> &mdash;
+          listings put up with no real intent to hire.
+        </p>
+      </div>
+
+      <!-- Shown only when the loaded model was trained on synthetic data.
+           app.js sets this from model.json, so it can never be forgotten. -->
+      <div id="demo-banner" class="banner banner-demo" hidden>
+        <span class="banner-badge">Demo model</span>
+        <span id="demo-banner-text"></span>
+      </div>
 
     <section class="card card-input">
-      <div class="card-head">
-        <label for="posting" class="field-label">Job posting text</label>
-        <span id="word-count" class="word-count">0 words</span>
-      </div>
+          <div class="card-head">
+            <label for="posting" class="field-label">Job posting text</label>
+            <span id="word-count" class="word-count">0 words</span>
+          </div>
 
-      <textarea id="posting" rows="12" spellcheck="false"
-        placeholder="Paste the full text of a job posting here&#10;&#10;Tip: select everything from the job title down to the end of the description."></textarea>
+          <textarea id="posting" rows="12" spellcheck="false"
+            placeholder="Paste the full text of a job posting here&#10;&#10;Tip: select everything from the job title down to the end of the description."></textarea>
 
-      <p id="input-error" class="input-error" hidden role="alert"></p>
+          <p id="input-error" class="input-error" hidden role="alert"></p>
 
-      <div class="controls">
-        <button id="score-button" type="button" class="btn btn-primary">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.7" y2="16.7"/></svg>
-          Score this posting
-        </button>
-        <button id="example-button" type="button" class="btn btn-ghost">Try an example</button>
-        <button id="clear-button" type="button" class="btn btn-ghost">Clear</button>
-      </div>
+          <div class="controls">
+            <button id="score-button" type="button" class="btn btn-primary">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.7" y2="16.7"/></svg>
+              Score this posting
+            </button>
+            <button id="example-button" type="button" class="btn btn-ghost">Try an example</button>
+            <button id="clear-button" type="button" class="btn btn-ghost">Clear</button>
+          </div>
 
-      <p class="privacy">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/></svg>
-        Your text never leaves this page. There is no server &mdash; the model
-        runs inside your browser, so nothing is uploaded, logged or stored.
-      </p>
-    </section>
+          <p class="privacy">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/></svg>
+            Your text never leaves this page. There is no server &mdash; the model
+            runs inside your browser, so nothing is uploaded, logged or stored.
+          </p>
+        </section>
 
     <section id="results" class="card card-result" hidden aria-live="polite">
 
-      <!-- The headline number stays in normal ink. Colour lives on the meter,
-           and the badge pairs that colour with an icon and words, so meaning
-           is never carried by colour alone. -->
-      <div class="verdict">
-        <p class="score-label">Resemblance to ghost postings</p>
+          <!-- The headline number stays in normal ink. Colour lives on the meter,
+               and the badge pairs that colour with an icon and words, so meaning
+               is never carried by colour alone. -->
+          <div class="verdict">
+            <p class="score-label">Resemblance to ghost postings</p>
 
-        <!-- The gauge. The three zones are drawn as fixed arcs so the
-             THRESHOLDS are visible: you can see where 40% and 70% fall,
-             rather than only learning which bucket you landed in. Only the
-             marker and the number change per result.
-             Geometry: semicircle, centre (100,96), radius 78. A score of
-             f maps to the angle 180 - f*180 degrees, so 0% is hard left
-             and 100% is hard right. -->
-        <svg class="gauge" viewBox="0 0 200 112" role="img"
-             aria-labelledby="gauge-title" focusable="false">
-          <title id="gauge-title">Score gauge</title>
+            <!-- The gauge. The three zones are drawn as fixed arcs so the
+                 THRESHOLDS are visible: you can see where 40% and 70% fall,
+                 rather than only learning which bucket you landed in. Only the
+                 marker and the number change per result.
+                 Geometry: semicircle, centre (100,96), radius 78. A score of
+                 f maps to the angle 180 - f*180 degrees, so 0% is hard left
+                 and 100% is hard right. -->
+            <svg class="gauge" viewBox="0 0 200 112" role="img"
+                 aria-labelledby="gauge-title" focusable="false">
+              <title id="gauge-title">Score gauge</title>
 
-          <!-- Zone arcs, separated by a small gap in the surface colour
-               rather than a stroke, so nothing adds non-data ink. -->
-          <path class="zone zone-low"  d="M 22.00 96.00 A 78 78 0 0 1 73.35 22.69"/>
-          <path class="zone zone-mid"  d="M 78.47 21.03 A 78 78 0 0 1 143.64 31.35"/>
-          <path class="zone zone-high" d="M 148.00 34.52 A 78 78 0 0 1 178.00 96.00"/>
+              <!-- Zone arcs, separated by a small gap in the surface colour
+                   rather than a stroke, so nothing adds non-data ink. -->
+              <path class="zone zone-low"  d="M 22.00 96.00 A 78 78 0 0 1 73.35 22.69"/>
+              <path class="zone zone-mid"  d="M 78.47 21.03 A 78 78 0 0 1 143.64 31.35"/>
+              <path class="zone zone-high" d="M 148.00 34.52 A 78 78 0 0 1 178.00 96.00"/>
 
-          <!-- Threshold markers, inside the band so they never clip. -->
-          <line class="tick" x1="79.6" y1="33.2" x2="81.5" y2="38.9"/>
-          <text class="tick-label" x="84.9" y="49.4">40</text>
-          <line class="tick" x1="138.8" y1="42.6" x2="135.3" y2="47.5"/>
-          <text class="tick-label" x="128.8" y="56.4">70</text>
+              <!-- Threshold markers, inside the band so they never clip. -->
+              <line class="tick" x1="79.6" y1="33.2" x2="81.5" y2="38.9"/>
+              <text class="tick-label" x="84.9" y="49.4">40</text>
+              <line class="tick" x1="138.8" y1="42.6" x2="135.3" y2="47.5"/>
+              <text class="tick-label" x="128.8" y="56.4">70</text>
 
-          <!-- The needle and its hub. app.js rotates this group; at 0
-               degrees it points hard left, which is 0%. -->
-          <g id="gauge-needle" class="needle" transform="rotate(0 100 96)">
-            <path d="M 100 96 L 26 93.4 L 26 98.6 Z"/>
-          </g>
-          <circle class="hub" cx="100" cy="96" r="6"/>
-        </svg>
+              <!-- The needle and its hub. app.js rotates this group; at 0
+                   degrees it points hard left, which is 0%. -->
+              <g id="gauge-needle" class="needle" transform="rotate(0 100 96)">
+                <path d="M 100 96 L 26 93.4 L 26 98.6 Z"/>
+              </g>
+              <circle class="hub" cx="100" cy="96" r="6"/>
+            </svg>
 
-        <p class="score-number"><span id="score-value">0%</span></p>
-        <p class="band">
-          <span id="band-icon" class="band-icon" aria-hidden="true"></span>
-          <span id="verdict-title" class="band-title"></span>
-        </p>
-        <p id="verdict-blurb" class="verdict-blurb"></p>
-      </div>
+            <p class="score-number"><span id="score-value">0%</span></p>
+            <p class="band">
+              <span id="band-icon" class="band-icon" aria-hidden="true"></span>
+              <span id="verdict-title" class="band-title"></span>
+            </p>
+            <p id="verdict-blurb" class="verdict-blurb"></p>
+          </div>
 
-      <div class="divider" aria-hidden="true"></div>
+          <div class="divider" aria-hidden="true"></div>
 
-      <div class="breakdown-head">
-        <h2>What drove this score</h2>
-        <p class="legend">
-          <span class="legend-item"><span class="swatch swatch-lower"></span>Lowers risk</span>
-          <span class="legend-item"><span class="swatch swatch-raise"></span>Raises risk</span>
-        </p>
-      </div>
-      <p class="hint">
-        The signals that moved this posting&rsquo;s score the most. Bars to the
-        right pushed it up, bars to the left pulled it down.
-        <strong>Strength</strong> ranks the signals against each other;
-        <strong>points</strong> is how far the score would move if this posting
-        were merely average on that one signal. Points don&rsquo;t sum to the
-        total &mdash; the scale is compressed near 0% and 100%, so when a score
-        is already extreme no single signal can shift it much.
+          <div class="breakdown-head">
+            <h2>What drove this score</h2>
+            <p class="legend">
+              <span class="legend-item"><span class="swatch swatch-lower"></span>Lowers risk</span>
+              <span class="legend-item"><span class="swatch swatch-raise"></span>Raises risk</span>
+            </p>
+          </div>
+          <p class="hint">
+            The signals that moved this posting&rsquo;s score the most. Bars to the
+            right pushed it up, bars to the left pulled it down.
+            <strong>Strength</strong> ranks the signals against each other;
+            <strong>points</strong> is how far the score would move if this posting
+            were merely average on that one signal. Points don&rsquo;t sum to the
+            total &mdash; the scale is compressed near 0% and 100%, so when a score
+            is already extreme no single signal can shift it much.
+          </p>
+
+          <ul id="contributions" class="contributions"></ul>
+
+          <!-- The posting itself, with the matched phrases marked. Absent
+               signals get a separate list, because there is no phrase to
+               point at and they are often the strongest drivers. -->
+          <div class="annotated-block">
+            <h2>Where these signals appear</h2>
+            <p class="hint">
+              Phrases the model matched are marked below.
+              <strong>Hover a bar above</strong> to pick out just that signal.
+            </p>
+
+            <p id="missing-signals-wrap" class="missing-wrap" hidden>
+              <span class="missing-label">Not found in the posting:</span>
+              <span id="missing-signals" class="missing-chips"></span>
+            </p>
+
+            <div id="annotated-text" class="annotated-text"></div>
+          </div>
+
+          <details class="drawer">
+            <summary>Table view &mdash; every signal and its exact value</summary>
+            <div class="drawer-body">
+              <table id="raw-table" class="raw-table">
+                <thead>
+                  <tr><th scope="col">Signal</th><th scope="col">Value</th><th scope="col">Effect</th></tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+              <p class="hint">
+                &ldquo;Effect&rdquo; is how much that signal moved the score:
+                positive pushes toward ghost, negative toward genuine.
+              </p>
+            </div>
+          </details>
+        </section>
+
+      <p class="panel-footnote">
+        This is a heuristic, not a detector, and it can be wrong in both
+        directions.
+        <button class="linklike" data-goto="about" type="button">Read the limits</button>
+        before acting on a score.
       </p>
+    </section>
 
-      <ul id="contributions" class="contributions"></ul>
-
-      <!-- The posting itself, with the matched phrases marked. Absent
-           signals get a separate list, because there is no phrase to
-           point at and they are often the strongest drivers. -->
-      <div class="annotated-block">
-        <h2>Where these signals appear</h2>
-        <p class="hint">
-          Phrases the model matched are marked below.
-          <strong>Hover a bar above</strong> to pick out just that signal.
+    <!-- ============================= MODEL ============================= -->
+    <section class="panel-view" id="panel-model" role="tabpanel" aria-labelledby="tab-model" tabindex="-1" hidden>
+      <div class="view-head">
+        <h1>The model</h1>
+        <p class="tagline">
+          Every number on this page is read from the trained model file, so it
+          describes what the site is actually running rather than what it is
+          supposed to be running.
         </p>
-
-        <p id="missing-signals-wrap" class="missing-wrap" hidden>
-          <span class="missing-label">Not found in the posting:</span>
-          <span id="missing-signals" class="missing-chips"></span>
-        </p>
-
-        <div id="annotated-text" class="annotated-text"></div>
       </div>
 
-      <details class="drawer">
-        <summary>Table view &mdash; every signal and its exact value</summary>
-        <div class="drawer-body">
-          <table id="raw-table" class="raw-table">
-            <thead>
-              <tr><th scope="col">Signal</th><th scope="col">Value</th><th scope="col">Effect</th></tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-          <p class="hint">
-            &ldquo;Effect&rdquo; is how much that signal moved the score:
-            positive pushes toward ghost, negative toward genuine.
-          </p>
-        </div>
-      </details>
+      <div id="model-banner" class="banner banner-demo" hidden>
+        <span class="banner-badge">Demo model</span>
+        <span id="model-banner-text"></span>
+      </div>
+
+      <section class="card">
+        <h2 class="card-title">Training data</h2>
+        <div id="model-stats" class="stat-row"></div>
+      </section>
+
+      <section class="card">
+        <h2 class="card-title">How well it does</h2>
+        <p class="hint">
+          Measured by cross-validation, so the model is always scored on
+          postings it did not train on. The baseline is what you would get by
+          ignoring the text entirely and always guessing the commonest label
+          &mdash; a model that cannot beat it has learned nothing.
+        </p>
+        <div id="model-metrics" class="stat-row"></div>
+      </section>
+
+      <section class="card">
+        <h2 class="card-title">What it learned</h2>
+        <p class="hint">
+          One weight per signal. These apply to standardised features, so they
+          are directly comparable: a longer bar really does mean a more
+          influential signal. A bar near zero means the data gave no evidence
+          either way, which is a finding rather than a failure.
+        </p>
+        <p class="legend">
+          <span class="legend-item"><span class="swatch swatch-lower"></span>Pushes toward genuine</span>
+          <span class="legend-item"><span class="swatch swatch-raise"></span>Pushes toward ghost</span>
+        </p>
+        <ul id="model-weights" class="contributions"></ul>
+      </section>
+
+      <section class="card card-warn" id="model-warnings-card" hidden>
+        <h2 class="warn-title">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><line x1="12" y1="7.5" x2="12" y2="13"/><line x1="12" y1="16.5" x2="12" y2="16.5"/></svg>
+          What the training run flagged
+        </h2>
+        <p class="hint">
+          Written by the training script itself, not by hand, and shown here
+          instead of being left in a terminal where nobody would see them.
+        </p>
+        <ul id="model-warnings" class="warn-list"></ul>
+      </section>
     </section>
 
-    <section class="card">
-      <details class="drawer">
-        <summary>What this tool looks for</summary>
-        <div class="drawer-body">
-          <p class="hint">
-            The model reads only these eleven signals. It cannot see the
-            company, the role, or whether anyone was ever hired.
-          </p>
-          <ul id="signal-list" class="signal-list"></ul>
-        </div>
-      </details>
+    <!-- =========================== HOW IT WORKS ========================= -->
+    <section class="panel-view" id="panel-how" role="tabpanel" aria-labelledby="tab-how" tabindex="-1" hidden>
+      <div class="view-head">
+        <h1>How it works</h1>
+        <p class="tagline">
+          Five steps turn pasted text into a number. No machine-learning
+          library is involved: the model is a weighted sum written from
+          scratch.
+        </p>
+      </div>
+
+      <section class="card">
+        <ol class="steps">
+          <li>
+            <h3>Normalise the text</h3>
+            <p>Lowercase it and collapse every run of whitespace into a single
+            space, so a phrase split across a line break is still found.</p>
+            <pre class="code">"WE ARE A FAST-PACED,
+   DYNAMIC team"  &rarr;  "we are a fast-paced, dynamic team"</pre>
+          </li>
+          <li>
+            <h3>Count eleven signals</h3>
+            <p>Phrase lists and a few patterns turn that text into eleven
+            numbers &mdash; the only thing the model ever sees. It has no
+            access to the company, the role, or whether anyone was hired.</p>
+          </li>
+          <li>
+            <h3>Put them on one scale</h3>
+            <p>A word count in the hundreds and a yes/no signal of 0 or 1
+            cannot be compared directly, so each is rescaled using the average
+            and spread measured during training.</p>
+            <pre class="code">standardised = (value &minus; average) &divide; spread</pre>
+          </li>
+          <li>
+            <h3>Add them up</h3>
+            <p>Each standardised signal is multiplied by its learned weight
+            and summed, starting from a constant called the bias.</p>
+            <pre class="code">z = bias + (w&#8321; &times; x&#8321;) + (w&#8322; &times; x&#8322;) + &hellip; + (w&#8321;&#8321; &times; x&#8321;&#8321;)</pre>
+          </li>
+          <li>
+            <h3>Squash it into a probability</h3>
+            <p>That sum can be any number at all, so the sigmoid function
+            folds it into the 0&ndash;100% range.</p>
+            <pre class="code">probability = 1 &divide; (1 + e^&minus;z)</pre>
+          </li>
+        </ol>
+      </section>
+
+      <section class="card">
+        <h2 class="card-title">The eleven signals</h2>
+        <p class="hint">
+          Read straight from the model file, so this list cannot drift from
+          what was actually trained.
+        </p>
+        <ul id="signal-list" class="signal-list"></ul>
+      </section>
+
+      <section class="card">
+        <h2 class="card-title">Why logistic regression, and not something bigger?</h2>
+        <ul class="warn-list">
+          <li><strong>The explanation is the model.</strong> Each signal's push
+          is literally a term in that sum, so the breakdown you see on a result
+          is the arithmetic itself, not a guess about it made afterwards.</li>
+          <li><strong>The dataset is small.</strong> A more flexible model would
+          memorise a couple of hundred postings rather than learn from them.</li>
+          <li><strong>It is small enough to ship.</strong> Eleven weights and a
+          bias is a few kilobytes, which is why the whole thing can run in your
+          browser and your text never has to leave your device.</li>
+          <li><strong>The trade-off:</strong> it cannot learn that two signals
+          only matter in combination. A tree-based model could. With this much
+          data, that is worth giving up.</li>
+        </ul>
+      </section>
     </section>
+
+    <!-- ============================= ABOUT ============================== -->
+    <section class="panel-view" id="panel-about" role="tabpanel" aria-labelledby="tab-about" tabindex="-1" hidden>
+      <div class="view-head">
+        <h1>About &amp; limits</h1>
+        <p class="tagline">
+          What this tool can and cannot tell you, and why it is built the way
+          it is.
+        </p>
+      </div>
 
     <section class="card card-warn">
-      <h2 class="warn-title">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><line x1="12" y1="7.5" x2="12" y2="13"/><line x1="12" y1="16.5" x2="12" y2="16.5"/></svg>
-        Please read this before trusting the score
-      </h2>
-      <ul class="warn-list">
-        <li>
-          <strong>This is a heuristic, not a detector.</strong> It compares
-          wording against a small set of postings labelled by hand, by one
-          person. It has no access to the company, the role, or whether anyone
-          was ever hired.
-        </li>
-        <li>
-          <strong>Nobody can know a posting is a ghost job from its text.</strong>
-          The training labels are educated guesses. A model trained on guesses
-          reproduces those guesses.
-        </li>
-        <li>
-          <strong>Do not let this talk you out of applying.</strong> Plenty of
-          real jobs are written badly, and plenty of ghost postings are written
-          well. A high score is a prompt to ask about timelines and the team,
-          not a reason to walk away.
-        </li>
-        <li>
-          <strong>It is biased toward what it was trained on.</strong> Postings
-          from other countries, industries or languages may score oddly.
-        </li>
-      </ul>
-      <p id="model-facts" class="model-facts"></p>
+          <h2 class="warn-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><line x1="12" y1="7.5" x2="12" y2="13"/><line x1="12" y1="16.5" x2="12" y2="16.5"/></svg>
+            Please read this before trusting the score
+          </h2>
+          <ul class="warn-list">
+            <li>
+              <strong>This is a heuristic, not a detector.</strong> It compares
+              wording against a small set of postings labelled by hand, by one
+              person. It has no access to the company, the role, or whether anyone
+              was ever hired.
+            </li>
+            <li>
+              <strong>Nobody can know a posting is a ghost job from its text.</strong>
+              The training labels are educated guesses. A model trained on guesses
+              reproduces those guesses.
+            </li>
+            <li>
+              <strong>Do not let this talk you out of applying.</strong> Plenty of
+              real jobs are written badly, and plenty of ghost postings are written
+              well. A high score is a prompt to ask about timelines and the team,
+              not a reason to walk away.
+            </li>
+            <li>
+              <strong>It is biased toward what it was trained on.</strong> Postings
+              from other countries, industries or languages may score oddly.
+            </li>
+          </ul>
+          <p id="model-facts" class="model-facts"></p>
+        </section>
+
+      <section class="card">
+        <h2 class="card-title">Your text stays on your device</h2>
+        <p class="body-text">
+          There is no server. The trained model is a small file of numbers
+          your browser downloads once, and the scoring happens locally in
+          JavaScript. Nothing you paste is uploaded, logged or stored. You can
+          disconnect from the internet after the page loads and it will still
+          work.
+        </p>
+      </section>
+
+      <section class="card">
+        <h2 class="card-title">How the training data was built</h2>
+        <p class="body-text">
+          Every posting in the training set was labelled by hand, one at a
+          time. The hard part is that nobody can <em>know</em> a posting is a
+          ghost job by reading it, so each label also records the evidence
+          behind it: the posting had been up over a month, the same role kept
+          being reposted, an application went unanswered.
+        </p>
+        <p class="body-text">
+          Labels based only on how a posting <em>reads</em> are tracked
+          separately, because the model's signals come from the wording too.
+          Training on those alone would teach it to agree with one person's
+          hunch, so the training script warns when too many labels are of that
+          kind.
+        </p>
+      </section>
+
+      <section class="card">
+        <h2 class="card-title">Built as a learning project</h2>
+        <p class="body-text">
+          The logistic regression is written from scratch in plain Python
+          &mdash; the sigmoid, the log-loss, and the gradient descent that
+          fits the weights. No scikit-learn, no numpy, no external AI service.
+          The full write-up, including the design decisions and the known
+          weaknesses, is in the repository.
+        </p>
+        <p>
+          <a id="repo-link-2" href="#" class="btn btn-ghost btn-inline">
+            Source code and write-up on GitHub
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8"/></svg>
+          </a>
+        </p>
+      </section>
     </section>
 
   </main>
 
   <footer class="site-footer">
     <p>
-      <!-- Lets someone turn the animation on even though their system asks
-           for reduced motion, or off even though it doesn't. Defaults to
-           whatever the system says. -->
+      <!-- Pin the theme, or let it follow the operating system. -->
       <button id="theme-toggle" type="button" class="pill-btn">
         <span id="theme-icon" class="pill-icon" aria-hidden="true"></span>
         <span id="theme-label">Theme: system</span>
       </button>
+      <!-- Turn animation on even though the system asks for reduced motion,
+           or off even though it doesn't. Defaults to the system setting. -->
       <button id="motion-toggle" type="button" class="pill-btn" aria-pressed="false">
         <span class="motion-dot" aria-hidden="true"></span>
         <span id="motion-label">Animations off</span>
@@ -281,6 +491,6 @@
 
 </div>
 
-<script type="module" src="app.js?v=10"></script>
+<script type="module" src="app.js?v=11"></script>
 </body>
 </html>

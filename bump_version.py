@@ -33,6 +33,7 @@ TARGETS = {
         r'(\./features\.js\?v=)(\d+)',
         r'(\./scorer\.js\?v=)(\d+)',
         r'(\./highlight\.js\?v=)(\d+)',
+        r'(\./tabs\.js\?v=)(\d+)',
     ],
     "docs/scorer.js": [r'(\./features\.js\?v=)(\d+)'],
     "tests/js/test_features.mjs": [r'(features\.js\?v=)(\d+)'],
