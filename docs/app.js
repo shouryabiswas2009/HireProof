@@ -128,7 +128,7 @@ const elements = {
   exampleButton: document.getElementById("example-button"),
   clearButton: document.getElementById("clear-button"),
   results: document.getElementById("results"),
-  meterFill: document.getElementById("meter-fill"),
+  needle: document.getElementById("gauge-needle"),
   scoreValue: document.getElementById("score-value"),
   verdict: document.querySelector(".verdict"),
   verdictTitle: document.getElementById("verdict-title"),
@@ -259,8 +259,18 @@ function render(result) {
   const verdict = band(result.probability);
 
   animateScore(percent);
-  elements.meterFill.style.width = `${percent}%`;
-  // One custom property drives the meter fill, its track and the badge icon.
+
+  // Point the needle. The gauge is a semicircle, so a probability of p maps
+  // to p * 180 degrees of rotation: 0% points hard left, 100% hard right.
+  // The needle is drawn pointing left at rest, so the rotation IS the
+  // score with no offset to remember.
+  elements.needle.setAttribute(
+    "transform",
+    `rotate(${result.probability * 180} 100 96)`
+  );
+
+  // Drives the badge icon colour. The gauge zones are always all three
+  // colours, so only the badge follows the band.
   elements.verdict.style.setProperty("--meter-color", BAND_COLORS[verdict.key]);
   elements.bandIcon.innerHTML = BAND_ICONS[verdict.key];
   elements.verdictTitle.textContent = verdict.title;

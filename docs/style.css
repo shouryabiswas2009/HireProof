@@ -654,23 +654,43 @@ textarea:focus {
   color: var(--ink);
 }
 
-.meter {
-  /* The unfilled track is a faint wash of the fill's own colour, so the
-     state reads across the whole bar, not only the filled part. */
-  height: 9px;
-  border-radius: 999px;
-  overflow: hidden;
-  background: color-mix(in srgb, var(--meter-color, var(--ink-muted)) 15%, transparent);
-  max-width: 440px;
-  margin: 0 auto;
+/* ---- Arc gauge ----
+   The three zones are always drawn, in their own colours, so a reader can
+   see where the thresholds sit instead of only being told which band the
+   score landed in. The needle carries the answer; the number below repeats
+   it in text, so nothing depends on reading a colour or an angle. */
+.gauge {
+  display: block;
+  width: 100%;
+  max-width: 320px;
+  margin: 6px auto -6px;
+  overflow: visible;
 }
-.meter-fill {
-  height: 100%;
-  width: 0;
-  border-radius: 999px;
-  background: var(--meter-color, var(--ink-muted));
-  transition: width 0.95s cubic-bezier(0.16, 1, 0.3, 1);
+
+.zone {
+  fill: none;
+  stroke-width: 13;
+  stroke-linecap: butt;   /* square ends; the gaps between zones do the separating */
 }
+/* Zone colours are the status palette, the same three the badge uses. */
+.zone-low  { stroke: var(--status-good); }
+.zone-mid  { stroke: var(--status-warn); }
+.zone-high { stroke: var(--status-bad); }
+
+/* Threshold marks: hairlines, one step off the surface, never dashed. */
+.tick { stroke: var(--bg-elevated); stroke-width: 2; opacity: 0.85; }
+.tick-label {
+  fill: var(--ink-muted);
+  font-family: var(--font);
+  font-size: 9px;
+  font-weight: 600;
+  text-anchor: middle;
+  font-variant-numeric: tabular-nums;
+}
+
+.needle { transition: transform 1s cubic-bezier(0.16, 1, 0.3, 1); }
+.needle path { fill: var(--ink); }
+.hub { fill: var(--ink); stroke: var(--bg-elevated); stroke-width: 2.5; }
 
 .band {
   display: flex; align-items: center; justify-content: center;

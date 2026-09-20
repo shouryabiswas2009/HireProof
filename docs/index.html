@@ -12,7 +12,7 @@
      page. BUMP THIS NUMBER whenever index.html, style.css or app.js change
      shape. (The proper fix is content-hashed filenames from a build step;
      this project has no build step on purpose, so the number is manual.) -->
-<link rel="stylesheet" href="style.css?v=7">
+<link rel="stylesheet" href="style.css?v=8">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>&#128123;</text></svg>">
 </head>
 <body>
@@ -111,10 +111,39 @@
            is never carried by colour alone. -->
       <div class="verdict">
         <p class="score-label">Resemblance to ghost postings</p>
+
+        <!-- The gauge. The three zones are drawn as fixed arcs so the
+             THRESHOLDS are visible: you can see where 40% and 70% fall,
+             rather than only learning which bucket you landed in. Only the
+             marker and the number change per result.
+             Geometry: semicircle, centre (100,96), radius 78. A score of
+             f maps to the angle 180 - f*180 degrees, so 0% is hard left
+             and 100% is hard right. -->
+        <svg class="gauge" viewBox="0 0 200 112" role="img"
+             aria-labelledby="gauge-title" focusable="false">
+          <title id="gauge-title">Score gauge</title>
+
+          <!-- Zone arcs, separated by a small gap in the surface colour
+               rather than a stroke, so nothing adds non-data ink. -->
+          <path class="zone zone-low"  d="M 22.00 96.00 A 78 78 0 0 1 73.35 22.69"/>
+          <path class="zone zone-mid"  d="M 78.47 21.03 A 78 78 0 0 1 143.64 31.35"/>
+          <path class="zone zone-high" d="M 148.00 34.52 A 78 78 0 0 1 178.00 96.00"/>
+
+          <!-- Threshold markers, inside the band so they never clip. -->
+          <line class="tick" x1="79.6" y1="33.2" x2="81.5" y2="38.9"/>
+          <text class="tick-label" x="84.9" y="49.4">40</text>
+          <line class="tick" x1="138.8" y1="42.6" x2="135.3" y2="47.5"/>
+          <text class="tick-label" x="128.8" y="56.4">70</text>
+
+          <!-- The needle and its hub. app.js rotates this group; at 0
+               degrees it points hard left, which is 0%. -->
+          <g id="gauge-needle" class="needle" transform="rotate(0 100 96)">
+            <path d="M 100 96 L 26 93.4 L 26 98.6 Z"/>
+          </g>
+          <circle class="hub" cx="100" cy="96" r="6"/>
+        </svg>
+
         <p class="score-number"><span id="score-value">0%</span></p>
-        <div class="meter" role="img" aria-labelledby="verdict-title">
-          <div id="meter-fill" class="meter-fill"></div>
-        </div>
         <p class="band">
           <span id="band-icon" class="band-icon" aria-hidden="true"></span>
           <span id="verdict-title" class="band-title"></span>
@@ -226,6 +255,6 @@
 
 </div>
 
-<script type="module" src="app.js?v=7"></script>
+<script type="module" src="app.js?v=8"></script>
 </body>
 </html>

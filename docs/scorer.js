@@ -109,8 +109,31 @@ function score(text) {
  * knows whether a posting's wording resembles those in a small,
  * hand-labeled training set, so the language says exactly that.
  */
+/*
+ * THE THRESHOLDS.
+ *
+ * These are judgement calls, not learned values, and worth saying so.
+ *
+ * Why not a single cut at 0.50? Because that forces a verdict the model
+ * cannot support: a posting at 0.51 would flip from "genuine" to "ghost"
+ * on a hair. The middle band is an explicit "not sure", which is the
+ * honest answer for most real postings.
+ *
+ * Why is the band asymmetric (0.40 / 0.70) rather than 0.35 / 0.65? The
+ * two mistakes do not cost the same. Missing a ghost posting wastes an
+ * application. Wrongly flagging a REAL job could talk someone out of an
+ * opportunity, which is worse. So the bar for calling something ghost is
+ * set deliberately higher than the bar for calling it genuine.
+ *
+ * One caveat to state plainly: these probabilities are not calibrated. On
+ * a dataset this small, "70%" does not mean 70 out of 100 such postings
+ * are really ghost jobs. The bands are a rough reading, not a measurement.
+ */
+const THRESHOLD_LOW = 0.40;   // below this: reads genuine
+const THRESHOLD_HIGH = 0.70;  // above this: reads ghost
+
 function band(probability) {
-  if (probability >= 0.65) {
+  if (probability >= THRESHOLD_HIGH) {
     return {
       key: "high",
       title: "Reads like the ghost postings in the training data",
@@ -118,7 +141,7 @@ function band(probability) {
         "Several of the signals this model watches for are present. That is a reason to ask questions, not a reason to skip applying.",
     };
   }
-  if (probability >= 0.35) {
+  if (probability >= THRESHOLD_LOW) {
     return {
       key: "medium",
       title: "Mixed signals",
@@ -134,4 +157,4 @@ function band(probability) {
   };
 }
 
-export { initModel, loadModel, score, band, sigmoid };
+export { initModel, loadModel, score, band, sigmoid, THRESHOLD_LOW, THRESHOLD_HIGH };
