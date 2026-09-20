@@ -22,6 +22,50 @@
 
 const TAB_IDS = ["check", "model", "how", "about"];
 
+/**
+ * Slide the pill behind the active tab.
+ *
+ * The pill is one element that MOVES, rather than a background switched on
+ * and off per button. That difference is the whole effect: a background
+ * that just appears reads as a state change, while one that travels reads
+ * as the same object moving, which is what makes it feel deliberate.
+ *
+ * It is measured from the live layout rather than calculated from tab
+ * widths, because the labels are different lengths and the font may not
+ * have settled when this first runs.
+ */
+function moveIndicator() {
+  const tablist = document.querySelector('[role="tablist"]');
+  const indicator = tablist?.querySelector(".tab-indicator");
+  const active = tablist?.querySelector('[role="tab"][aria-selected="true"]');
+  if (!tablist || !indicator || !active) return;
+
+  /*
+   * Measured with rectangles rather than offsetLeft.
+   *
+   * offsetLeft counts from the offset parent's BORDER edge, while an
+   * absolutely positioned child's `left: 0` starts at its PADDING edge.
+   * On a tab strip with a border and padding those differ, and the pill
+   * ends up a few pixels off — visible as a sliver of colour poking out
+   * of one side. Subtracting the two rectangles avoids having to reason
+   * about which box model each property uses.
+   *
+   * scrollLeft is added back because the pill is positioned inside the
+   * strip's scrollable content, but the rectangles are viewport-relative
+   * and already have the scroll applied.
+   */
+  const tabBox = active.getBoundingClientRect();
+  const listBox = tablist.getBoundingClientRect();
+  const borderLeft = parseFloat(getComputedStyle(tablist).borderLeftWidth) || 0;
+  const x = tabBox.left - listBox.left - borderLeft + tablist.scrollLeft;
+
+  indicator.style.width = `${tabBox.width}px`;
+  indicator.style.transform = `translateX(${x}px)`;
+  // Only fade it in once it has a real position, so it never flashes at
+  // the far left on first paint.
+  indicator.style.opacity = "1";
+}
+
 /** The tab name from the URL hash, or the first tab if it isn't one. */
 function tabFromHash() {
   const name = window.location.hash.replace("#", "");
@@ -35,7 +79,15 @@ function tabFromHash() {
  * when someone has not pressed anything is disorienting, and it would also
  * scroll the page unexpectedly.
  */
+let currentIndex = 0;
+
 function selectTab(name, { moveFocus = false, updateHash = true } = {}) {
+  // Which way we moved, so the new panel can enter from that side. Coming
+  // in from a direct link counts as no direction at all.
+  const nextIndex = TAB_IDS.indexOf(name);
+  const direction = nextIndex > currentIndex ? "next" : nextIndex < currentIndex ? "prev" : "none";
+  currentIndex = nextIndex;
+
   for (const id of TAB_IDS) {
     const tab = document.getElementById(`tab-${id}`);
     const panel = document.getElementById(`panel-${id}`);
@@ -44,6 +96,7 @@ function selectTab(name, { moveFocus = false, updateHash = true } = {}) {
     const isActive = id === name;
     tab.setAttribute("aria-selected", String(isActive));
     tab.tabIndex = isActive ? 0 : -1;   // the roving part
+    if (isActive) panel.dataset.dir = direction;
     panel.hidden = !isActive;
   }
 
@@ -53,6 +106,8 @@ function selectTab(name, { moveFocus = false, updateHash = true } = {}) {
     // history entries per click and break the Back button.
     window.history.replaceState(null, "", `#${name}`);
   }
+
+  moveIndicator();
 
   if (moveFocus) {
     const tab = document.getElementById(`tab-${name}`);
@@ -97,7 +152,18 @@ function setUpTabs() {
     selectTab(trigger.dataset.goto, { moveFocus: true });
   });
 
+  // Keep the pill aligned when the strip reflows: a window resize, the
+  // tab bar wrapping on a narrow screen, or a font finishing loading all
+  // change where the active tab sits.
+  if ("ResizeObserver" in window) {
+    new ResizeObserver(moveIndicator).observe(tablist);
+  }
+  window.addEventListener("resize", moveIndicator);
+
   selectTab(tabFromHash(), { updateHash: false });
+  // One more pass after layout settles, in case the first measurement ran
+  // before the font swapped in and the labels changed width.
+  requestAnimationFrame(moveIndicator);
 }
 
-export { setUpTabs, selectTab, TAB_IDS };
+export { setUpTabs, selectTab, moveIndicator, TAB_IDS };

@@ -12,7 +12,7 @@
      page. BUMP THIS NUMBER whenever index.html, style.css or app.js change
      shape. (The proper fix is content-hashed filenames from a build step;
      this project has no build step on purpose, so the number is manual.) -->
-<link rel="stylesheet" href="style.css?v=11">
+<link rel="stylesheet" href="style.css?v=12">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>&#128123;</text></svg>">
 </head>
 <body>
@@ -72,6 +72,10 @@
       <button class="tab" role="tab" id="tab-model" aria-controls="panel-model" aria-selected="false" tabindex="-1">The model</button>
       <button class="tab" role="tab" id="tab-how"   aria-controls="panel-how"   aria-selected="false" tabindex="-1">How it works</button>
       <button class="tab" role="tab" id="tab-about" aria-controls="panel-about" aria-selected="false" tabindex="-1">About</button>
+      <!-- The moving pill behind the active tab. Decorative: the state is
+           carried by aria-selected on the buttons, so a screen reader
+           never needs this and it stays hidden from the tree. -->
+      <span class="tab-indicator" aria-hidden="true"></span>
     </nav>
   </header>
 
@@ -491,6 +495,6 @@
 
 </div>
 
-<script type="module" src="app.js?v=11"></script>
+<script type="module" src="app.js?v=12"></script>
 </body>
 </html>
