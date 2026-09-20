@@ -115,83 +115,6 @@ function selectTab(name, { moveFocus = false, updateHash = true } = {}) {
   }
 }
 
-/*
- * Header behaviour.
- *
- * A pinned bar always covers whatever scrolls beneath it, and with a
- * backdrop dark enough to stay legible that reads as a slab sitting on
- * the text. So the bar retracts while you read downward and returns as
- * soon as you scroll up, which is when you are looking for navigation
- * anyway. At the very top it has nothing to sit over, so it drops the
- * backdrop entirely and lets the background through.
- */
-
-const BAR_AT_TOP = 8;    // px of scroll before the backdrop appears
-const BAR_DEADZONE = 5;  // ignore jitter and trackpad bounce
-
-/**
- * Decide what the header should look like. Pure: takes numbers, returns a
- * decision, touches nothing.
- *
- * Split out from the DOM on purpose. The event handler defers its work
- * into requestAnimationFrame, which does not run in a background tab, so
- * driving this through a real browser is awkward to test. As a plain
- * function the rules can be checked directly.
- */
-function nextBarState({ y, lastY, wasHidden }) {
-  const position = Math.max(y, 0);          // iOS overscrolls negative
-  const atTop = position <= BAR_AT_TOP;
-  const movedDown = position > lastY + BAR_DEADZONE;
-  const movedUp = position < lastY - BAR_DEADZONE;
-
-  let hidden = wasHidden;
-  if (atTop) hidden = false;                // always visible at the top
-  else if (movedDown) hidden = true;        // reading downward
-  else if (movedUp) hidden = false;         // looking back up
-
-  return {
-    stuck: !atTop,
-    hidden,
-    // Only move the reference point once we act on it, so a slow scroll
-    // accumulates toward the deadzone instead of never reaching it.
-    lastY: movedDown || movedUp ? position : lastY,
-  };
-}
-
-function setUpStickyBar() {
-  const bar = document.querySelector(".topbar");
-  if (!bar) return;
-
-  let lastY = window.scrollY;
-  let queued = false;
-
-  function apply() {
-    queued = false;
-    const state = nextBarState({
-      y: window.scrollY,
-      lastY,
-      wasHidden: bar.classList.contains("is-hidden"),
-    });
-    lastY = state.lastY;
-    bar.classList.toggle("is-stuck", state.stuck);
-    bar.classList.toggle("is-hidden", state.hidden);
-  }
-
-  window.addEventListener(
-    "scroll",
-    () => {
-      // Scroll can fire many times per frame; touching the DOM in each one
-      // is the classic way to make a page feel sticky while scrolling.
-      if (queued) return;
-      queued = true;
-      requestAnimationFrame(apply);
-    },
-    { passive: true }   // we will not preventDefault, so the browser need not wait
-  );
-
-  apply();
-}
-
 function setUpTabs() {
   const tablist = document.querySelector('[role="tablist"]');
   if (!tablist) return;
@@ -237,12 +160,10 @@ function setUpTabs() {
   }
   window.addEventListener("resize", moveIndicator);
 
-  setUpStickyBar();
-
   selectTab(tabFromHash(), { updateHash: false });
   // One more pass after layout settles, in case the first measurement ran
   // before the font swapped in and the labels changed width.
   requestAnimationFrame(moveIndicator);
 }
 
-export { setUpTabs, selectTab, moveIndicator, nextBarState, TAB_IDS };
+export { setUpTabs, selectTab, moveIndicator, TAB_IDS };

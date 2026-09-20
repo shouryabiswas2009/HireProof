@@ -39,7 +39,6 @@ TARGETS = {
     "tests/js/test_features.mjs": [r'(features\.js\?v=)(\d+)'],
     "tests/js/predict.mjs": [r'(features\.js\?v=)(\d+)', r'(scorer\.js\?v=)(\d+)'],
     "tests/js/test_highlight.mjs": [r'(features\.js\?v=)(\d+)'],
-    "tests/js/test_tabs.mjs": [r'(tabs\.js\?v=)(\d+)'],
 }
 
 

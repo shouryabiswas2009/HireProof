@@ -320,44 +320,24 @@ body {
 /* ================================================== Top bar and tabs */
 
 .topbar {
-  position: sticky;
-  top: 0;
-  z-index: 20;
+  /* NOT sticky, deliberately.
+     A pinned bar has to paint a backdrop to stay readable over whatever
+     scrolls beneath it, and on a page with a colourful moving background
+     that backdrop reads as a dark slab sitting on the content. Three
+     attempts at softening it (lighter tint, appear-on-scroll, retract
+     while scrolling down) each left an edge case where the box showed
+     over the text - the last one because a browser restoring its scroll
+     position lands a few pixels down, which counts as "scrolled".
+     A header that simply scrolls away cannot do any of that. The cost is
+     scrolling up to reach the tabs, which is how most sites work. */
   display: flex;
   align-items: center;
   gap: 18px;
   flex-wrap: wrap;
-  padding: 14px 0;
+  padding: 16px 0 14px;
   margin-bottom: 4px;
-  /* Transparent at rest. The old version painted a dark slab across the
-     top, which cut a hard rectangle out of the drifting background and
-     read as a box sitting on the page rather than part of it. The backdrop
-     only appears once content is actually scrolling underneath, which is
-     the only moment it is needed for legibility. */
-  background: transparent;
-  border-bottom: 1px solid transparent;
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-              background-color 0.25s ease, border-color 0.25s ease;
+  border-bottom: 1px solid var(--line);
 }
-
-/* Past the top of the page it needs a backdrop to stay readable over
-   whatever is behind it. Kept lighter than before, and paired with the
-   retract below so it is rarely on screen while you are reading. */
-.topbar.is-stuck {
-  background: color-mix(in srgb, var(--bg) 62%, transparent);
-  border-bottom-color: color-mix(in srgb, var(--line) 70%, transparent);
-  -webkit-backdrop-filter: blur(16px) saturate(1.3);
-  backdrop-filter: blur(16px) saturate(1.3);
-}
-/* Without backdrop-filter a translucent bar would just look muddy over
-   text, so fall back to a solid one. */
-@supports not (backdrop-filter: blur(1px)) {
-  .topbar.is-stuck { background: var(--bg); }
-}
-
-/* Retracted while scrolling down. It slides up out of the way instead of
-   covering the text being read. */
-.topbar.is-hidden { transform: translateY(-100%); }
 
 /* -------------------------------------------------------------- Brand */
 
@@ -1269,7 +1249,6 @@ a:hover { text-decoration-color: currentColor; }
   .topbar { gap: 10px; padding: 10px 0; }
   .tabs { margin-left: 0; width: 100%; }
   .tab { flex: 1 1 auto; text-align: center; padding: 7px 10px; font-size: 0.8rem; }
-  .topbar { position: static; }   /* a sticky bar eats too much of a short screen */
   .view-head { padding: 24px 0 6px; }
   .hero { padding: 48px 0 26px; }
   .card { padding: 20px 17px; border-radius: 15px; }
@@ -1328,19 +1307,6 @@ html[data-motion="off"] .bar { transform: none !important; }
 html[data-motion="off"] .motes,
 html[data-motion="off"] .spotlight,
 html[data-motion="off"] .card-input::before { display: none !important; }
-
-/* A header that slides in and out on every scroll is exactly the kind of
-   movement someone turning motion off is trying to avoid, and snapping it
-   without the transition is worse. Let it scroll away with the page
-   instead: then it never covers anything and never moves on its own. */
-html[data-motion="off"] .topbar {
-  position: static !important;
-  transform: none !important;
-  background: transparent !important;
-  border-bottom-color: transparent !important;
-  -webkit-backdrop-filter: none !important;
-  backdrop-filter: none !important;
-}
 
 /* The drifting colour field and grid are held still rather than removed,
    so the design still looks deliberate with motion off. */
