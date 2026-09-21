@@ -9,8 +9,8 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { initPhrases } from "../../docs/features.js?v=20";
-import { initModel, score } from "../../docs/scorer.js?v=20";
+import { initPhrases } from "../../docs/features.js?v=21";
+import { initModel, score } from "../../docs/scorer.js?v=21";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(here, "..", "..");

@@ -4,11 +4,11 @@
  * only moves values onto the screen.
  */
 
-import { loadPhrases } from "./features.js?v=20";
-import { loadModel, score, band } from "./scorer.js?v=20";
-import { annotate } from "./highlight.js?v=20";
-import { setUpTabs } from "./tabs.js?v=20";
-import { checkInput, MIN_WORDS } from "./validate.js?v=20";
+import { loadPhrases } from "./features.js?v=21";
+import { loadModel, score, band } from "./scorer.js?v=21";
+import { annotate } from "./highlight.js?v=21";
+import { setUpTabs } from "./tabs.js?v=21";
+import { checkInput, MIN_WORDS } from "./validate.js?v=21";
 
 // Change this if you fork the project.
 const REPO_URL = "https://github.com/shouryabiswas2009/hireproof";
