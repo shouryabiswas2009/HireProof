@@ -102,6 +102,56 @@ class GradientTests(unittest.TestCase):
         self.assertAlmostEqual(analytical, numerical, places=6)
 
 
+class KnownValueTests(unittest.TestCase):
+    """Fixed inputs with hand-computable outputs.
+
+    The other tests check properties (loss falls, weights shrink under L2,
+    the gradient matches a numerical estimate). Those would all still pass
+    if the arithmetic were off by a constant factor, so this pins a few
+    exact values worked out by hand.
+    """
+
+    def test_sigmoid_of_known_inputs(self):
+        # sigma(0) = 0.5 exactly; sigma(1) = 1/(1+e^-1) = 0.7310585786...
+        self.assertAlmostEqual(logreg.sigmoid(0.0), 0.5, places=12)
+        self.assertAlmostEqual(logreg.sigmoid(1.0), 0.7310585786300049, places=12)
+        self.assertAlmostEqual(logreg.sigmoid(-2.0), 0.11920292202211755, places=12)
+
+    def test_prediction_for_hand_computed_weights(self):
+        # z = bias + w.x = 0.5 + (2.0 * 1.5) + (-1.0 * 0.25)
+        #   = 0.5 + 3.0 - 0.25 = 3.25
+        # sigma(3.25) = 1 / (1 + e^-3.25) = 0.9626731126558706
+        probability = logreg.predict_probability([1.5, 0.25], [2.0, -1.0], 0.5)
+        self.assertAlmostEqual(probability, 0.9626731126558706, places=12)
+
+    def test_log_loss_of_a_hand_computed_case(self):
+        # One example, truth 1, prediction sigma(0) = 0.5.
+        # loss = -ln(0.5) = 0.6931471805...
+        loss = logreg.log_loss([[0.0]], [1], [0.0], 0.0)
+        self.assertAlmostEqual(loss, math.log(2), places=12)
+
+    def test_one_gradient_step_moves_weights_by_the_expected_amount(self):
+        # A single example: x = [2.0], y = 1, starting from w = 0, b = 0.
+        # Prediction is sigma(0) = 0.5, so the error is 0.5 - 1 = -0.5.
+        # Gradient for w = error * x = -0.5 * 2.0 = -1.0 (averaged over one
+        # example). With learning_rate 0.1 and no L2:
+        #     w = 0 - 0.1 * (-1.0) = +0.1
+        #     b = 0 - 0.1 * (-0.5) = +0.05
+        weights, bias, _ = logreg.train(
+            [[2.0]], [1], learning_rate=0.1, epochs=1, l2=0.0
+        )
+        self.assertAlmostEqual(weights[0], 0.1, places=12)
+        self.assertAlmostEqual(bias, 0.05, places=12)
+
+    def test_standardizing_a_known_column(self):
+        # Values 2, 4, 6: mean 4, population std sqrt(8/3) = 1.632993...
+        means, stds = logreg.standardize_fit([[2.0], [4.0], [6.0]])
+        self.assertAlmostEqual(means[0], 4.0, places=12)
+        self.assertAlmostEqual(stds[0], math.sqrt(8 / 3), places=12)
+        scaled = logreg.standardize_apply([[6.0]], means, stds)[0][0]
+        self.assertAlmostEqual(scaled, 2.0 / math.sqrt(8 / 3), places=12)
+
+
 class TrainTests(unittest.TestCase):
     def test_learns_a_separable_pattern(self):
         # Feature 1 perfectly predicts the label; feature 2 is pure noise.

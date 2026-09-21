@@ -12,7 +12,7 @@
      page. BUMP THIS NUMBER whenever index.html, style.css or app.js change
      shape. (The proper fix is content-hashed filenames from a build step;
      this project has no build step on purpose, so the number is manual.) -->
-<link rel="stylesheet" href="style.css?v=15">
+<link rel="stylesheet" href="style.css?v=18">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>&#128123;</text></svg>">
 </head>
 <body>
@@ -52,6 +52,38 @@
   <div class="spotlight" id="spotlight"></div>
 </div>
 <div class="grain" aria-hidden="true"></div>
+
+<!-- Scoring happens in the browser, so with JavaScript off there is
+     nothing to run. Rather than show a dead form, state that plainly and
+     give the model's headline numbers. train.py stamps the values in
+     between the markers below, so this cannot drift from the deployed
+     model the way hardcoded figures would. -->
+<noscript>
+  <div class="noscript-card">
+    <h1>HireProof needs JavaScript</h1>
+    <p>
+      The whole point of this tool is that your posting is never uploaded:
+      the model runs inside your browser, which means it needs JavaScript
+      to run at all. There is no server-side version to fall back to.
+    </p>
+    <p>Here is what the current model looks like:</p>
+    <!-- MODEL-SUMMARY:START -->
+        <ul class="noscript-facts">
+          <li><strong>Trained on</strong> &mdash; 30 synthetic postings written by hand to test the system (15 ghost, 15 genuine)</li>
+          <li><strong>Accuracy</strong> &mdash; 100% (5-fold cross-validation)</li>
+          <li><strong>Baseline</strong> &mdash; 50% (always guessing the commonest label)</li>
+          <li><strong>Precision</strong> &mdash; 100% of postings called ghost really were</li>
+          <li><strong>Recall</strong> &mdash; 100% of ghost postings were caught</li>
+          <li><strong>Signals</strong> &mdash; 11, weighted and summed</li>
+          <li><strong>Last trained</strong> &mdash; 2026-09-20</li>
+        </ul>
+        <!-- MODEL-SUMMARY:END -->
+    <p>
+      The code, the training script and the full write-up are on
+      <a href="https://github.com/shouryabiswas2009/hireproof">GitHub</a>.
+    </p>
+  </div>
+</noscript>
 
 <div class="shell">
 
@@ -129,8 +161,19 @@
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.7" y2="16.7"/></svg>
               Score this posting
             </button>
-            <button id="example-button" type="button" class="btn btn-ghost">Try an example</button>
             <button id="clear-button" type="button" class="btn btn-ghost">Clear</button>
+          </div>
+
+          <!-- Three examples rather than one, so the range of scores is
+               visible without anyone having to paste their own posting.
+               The borderline case matters most: a demo that only ever
+               shows confident answers misrepresents how the tool behaves
+               on real postings, most of which sit in the middle. -->
+          <div class="examples">
+            <span class="examples-label">Or try an example:</span>
+            <button class="chip-btn" type="button" data-example="ghost">Ghost-like</button>
+            <button class="chip-btn" type="button" data-example="genuine">Genuine</button>
+            <button class="chip-btn" type="button" data-example="borderline">Borderline</button>
           </div>
 
           <p class="privacy">
@@ -187,6 +230,12 @@
             <p id="verdict-blurb" class="verdict-blurb"></p>
           </div>
 
+          <!-- The model's record in one line, sitting with the score
+               rather than on another tab: someone reading a result should
+               not have to go looking for how much the number is worth.
+               Filled from model.json, so it cannot drift. -->
+          <p id="model-line" class="model-line"></p>
+
           <div class="divider" aria-hidden="true"></div>
 
           <div class="breakdown-head">
@@ -242,6 +291,36 @@
             </div>
           </details>
         </section>
+
+      <section class="card card-limits">
+        <h2 class="limits-title">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><line x1="12" y1="7.5" x2="12" y2="13"/><line x1="12" y1="16.5" x2="12" y2="16.5"/></svg>
+          Where this gets things wrong
+        </h2>
+        <ul class="limits-list">
+          <li><strong>Short postings.</strong> Under about 80 words there is
+          too little text for the signals to mean anything, and the score
+          drifts toward whatever the training average was.</li>
+          <li><strong>Tech-sector wording.</strong> Most of the labelled
+          postings are software and office roles. Trades, healthcare,
+          hospitality and academia phrase things differently, and the model
+          has barely seen them.</li>
+          <li><strong>A well-written ghost posting.</strong> Anything with a
+          salary, a named manager and a deadline will score low, whether or
+          not the job exists. A company that writes carefully is invisible
+          to this.</li>
+          <li><strong>A badly-written real job.</strong> Plenty of genuine
+          postings are full of buzzwords and missing a salary, especially
+          from small employers without a recruiter. Those score high and
+          should not.</li>
+          <li><strong>A small, one-person training set.</strong> Every label
+          reflects one person's judgement, so the model inherits that
+          person's blind spots along with their reasoning.</li>
+          <li><strong>Non-English postings.</strong> The phrase lists are
+          English only. Anything else scores as though the wording were
+          simply absent.</li>
+        </ul>
+      </section>
 
       <p class="panel-footnote">
         This is a heuristic, not a detector, and it can be wrong in both
@@ -504,6 +583,6 @@
 
 </div>
 
-<script type="module" src="app.js?v=15"></script>
+<script type="module" src="app.js?v=18"></script>
 </body>
 </html>

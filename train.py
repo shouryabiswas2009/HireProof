@@ -257,6 +257,58 @@ def print_report(kind, labels, cv, baseline_accuracy, weights, means, stds, warn
     print("=" * 68)
 
 
+# The site scores postings in the browser, so without JavaScript there is
+# nothing to show. Rather than leave a blank page, index.html carries a
+# <noscript> block with the model's headline numbers, and this stamps the
+# real values into it at training time. Hardcoding them would mean the
+# fallback slowly drifts away from the model actually deployed.
+NOSCRIPT_START = "<!-- MODEL-SUMMARY:START -->"
+NOSCRIPT_END = "<!-- MODEL-SUMMARY:END -->"
+
+
+def write_noscript_summary(model):
+    """Stamp the current model's numbers into the no-JavaScript fallback."""
+    index = SITE_DIR / "index.html"
+    if not index.exists():
+        return
+    html = index.read_text(encoding="utf-8")
+    if NOSCRIPT_START not in html or NOSCRIPT_END not in html:
+        return
+
+    metrics = model["metrics"]
+    folds = metrics.get("cv_folds", 5)
+    source = (
+        "synthetic postings written by hand to test the system"
+        if model["trained_on"] == "demo"
+        else "job postings labelled by hand"
+    )
+    rows = "\n".join(
+        f"          <li><strong>{label}</strong> &mdash; {value}</li>"
+        for label, value in [
+            ("Trained on", f"{model['n_examples']} {source} "
+                           f"({model['n_ghost']} ghost, {model['n_legit']} genuine)"),
+            ("Accuracy", f"{metrics['cv_accuracy']:.0%} "
+                         f"({folds}-fold cross-validation)"),
+            ("Baseline", f"{metrics['baseline_accuracy']:.0%} "
+                         f"(always guessing the commonest label)"),
+            ("Precision", f"{metrics['cv_precision']:.0%} of postings called "
+                          f"ghost really were"),
+            ("Recall", f"{metrics['cv_recall']:.0%} of ghost postings were caught"),
+            ("Signals", f"{len(model['feature_names'])}, weighted and summed"),
+            ("Last trained", model["trained_date"]),
+        ]
+    )
+
+    block = (
+        f"{NOSCRIPT_START}\n"
+        f'        <ul class="noscript-facts">\n{rows}\n        </ul>\n'
+        f"        {NOSCRIPT_END}"
+    )
+    start = html.index(NOSCRIPT_START)
+    end = html.index(NOSCRIPT_END) + len(NOSCRIPT_END)
+    index.write_text(html[:start] + block + html[end:], encoding="utf-8")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Train the ghost-job model.")
     parser.add_argument(
@@ -339,6 +391,9 @@ def main():
         "means": means,
         "stds": stds,
         "metrics": {
+            # The fold count travels with the numbers so the site can say
+            # "5-fold" honestly instead of assuming it.
+            "cv_folds": len(cv["folds"]),
             "cv_accuracy": cv["mean"]["accuracy"],
             "cv_precision": cv["mean"]["precision"],
             "cv_recall": cv["mean"]["recall"],
@@ -366,6 +421,9 @@ def main():
     with open(PHRASES_COPY, "w", encoding="utf-8") as dst:
         dst.write(phrases_text)
     print(f"  Wrote {PHRASES_COPY.relative_to(REPO_ROOT)}")
+
+    write_noscript_summary(model)
+    print(f"  Updated the no-JavaScript summary in docs/index.html")
     print()
 
 

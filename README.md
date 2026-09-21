@@ -95,6 +95,51 @@ being collected. It scores 100% in cross-validation, which is a warning sign
 rather than an achievement: those examples are far more cleanly separated
 than real postings ever are. Both the training report and the website say so.
 
+
+## Why this isn't production-ready
+
+Worth stating plainly, because the gap between "this works" and "this can
+be trusted" is the interesting part of the project.
+
+**The training set is small, and one person built it.** A few hundred
+postings labelled by one person is enough to demonstrate a pipeline, not
+enough to make a claim about job postings in general. Every label carries
+that person's assumptions, so the model inherits their blind spots along
+with their reasoning. A second labeller disagreeing with the first would be
+the single most useful thing to add.
+
+**The labels are guesses, not ground truth.** Nobody can *know* a posting
+is a ghost job by reading it. The only honest evidence is outside the text
+— the posting sat open for months, the same role kept reappearing, an
+application went unanswered — and even that is circumstantial. The
+labelling tool records which evidence backed each label, and the training
+script warns when too many were judged from the wording alone, because
+those are circular: the model's features come from the wording too, so it
+would just be learning to agree with one person's hunch.
+
+**Logistic regression cannot learn interactions.** It weighs each signal
+independently and adds them up. It can learn "no salary pushes toward
+ghost", but not "no salary matters *only when* the posting is also vague
+about the team" — which is closer to how a person actually reads these. A
+tree-based model gets that for free. Given the dataset size, the trade was
+worth making for an explanation that is the arithmetic itself rather than
+an approximation of it, but it is a real ceiling.
+
+**The probabilities are not calibrated.** When the model says 70%, that
+does not mean 70 out of 100 such postings are ghost jobs. Calibration needs
+far more data than this has. The score is a ranking, not a measurement.
+
+**It only knows English, mostly about office work.** The phrase lists are
+English, and most labelled postings are software and administrative roles.
+Trades, healthcare, hospitality and academia phrase things differently and
+are barely represented.
+
+**What would change that:** several hundred postings labelled by more than
+one person, with disagreements measured rather than averaged away; a
+held-out test set that is only touched once; a calibration check; and a
+comparison against a model that *can* capture interactions, to find out how
+much the simple one is leaving on the table.
+
 ## Layout
 
 ```

@@ -1176,6 +1176,79 @@ textarea:focus {
   font-size: 0.8rem;
 }
 
+/* ------------------------------------------------ Examples and limits */
+
+.examples {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line-soft);
+}
+.examples-label { font-size: 0.84rem; color: var(--ink-muted); margin-right: 2px; }
+.chip-btn {
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 5px 13px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease, background-color 0.15s ease;
+}
+.chip-btn:hover {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+.chip-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* The one-line record of the model, sitting with the score. */
+.model-line {
+  margin: 14px 0 0;
+  text-align: center;
+  font-size: 0.83rem;
+  color: var(--ink-muted);
+}
+
+/* Failure modes belong next to the result, not at the bottom of the page
+   where nobody scrolls after getting their answer. */
+.card-limits { border-color: color-mix(in srgb, var(--status-warn) 30%, var(--line)); }
+.limits-title {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0 0 12px;
+  font-size: 1rem;
+  letter-spacing: -0.015em;
+  color: var(--ink);
+}
+.limits-title svg { flex: none; color: var(--status-warn); }
+.limits-list { margin: 0; padding-left: 20px; }
+.limits-list li { margin-bottom: 9px; font-size: 0.89rem; color: var(--ink-soft); }
+.limits-list li:last-child { margin-bottom: 0; }
+.limits-list strong { color: var(--ink); font-weight: 650; }
+
+/* --------------------------------------------- No-JavaScript fallback */
+
+.noscript-card {
+  max-width: 640px;
+  margin: 56px auto;
+  padding: 26px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--bg-elevated);
+}
+.noscript-card h1 { margin: 0 0 12px; font-size: 1.5rem; letter-spacing: -0.02em; }
+.noscript-card p { color: var(--ink-soft); font-size: 0.93rem; }
+.noscript-facts { margin: 16px 0; padding-left: 20px; font-size: 0.9rem; color: var(--ink-soft); }
+.noscript-facts li { margin-bottom: 6px; }
+.noscript-facts strong { color: var(--ink); }
+
 /* -------------------------------------------------- Drawers and tables */
 
 .drawer { margin-top: 20px; }

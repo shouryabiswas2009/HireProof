@@ -4,10 +4,10 @@
  * only moves values onto the screen.
  */
 
-import { loadPhrases } from "./features.js?v=15";
-import { loadModel, score, band } from "./scorer.js?v=15";
-import { annotate } from "./highlight.js?v=15";
-import { setUpTabs } from "./tabs.js?v=15";
+import { loadPhrases } from "./features.js?v=18";
+import { loadModel, score, band } from "./scorer.js?v=18";
+import { annotate } from "./highlight.js?v=18";
+import { setUpTabs } from "./tabs.js?v=18";
 
 // Change this if you fork the project.
 const REPO_URL = "https://github.com/shouryabiswas2009/hireproof";
@@ -22,18 +22,52 @@ const MEANINGFUL = 0.01;
 // the two or three that actually decided the answer.
 const TOP_N = 5;
 
-// A deliberately mediocre posting for the "Load an example" button: it has
-// signals pointing both ways, so the demo shows a nuanced breakdown rather
-// than a cartoonish 99%.
-const EXAMPLE_POSTING = `Marketing Coordinator
+/*
+ * Three examples, so a visitor can see the range without pasting anything.
+ *
+ * The borderline one is the important one. A demo that only ever shows
+ * confident answers misrepresents how the tool behaves on real postings,
+ * most of which sit somewhere in the middle. All three are written for
+ * this page rather than copied from real adverts.
+ */
+const EXAMPLES = {
+  ghost: `Join Our Talent Community
 
-We are a fast-paced, dynamic company looking for a self-starter to join our growing team. This is an exciting opportunity to make an impact.
+We are always looking for passionate, driven individuals to join our growing team. This is an exciting opportunity to make an impact at a company that is changing the industry.
 
-Responsibilities include supporting various marketing initiatives, assisting with campaigns, and other duties as assigned. The successful candidate will be a detail-oriented team player who can wear many hats.
+We are a fast-paced, dynamic environment where no two days are the same and you will wear many hats. The successful candidate will be a self-starter and team player who can hit the ground running.
 
-Requirements: 3+ years of experience in marketing. Strong communication skills.
+There is no specific opening at this time, but we will keep your resume on file for future opportunities across various locations.
 
-We offer a competitive salary and a friendly working environment. Apply today!`;
+Competitive salary and benefits for the right candidate. Apply today!`,
+
+  genuine: `Backend Engineer, Payments Team
+
+Salary: $98,000 - $118,000 per year, depending on experience.
+
+You will report to Priya Raman, who leads our six-person payments team. In this role you will own the refunds service end to end, write Go and Postgres, and take part in the on-call rotation one week in six.
+
+Our stack is Go, Postgres and Kubernetes. In your first 90 days you will ship a change to production and take over the weekly release checklist.
+
+We require 3+ years of backend experience. Applications close on 14 March and the anticipated start date is 5 May.
+
+Questions about the role? Email priya.raman@example.com and she will answer directly.`,
+
+  /*
+   * Chosen by testing, not by eye. The first attempt at a "borderline"
+   * example read as mixed to a human but scored 92%, because it had
+   * buzzwords AND no salary AND no deadline AND no named manager. This
+   * one keeps the buzzwords but adds a real pay range and a closing date,
+   * which pulls it into the middle band where it belongs.
+   */
+  borderline: `Operations Associate
+
+We are a fast-paced, growing team and this is an exciting opportunity to make an impact. The successful candidate will be a detail-oriented team player who can wear many hats.
+
+Responsibilities include supporting various operational initiatives and other duties as assigned.
+
+Salary: $52,000 - $58,000 per year. Applications close on 30 April.`,
+};
 
 // Icons for the score badge. A status colour must never carry meaning on
 // its own, so each band ships an icon and words alongside the colour.
@@ -191,7 +225,6 @@ const elements = {
   textarea: document.getElementById("posting"),
   wordCount: document.getElementById("word-count"),
   scoreButton: document.getElementById("score-button"),
-  exampleButton: document.getElementById("example-button"),
   clearButton: document.getElementById("clear-button"),
   results: document.getElementById("results"),
   needle: document.getElementById("gauge-needle"),
@@ -228,6 +261,21 @@ function describeModel(model) {
   }
 
   const metrics = model.metrics || {};
+
+  // A one-line version of the model's record, sitting with the score
+  // rather than on another tab. Someone reading a result should not have
+  // to go looking for how much the number is worth.
+  const line = document.getElementById("model-line");
+  if (line) {
+    const folds = metrics.cv_folds || 5;
+    const kind = model.trained_on === "demo" ? "synthetic" : "hand-labelled";
+    line.textContent =
+      `This model scores ${(metrics.cv_accuracy * 100).toFixed(0)}% accuracy ` +
+      `against a ${(metrics.baseline_accuracy * 100).toFixed(0)}% baseline ` +
+      `(${folds}-fold cross-validation), trained on ${model.n_examples} ` +
+      `${kind} postings.`;
+  }
+
   elements.modelFacts.textContent =
     `Current model: trained ${model.trained_date} on ${model.n_examples} ` +
     `postings (${model.n_ghost} ghost, ${model.n_legit} legit). ` +
@@ -781,8 +829,12 @@ async function start() {
 
 elements.scoreButton.addEventListener("click", handleScore);
 elements.textarea.addEventListener("input", updateWordCount);
-elements.exampleButton.addEventListener("click", () => {
-  elements.textarea.value = EXAMPLE_POSTING;
+// One listener on the row rather than three, so adding a fourth example
+// needs only the markup and an entry in EXAMPLES.
+document.querySelector(".examples")?.addEventListener("click", (event) => {
+  const chip = event.target.closest("[data-example]");
+  if (!chip) return;
+  elements.textarea.value = EXAMPLES[chip.dataset.example] || "";
   updateWordCount();
   handleScore();
 });

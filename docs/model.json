@@ -1,7 +1,7 @@
 {
   "_readme": "Written by train.py. Do not edit by hand. The website reads this file and scores postings in the visitor's browser.",
   "trained_on": "demo",
-  "trained_date": "2026-09-19",
+  "trained_date": "2026-09-20",
   "n_examples": 30,
   "n_ghost": 15,
   "n_legit": 15,
@@ -118,6 +118,7 @@
     0.30000000000000004
   ],
   "metrics": {
+    "cv_folds": 5,
     "cv_accuracy": 1.0,
     "cv_precision": 1.0,
     "cv_recall": 1.0,
