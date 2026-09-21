@@ -4,10 +4,11 @@
  * only moves values onto the screen.
  */
 
-import { loadPhrases } from "./features.js?v=18";
-import { loadModel, score, band } from "./scorer.js?v=18";
-import { annotate } from "./highlight.js?v=18";
-import { setUpTabs } from "./tabs.js?v=18";
+import { loadPhrases } from "./features.js?v=20";
+import { loadModel, score, band } from "./scorer.js?v=20";
+import { annotate } from "./highlight.js?v=20";
+import { setUpTabs } from "./tabs.js?v=20";
+import { checkInput, MIN_WORDS } from "./validate.js?v=20";
 
 // Change this if you fork the project.
 const REPO_URL = "https://github.com/shouryabiswas2009/hireproof";
@@ -220,6 +221,7 @@ applyMotionSetting();
 setUpMotionToggle();
 
 let PHRASE_CONFIG = null;
+let MODEL_READY = false;
 
 const elements = {
   textarea: document.getElementById("posting"),
@@ -241,6 +243,8 @@ const elements = {
   modelFacts: document.getElementById("model-facts"),
   repoLink: document.getElementById("repo-link"),
   inputError: document.getElementById("input-error"),
+  inputHint: document.getElementById("input-hint"),
+  announcement: document.getElementById("score-announcement"),
   annotatedText: document.getElementById("annotated-text"),
   missingWrap: document.getElementById("missing-signals-wrap"),
   missingChips: document.getElementById("missing-signals"),
@@ -433,10 +437,34 @@ function weightRow(row, largest, index) {
   return li;
 }
 
-/** Live word count, so it is obvious whether enough text was pasted. */
-function updateWordCount() {
-  const words = elements.textarea.value.trim().split(/\s+/).filter(Boolean).length;
-  elements.wordCount.textContent = words === 1 ? "1 word" : `${words} words`;
+/**
+ * Re-check the input and reflect it in the UI.
+ *
+ * The button is disabled until the text is scoreable, and the reason sits
+ * right underneath it. A greyed-out button with no explanation is a dead
+ * end: the reader can see something is wrong but not what.
+ */
+function refreshInputState() {
+  const verdict = checkInput(elements.textarea.value);
+
+  elements.wordCount.textContent =
+    verdict.words === 1 ? "1 word" : `${verdict.words} words`;
+
+  elements.scoreButton.disabled = !verdict.ok || !MODEL_READY;
+
+  if (!MODEL_READY) {
+    elements.inputHint.textContent = "Loading the model…";
+  } else {
+    // An empty box is the normal starting state, not a mistake, so it
+    // gets the neutral prompt rather than a complaint.
+    elements.inputHint.textContent = verdict.ok ? "" : verdict.message;
+  }
+  elements.inputHint.hidden = elements.inputHint.textContent === "";
+  elements.inputHint.classList.toggle(
+    "input-hint-warn", !verdict.ok && verdict.code !== "empty"
+  );
+
+  return verdict;
 }
 
 /**
@@ -478,6 +506,21 @@ function contributionRow(item, largest, index) {
   bar.className = towardGhost ? "bar bar-raise" : "bar bar-lower";
   bar.style.width = `${width}%`;
   (towardGhost ? right : left).appendChild(bar);
+
+  /*
+   * A + or MINUS at the data end of the bar.
+   *
+   * Direction is already carried by which side of the zero line the bar
+   * sits on, but that is a spatial cue, and the two colours are the
+   * obvious thing a reader looks at. A glyph means the direction survives
+   * colour blindness, a greyscale print and a screenshot pasted into a
+   * document, none of which keep hue reliable.
+   */
+  const signGlyph = document.createElement("span");
+  signGlyph.className = "bar-sign";
+  signGlyph.setAttribute("aria-hidden", "true");   // the row text says it too
+  signGlyph.textContent = towardGhost ? "+" : "−";
+  (towardGhost ? right : left).appendChild(signGlyph);
 
   // The amount, in the reader's units. Strength ranks signals against one
   // another; points say what it cost on the actual score.
@@ -595,6 +638,19 @@ function render(result) {
 
   renderAnnotatedText(result);
 
+  /*
+   * Announce the outcome, briefly.
+   *
+   * The two facts worth hearing are the number and what it means, plus
+   * the single biggest driver. Putting aria-live on the result card
+   * instead would read out the gauge, all five bars, the table and the
+   * whole annotated posting, which is unusable.
+   */
+  const topFactor = meaningful[0];
+  elements.announcement.textContent =
+    `${percent} percent. ${verdict.title}.` +
+    (topFactor ? ` Biggest factor: ${topFactor.label}.` : "");
+
   elements.results.hidden = false;
   elements.results.scrollIntoView({
     behavior: motionEnabled() ? "smooth" : "auto",
@@ -685,18 +741,17 @@ function setUpSignalFocus() {
 }
 
 function handleScore() {
-  const text = elements.textarea.value.trim();
-  if (text.length < 40) {
-    // Too short to contain any of the signals, so a score would be
-    // meaningless rather than merely uncertain. Shown inline rather than
-    // as an alert() popup, which is jarring and blocks the page.
-    elements.inputError.textContent =
-      "That is too short to score. Paste at least a sentence or two of the posting.";
+  // One source of truth for whether the text is scoreable: the same check
+  // that drives the button's disabled state.
+  const verdict = refreshInputState();
+  if (!verdict.ok) {
+    elements.inputError.textContent = verdict.message;
     elements.inputError.hidden = false;
     elements.results.hidden = true;
     elements.textarea.focus();
     return;
   }
+  const text = elements.textarea.value.trim();
   elements.inputError.hidden = true;
 
   // If rendering throws, say so plainly instead of leaving a half-drawn
@@ -805,6 +860,242 @@ function setUpSpotlight() {
   }, { passive: true });
 }
 
+
+/* ==================================================== Compare two postings
+ *
+ * This reuses score() from scorer.js rather than reimplementing anything:
+ * both sides go through the exact same model, features and standardisation
+ * as the single-posting view. If the scoring changes, this changes with it.
+ *
+ * The interesting output is not the two numbers side by side — it is which
+ * signals DIFFER. Two postings can reach a similar score for completely
+ * different reasons, and the gap per signal is what tells you where they
+ * actually part company.
+ */
+
+const compare = {
+  a: document.getElementById("compare-a"),
+  b: document.getElementById("compare-b"),
+  aWords: document.getElementById("compare-a-words"),
+  bWords: document.getElementById("compare-b-words"),
+  aResult: document.getElementById("compare-a-result"),
+  bResult: document.getElementById("compare-b-result"),
+  button: document.getElementById("compare-button"),
+  hint: document.getElementById("compare-hint"),
+  verdict: document.getElementById("compare-verdict"),
+  headline: document.getElementById("compare-headline"),
+  summary: document.getElementById("compare-summary"),
+  diff: document.getElementById("compare-diff"),
+  announcement: document.getElementById("compare-announcement"),
+};
+
+function refreshCompareState() {
+  if (!compare.a || !compare.b) return { ok: false };
+  const first = checkInput(compare.a.value);
+  const second = checkInput(compare.b.value);
+
+  compare.aWords.textContent =
+    first.words === 1 ? "1 word" : `${first.words} words`;
+  compare.bWords.textContent =
+    second.words === 1 ? "1 word" : `${second.words} words`;
+
+  const ok = first.ok && second.ok && MODEL_READY;
+  compare.button.disabled = !ok;
+
+  // Name which side is the problem. "Paste at least 30 words" is unhelpful
+  // when one of the two boxes is already full.
+  let message = "";
+  if (!MODEL_READY) message = "Loading the model…";
+  else if (!first.ok && !second.ok) message = `Both postings: ${first.message}`;
+  else if (!first.ok) message = `Posting A: ${first.message}`;
+  else if (!second.ok) message = `Posting B: ${second.message}`;
+
+  compare.hint.textContent = message;
+  compare.hint.hidden = message === "";
+  compare.hint.classList.toggle("input-hint-warn", message !== "" && MODEL_READY);
+  return { ok, first, second };
+}
+
+/** A compact score readout under each textarea. */
+function renderCompareSide(container, result, letter) {
+  const verdict = band(result.probability);
+  const percent = Math.round(result.probability * 100);
+  container.replaceChildren();
+  container.className = `compare-result compare-${verdict.key}`;
+
+  const value = document.createElement("span");
+  value.className = "compare-score";
+  value.textContent = `${percent}%`;
+
+  const label = document.createElement("span");
+  label.className = "compare-band";
+  label.textContent =
+    verdict.key === "high" ? "reads ghost-like"
+      : verdict.key === "medium" ? "mixed signals"
+        : "reads genuine";
+
+  container.append(value, label);
+  container.hidden = false;
+  container.setAttribute(
+    "aria-label",
+    `Posting ${letter}: ${percent} percent, ${label.textContent}`
+  );
+}
+
+/** One row of the difference chart. */
+function diffRow(item, largest, index) {
+  const favoursA = item.gap > 0;   // this signal pushed A's score higher
+  const width = largest > 0 ? (Math.abs(item.gap) / largest) * 100 : 0;
+
+  const li = document.createElement("li");
+  li.className = "crow";
+  li.style.setProperty("--i", index);
+  li.title =
+    `${item.label}: A ${item.a >= 0 ? "+" : ""}${item.a.toFixed(2)}, ` +
+    `B ${item.b >= 0 ? "+" : ""}${item.b.toFixed(2)}`;
+
+  const name = document.createElement("span");
+  name.className = "crow-name";
+  name.textContent = item.label;
+
+  const chart = document.createElement("span");
+  chart.className = "crow-chart";
+  const left = document.createElement("span");
+  left.className = "crow-half crow-left";
+  const axis = document.createElement("span");
+  axis.className = "crow-axis";
+  const right = document.createElement("span");
+  right.className = "crow-half crow-right";
+
+  const bar = document.createElement("span");
+  bar.className = favoursA ? "bar bar-raise" : "bar bar-lower";
+  bar.style.width = `${width}%`;
+  (favoursA ? right : left).appendChild(bar);
+
+  // A letter rather than a plus sign here: the two directions mean
+  // "worse for A" and "worse for B", which a sign cannot express.
+  const glyph = document.createElement("span");
+  glyph.className = "bar-sign";
+  glyph.setAttribute("aria-hidden", "true");
+  glyph.textContent = favoursA ? "A" : "B";
+  (favoursA ? right : left).appendChild(glyph);
+
+  const amount = document.createElement("span");
+  amount.className = "crow-amount";
+  const points = document.createElement("span");
+  points.className = "points";
+  points.textContent = `worse for ${favoursA ? "A" : "B"}`;
+  amount.appendChild(points);
+
+  chart.append(left, axis, right);
+  li.append(name, chart, amount);
+  return li;
+}
+
+function handleCompare() {
+  const state = refreshCompareState();
+  if (!state.ok) return;
+
+  // The same scoring path as the single-posting view.
+  const a = score(compare.a.value);
+  const b = score(compare.b.value);
+
+  renderCompareSide(compare.aResult, a, "A");
+  renderCompareSide(compare.bResult, b, "B");
+
+  const aPct = Math.round(a.probability * 100);
+  const bPct = Math.round(b.probability * 100);
+  const spread = Math.abs(aPct - bPct);
+
+  /*
+   * Refuse to name a winner on a small gap.
+   *
+   * These probabilities are not calibrated, so a few points between two
+   * postings is well inside the noise. Declaring one better on that
+   * basis would be the kind of false confidence the rest of the site works to
+   * avoid.
+   */
+  let headline;
+  if (spread < 5) {
+    headline = "Too close to call";
+    compare.summary.textContent =
+      `A scores ${aPct}% and B scores ${bPct}%. That gap is small enough to ` +
+      `be noise on a model this size, so treat them as equivalent.`;
+  } else {
+    const higher = aPct > bPct ? "A" : "B";
+    const lower = aPct > bPct ? "B" : "A";
+    headline = `Posting ${lower} reads more genuine`;
+    compare.summary.textContent =
+      `A scores ${aPct}% and B scores ${bPct}%, a ${spread}-point gap. ` +
+      `Posting ${higher} carries more of the signals this model associates ` +
+      `with ghost postings — a reason to ask questions about it, not a ` +
+      `reason to rule it out.`;
+  }
+  compare.headline.textContent = headline;
+
+  /*
+   * The per-signal gap. Both sides already carry a contribution for every
+   * feature, so lining them up by name gives the difference directly —
+   * no re-scoring and no second code path to keep in step.
+   */
+  const byName = new Map(b.contributions.map((item) => [item.name, item]));
+  const diffs = a.contributions
+    .map((item) => {
+      const other = byName.get(item.name);
+      const otherValue = other ? other.contribution : 0;
+      return {
+        label: item.neutralLabel,
+        a: item.contribution,
+        b: otherValue,
+        gap: item.contribution - otherValue,
+      };
+    })
+    .filter((item) => Math.abs(item.gap) > MEANINGFUL)
+    .sort((x, y) => Math.abs(y.gap) - Math.abs(x.gap));
+
+  compare.diff.replaceChildren();
+  if (diffs.length === 0) {
+    const li = document.createElement("li");
+    li.className = "crow-empty";
+    li.textContent = "These two score the same on every signal the model reads.";
+    compare.diff.appendChild(li);
+  } else {
+    const largest = Math.abs(diffs[0].gap);
+    diffs.slice(0, TOP_N).forEach((item, index) => {
+      compare.diff.appendChild(diffRow(item, largest, index));
+    });
+  }
+
+  compare.announcement.textContent =
+    `Posting A ${aPct} percent, posting B ${bPct} percent. ${headline}.`;
+  compare.verdict.hidden = false;
+}
+
+function setUpCompare() {
+  if (!compare.a || !compare.b) return;
+  compare.a.addEventListener("input", refreshCompareState);
+  compare.b.addEventListener("input", refreshCompareState);
+  compare.button.addEventListener("click", handleCompare);
+
+  document.getElementById("compare-example")?.addEventListener("click", () => {
+    compare.a.value = EXAMPLES.ghost;
+    compare.b.value = EXAMPLES.genuine;
+    refreshCompareState();
+    handleCompare();
+  });
+  document.getElementById("compare-clear")?.addEventListener("click", () => {
+    compare.a.value = "";
+    compare.b.value = "";
+    compare.verdict.hidden = true;
+    compare.aResult.hidden = true;
+    compare.bResult.hidden = true;
+    refreshCompareState();
+    compare.a.focus();
+  });
+
+  refreshCompareState();
+}
+
 async function start() {
   try {
     // Both files are needed before anything can be scored: the phrase lists
@@ -813,7 +1104,9 @@ async function start() {
     PHRASE_CONFIG = phraseConfig;
     describeModel(model);
     renderModelTab(model);
-    elements.scoreButton.disabled = false;
+    MODEL_READY = true;
+    refreshInputState();
+    refreshCompareState();
     setUpScrollReveal();
     setUpSpotlight();
     setUpSignalFocus();
@@ -828,25 +1121,25 @@ async function start() {
 }
 
 elements.scoreButton.addEventListener("click", handleScore);
-elements.textarea.addEventListener("input", updateWordCount);
+elements.textarea.addEventListener("input", refreshInputState);
 // One listener on the row rather than three, so adding a fourth example
 // needs only the markup and an entry in EXAMPLES.
 document.querySelector(".examples")?.addEventListener("click", (event) => {
   const chip = event.target.closest("[data-example]");
   if (!chip) return;
   elements.textarea.value = EXAMPLES[chip.dataset.example] || "";
-  updateWordCount();
+  refreshInputState();
   handleScore();
 });
 elements.clearButton.addEventListener("click", () => {
   elements.textarea.value = "";
-  updateWordCount();
+  refreshInputState();
   elements.results.hidden = true;
   elements.inputError.hidden = true;
   elements.textarea.focus();
 });
 
-elements.scoreButton.disabled = true;
-updateWordCount();
+refreshInputState();   // starts disabled: no text yet, and no model yet
 setUpTabs();
+setUpCompare();
 start();

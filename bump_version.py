@@ -20,6 +20,7 @@ hand is exactly the sort of thing that gets half-done. Run:
 tests/test_versions.py fails the build if they ever disagree.
 """
 
+import datetime
 import re
 import sys
 from pathlib import Path
@@ -34,11 +35,13 @@ TARGETS = {
         r'(\./scorer\.js\?v=)(\d+)',
         r'(\./highlight\.js\?v=)(\d+)',
         r'(\./tabs\.js\?v=)(\d+)',
+        r'(\./validate\.js\?v=)(\d+)',
     ],
     "docs/scorer.js": [r'(\./features\.js\?v=)(\d+)'],
     "tests/js/test_features.mjs": [r'(features\.js\?v=)(\d+)'],
     "tests/js/predict.mjs": [r'(features\.js\?v=)(\d+)', r'(scorer\.js\?v=)(\d+)'],
     "tests/js/test_highlight.mjs": [r'(features\.js\?v=)(\d+)'],
+    "tests/js/test_validate.mjs": [r'(validate\.js\?v=)(\d+)'],
 }
 
 
@@ -63,6 +66,17 @@ def main():
         return
 
     new = sys.argv[1]
+
+    # Stamp today's date too. "Last updated" belongs to the deploy, and
+    # bumping the version is the thing that happens on every deploy, so
+    # tying them together means the date cannot silently go stale.
+    today = datetime.date.today().isoformat()
+    index = ROOT / "docs/index.html"
+    html = index.read_text(encoding="utf-8")
+    html = re.sub(r'(<time id="last-updated" datetime=")[^"]*(">)[^<]*',
+                  lambda m: m.group(1) + today + m.group(2) + today, html)
+    index.write_text(html, encoding="utf-8")
+    print(f"  docs/index.html -> last updated {today}")
     for rel, patterns in TARGETS.items():
         path = ROOT / rel
         text = path.read_text(encoding="utf-8")

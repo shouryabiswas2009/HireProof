@@ -85,6 +85,40 @@ class StylesheetTests(unittest.TestCase):
         self.assertGreater(rules, 150, f"only {rules} rules; file may be truncated")
 
 
+class SourceCharacterTests(unittest.TestCase):
+    """No stray non-Latin characters in shipped source.
+
+    A scripted edit once dropped two Chinese characters into the middle of
+    an English code comment. Nothing broke and nothing warned: it sat in a
+    comment, so neither the parser nor any test noticed. A reviewer would
+    have, which is exactly the kind of thing worth automating instead.
+
+    The allowlist is the typography actually used on purpose - curly
+    quotes, dashes, the real minus sign, the ellipsis.
+    """
+
+    ALLOWED = set("‐‑‒–—‘’“”"
+                  "…•· ½−×÷"
+                  "éèêüöäçñ")
+
+    def test_no_unexpected_characters(self):
+        offenders = []
+        files = list(DOCS.glob("*.js")) + [DOCS / "index.html", DOCS / "style.css"]
+        for path in files:
+            text = path.read_text(encoding="utf-8")
+            for number, line in enumerate(text.splitlines(), 1):
+                for ch in line:
+                    if ord(ch) < 128 or ch in self.ALLOWED:
+                        continue
+                    offenders.append(
+                        f"{path.name}:{number}: U+{ord(ch):04X} ({ch!r})"
+                    )
+        self.assertFalse(
+            offenders,
+            "unexpected characters in shipped source: " + "; ".join(offenders[:20]),
+        )
+
+
 class MarkupTests(unittest.TestCase):
     def setUp(self):
         self.html = (DOCS / "index.html").read_text(encoding="utf-8")

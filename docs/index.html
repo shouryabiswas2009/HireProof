@@ -6,13 +6,30 @@
 <title>HireProof &mdash; Ghost Job Checker</title>
 <meta name="description" content="Paste a job posting and see how closely its wording matches postings labelled as ghost jobs. Runs entirely in your browser.">
 <meta name="color-scheme" content="light dark">
+
+<!-- How the link looks when shared. og:image must be an absolute URL:
+     scrapers do not resolve relative paths, and a relative one silently
+     yields no preview at all. -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="HireProof">
+<meta property="og:title" content="HireProof — is this job posting actually real?">
+<meta property="og:description" content="Paste a job posting and see how closely its wording matches postings labelled as ghost jobs. Logistic regression written from scratch, running entirely in your browser.">
+<meta property="og:url" content="https://shouryabiswas2009.github.io/HireProof/">
+<meta property="og:image" content="https://shouryabiswas2009.github.io/HireProof/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="HireProof — a ghost-job checker that runs in your browser">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="HireProof — is this job posting actually real?">
+<meta name="twitter:description" content="Paste a job posting and see how closely its wording matches postings labelled as ghost jobs. Runs entirely in your browser.">
+<meta name="twitter:image" content="https://shouryabiswas2009.github.io/HireProof/og.png">
 <!-- The ?v= number busts the browser cache. GitHub Pages lets browsers keep
      these files for about ten minutes, so without it a returning visitor can
      end up running an old script against new HTML, which half-renders the
      page. BUMP THIS NUMBER whenever index.html, style.css or app.js change
      shape. (The proper fix is content-hashed filenames from a build step;
      this project has no build step on purpose, so the number is manual.) -->
-<link rel="stylesheet" href="style.css?v=18">
+<link rel="stylesheet" href="style.css?v=20">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>&#128123;</text></svg>">
 </head>
 <body>
@@ -112,6 +129,7 @@
       <button class="tab" role="tab" id="tab-check" aria-controls="panel-check" aria-selected="true"  tabindex="0">Check a posting</button>
       <button class="tab" role="tab" id="tab-model" aria-controls="panel-model" aria-selected="false" tabindex="-1">The model</button>
       <button class="tab" role="tab" id="tab-how"   aria-controls="panel-how"   aria-selected="false" tabindex="-1">How it works</button>
+      <button class="tab" role="tab" id="tab-compare" aria-controls="panel-compare" aria-selected="false" tabindex="-1">Compare</button>
       <button class="tab" role="tab" id="tab-about" aria-controls="panel-about" aria-selected="false" tabindex="-1">About</button>
       <!-- The moving pill behind the active tab. Decorative: the state is
            carried by aria-selected on the buttons, so a screen reader
@@ -156,13 +174,26 @@
 
           <p id="input-error" class="input-error" hidden role="alert"></p>
 
+          <!-- What a screen reader hears when a score arrives. Kept to one
+               short sentence and placed here rather than putting aria-live
+               on the whole result card: that would announce the gauge,
+               every bar and the entire annotated posting, which is worse
+               than announcing nothing. Visually hidden, not display:none —
+               a hidden element is not announced at all. -->
+          <p id="score-announcement" class="visually-hidden" role="status" aria-live="polite"></p>
+
           <div class="controls">
-            <button id="score-button" type="button" class="btn btn-primary">
+            <button id="score-button" type="button" class="btn btn-primary" aria-describedby="input-hint">
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.7" y2="16.7"/></svg>
               Score this posting
             </button>
             <button id="clear-button" type="button" class="btn btn-ghost">Clear</button>
           </div>
+
+          <!-- Why the button is disabled. aria-describedby ties it to the
+               button, so a screen reader reads the reason along with it
+               rather than leaving "dimmed button, no explanation". -->
+          <p id="input-hint" class="input-hint"></p>
 
           <!-- Three examples rather than one, so the range of scores is
                visible without anyone having to paste their own posting.
@@ -183,7 +214,7 @@
           </p>
         </section>
 
-    <section id="results" class="card card-result" hidden aria-live="polite">
+    <section id="results" class="card card-result" hidden>
 
           <!-- The headline number stays in normal ink. Colour lives on the meter,
                and the badge pairs that colour with an icon and words, so meaning
@@ -328,6 +359,69 @@
         <button class="linklike" data-goto="about" type="button">Read the limits</button>
         before acting on a score.
       </p>
+    </section>
+
+    <!-- ============================ COMPARE ============================ -->
+    <section class="panel-view" id="panel-compare" role="tabpanel" aria-labelledby="tab-compare" tabindex="-1" hidden>
+      <div class="view-head">
+        <h1>Compare two postings</h1>
+        <p class="tagline">
+          Paste two and see which reads more like a ghost posting, and
+          which signals actually separate them. Useful when deciding where
+          to spend an application.
+        </p>
+      </div>
+
+      <div class="compare-grid">
+        <section class="card compare-side">
+          <div class="card-head">
+            <label for="compare-a" class="field-label">Posting A</label>
+            <span id="compare-a-words" class="word-count">0 words</span>
+          </div>
+          <textarea id="compare-a" rows="9" spellcheck="false"
+            placeholder="Paste the first posting here"></textarea>
+          <div id="compare-a-result" class="compare-result" hidden></div>
+        </section>
+
+        <section class="card compare-side">
+          <div class="card-head">
+            <label for="compare-b" class="field-label">Posting B</label>
+            <span id="compare-b-words" class="word-count">0 words</span>
+          </div>
+          <textarea id="compare-b" rows="9" spellcheck="false"
+            placeholder="Paste the second posting here"></textarea>
+          <div id="compare-b-result" class="compare-result" hidden></div>
+        </section>
+      </div>
+
+      <div class="controls compare-controls">
+        <button id="compare-button" type="button" class="btn btn-primary" aria-describedby="compare-hint">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 7h12M8 7 11 4M8 7l3 3"/><path d="M16 17H4m12 0-3-3m3 3-3 3"/></svg>
+          Compare
+        </button>
+        <button id="compare-example" type="button" class="btn btn-ghost">Fill with examples</button>
+        <button id="compare-clear" type="button" class="btn btn-ghost">Clear both</button>
+      </div>
+      <p id="compare-hint" class="input-hint"></p>
+
+      <p id="compare-announcement" class="visually-hidden" role="status" aria-live="polite"></p>
+
+      <section id="compare-verdict" class="card card-result" hidden>
+        <h2 class="card-title" id="compare-headline"></h2>
+        <p class="hint" id="compare-summary"></p>
+
+        <h3>Where they differ most</h3>
+        <p class="hint">
+          The signals with the biggest gap between the two. A bar to the
+          right means that signal pushed <strong>A</strong> higher; to the
+          left means it pushed <strong>B</strong> higher.
+        </p>
+        <p class="legend">
+          <span class="legend-item"><span class="swatch swatch-lower"></span>Worse for B</span>
+          <span class="legend-item"><span class="swatch swatch-raise"></span>Worse for A</span>
+        </p>
+        <ul id="compare-diff" class="contributions"></ul>
+      </section>
     </section>
 
     <!-- ============================= MODEL ============================= -->
@@ -536,6 +630,28 @@
       </section>
 
       <section class="card">
+        <h2 class="card-title">About the author</h2>
+        <p class="body-text">
+          I&rsquo;m Shourya, a first-year computer science student. I built
+          HireProof after noticing how many postings stay open for months
+          without anyone seeming to get hired, and wanting to find out
+          whether that shows up in how they are written.
+        </p>
+        <p class="body-text">
+          The interesting part turned out not to be the model but the
+          honesty problem around it: nobody can know a posting is a ghost
+          job from its text, so most of the work went into making the tool
+          say clearly what it does and does not know.
+        </p>
+        <p class="author-links">
+          <a class="btn btn-ghost btn-inline" href="https://github.com/shouryabiswas2009">
+            GitHub
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8"/></svg>
+          </a>
+        </p>
+      </section>
+
+      <section class="card">
         <h2 class="card-title">Built as a learning project</h2>
         <p class="body-text">
           The logistic regression is written from scratch in plain Python
@@ -573,6 +689,15 @@
       A learning project: logistic regression written from scratch &mdash; no
       machine-learning libraries, no external services, no tracking.
     </p>
+    <p class="footer-meta">
+      <!-- bump_version.py rewrites both the attribute and the text on every
+           deploy, so this cannot drift from what is actually published. -->
+      Last updated <time id="last-updated" datetime="2026-09-20">2026-09-20</time>
+      &middot;
+      <a href="https://github.com/shouryabiswas2009/hireproof/commits/main">
+        See what changed
+      </a>
+    </p>
     <p>
       <a id="repo-link" href="#">
         Source code and write-up on GitHub
@@ -583,6 +708,6 @@
 
 </div>
 
-<script type="module" src="app.js?v=18"></script>
+<script type="module" src="app.js?v=20"></script>
 </body>
 </html>

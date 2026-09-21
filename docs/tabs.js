@@ -20,7 +20,7 @@
  *    and pressing Back would leave the site entirely.
  */
 
-const TAB_IDS = ["check", "model", "how", "about"];
+const TAB_IDS = ["check", "compare", "model", "how", "about"];
 
 /**
  * Slide the pill behind the active tab.

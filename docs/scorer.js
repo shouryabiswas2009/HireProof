@@ -17,7 +17,7 @@
  * couple of hundred training examples.
  */
 
-import { extractFeatures } from "./features.js?v=18";
+import { extractFeatures } from "./features.js?v=20";
 
 let MODEL = null;
 
