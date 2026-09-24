@@ -56,6 +56,42 @@ THE MATH, IN ORDER
 import math
 import random
 
+# How many standard deviations a feature is allowed to be from the training
+# mean before we stop believing the number.
+#
+# THIS EXISTS BECAUSE OF A REAL FAILURE, and it is worth understanding.
+#
+# The demo model was trained on hand-written postings of about 60 words, so
+# log_word_count had mean 4.10 and a standard deviation of only 0.11 - every
+# synthetic posting was nearly the same length. A real job advert runs to
+# roughly 900 words, which is log_word_count 6.8, or TWENTY-FIVE standard
+# deviations above the training mean.
+#
+# Standardizing multiplies that gap by the weight, so one feature produced a
+# contribution of -8.0 while every other feature was worth less than 0.7
+# combined. The sigmoid of -8 is 0.0003, so the site confidently reported
+# "0% ghost" for every real posting pasted into it, including the obvious
+# ghost ones. Nothing errored: the arithmetic was correct and the answer was
+# garbage.
+#
+# The underlying mistake is asking a linear model to EXTRAPOLATE. Within the
+# range it has seen, "one more standard deviation means this much more
+# log-odds" is a fitted, testable claim. Twenty-five deviations out it is an
+# unchecked guess, and a model that has never seen a 900-word posting has no
+# basis for one. Clamping says so: past this point we treat the feature as
+# "off the end of the scale we measured" rather than inventing a magnitude.
+#
+# Four is the usual choice, since ~99.99% of a normal distribution sits
+# inside four deviations, so anything further out is genuinely unlike the
+# training data rather than merely at the edge of it.
+#
+# The clamp is applied during TRAINING as well as scoring. If it were only
+# applied at scoring time, the weights would have been learned from numbers
+# the scorer never produces, which is the same train/serve mismatch in a
+# different place. scorer.js reads this value out of model.json rather than
+# hard-coding its own copy.
+CLAMP_SIGMAS = 4.0
+
 
 def sigmoid(z):
     """Squash any number into a probability between 0 and 1.
@@ -126,12 +162,25 @@ def standardize_fit(rows):
     return means, stds
 
 
-def standardize_apply(rows, means, stds):
-    """Rescale rows using means and stds already computed."""
+def standardize_apply(rows, means, stds, clamp=CLAMP_SIGMAS):
+    """Rescale rows using means and stds already computed, then clamp.
+
+    See CLAMP_SIGMAS for why the clamp exists. Pass clamp=None to switch it
+    off, which is only useful for showing the unclamped value in tests.
+    """
     return [
-        [(value - mean) / std for value, mean, std in zip(row, means, stds)]
+        [standardize_value(value, mean, std, clamp)
+         for value, mean, std in zip(row, means, stds)]
         for row in rows
     ]
+
+
+def standardize_value(value, mean, std, clamp=CLAMP_SIGMAS):
+    """Standardize one number. Mirrored exactly by scorer.js."""
+    z = (value - mean) / std
+    if clamp is None:
+        return z
+    return max(-clamp, min(clamp, z))
 
 
 def train(rows, labels, learning_rate=0.1, epochs=2000, l2=1.0, verbose=False):

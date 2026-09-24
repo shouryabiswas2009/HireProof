@@ -201,6 +201,48 @@ class StandardizeTests(unittest.TestCase):
         spread = math.sqrt(sum(v * v for v in scaled) / len(scaled))
         self.assertAlmostEqual(spread, 1.0)
 
+    def test_far_out_values_are_clamped(self):
+        # mean 4, std sqrt(8/3) = 1.633. A value of 100 is 58.8 standard
+        # deviations out, which the model has no fitted opinion about.
+        means, stds = logreg.standardize_fit([[2.0], [4.0], [6.0]])
+        self.assertEqual(
+            logreg.standardize_apply([[100.0]], means, stds)[0][0],
+            logreg.CLAMP_SIGMAS,
+        )
+        self.assertEqual(
+            logreg.standardize_apply([[-100.0]], means, stds)[0][0],
+            -logreg.CLAMP_SIGMAS,
+        )
+
+    def test_values_inside_the_range_are_untouched(self):
+        # The clamp must not disturb ordinary values, or every weight learned
+        # before it existed would shift meaning.
+        means, stds = logreg.standardize_fit([[2.0], [4.0], [6.0]])
+        expected = 2.0 / math.sqrt(8 / 3)
+        self.assertAlmostEqual(
+            logreg.standardize_apply([[6.0]], means, stds)[0][0],
+            expected,
+            places=12,
+        )
+        self.assertLess(expected, logreg.CLAMP_SIGMAS)
+
+    def test_clamp_stops_one_feature_swamping_the_others(self):
+        """The demo-model bug, reduced to its essentials.
+
+        Feature 0 has a tiny spread in training, so an unseen value lands
+        dozens of standard deviations out. Unclamped, its contribution alone
+        drives the sigmoid to a hard 0 and the other ten features cannot be
+        seen in the answer at all. The score stops being about the posting.
+        """
+        means, stds = logreg.standardize_fit([[4.0], [4.1], [4.2]])
+        weights, bias = [-0.33], 0.0
+
+        unclamped = logreg.standardize_apply([[6.8]], means, stds, clamp=None)[0]
+        clamped = logreg.standardize_apply([[6.8]], means, stds)[0]
+
+        self.assertLess(logreg.predict_probability(unclamped, weights, bias), 0.005)
+        self.assertGreater(logreg.predict_probability(clamped, weights, bias), 0.2)
+
     def test_constant_column_does_not_divide_by_zero(self):
         rows = [[5.0, 1.0], [5.0, 2.0], [5.0, 3.0]]
         means, stds = logreg.standardize_fit(rows)

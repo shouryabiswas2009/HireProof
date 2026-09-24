@@ -970,6 +970,22 @@ textarea:focus {
 .band-title { font-weight: 650; font-size: 1.05rem; letter-spacing: -0.015em; }
 .verdict-blurb { margin: 0 auto; max-width: 50ch; color: var(--ink-soft); font-size: 0.91rem; }
 
+/* Sits directly under the score when a signal fell outside the training
+   range, so the caveat is impossible to read the number without. Warn
+   colours rather than error: the score is untrustworthy, not broken. */
+.ood-note {
+  margin: 16px auto 0;
+  max-width: 62ch;
+  padding: 11px 15px;
+  border-radius: var(--radius-md);
+  background: var(--warn-bg);
+  border: 1px solid var(--warn-line);
+  color: var(--warn-ink);
+  font-size: 0.85rem;
+  line-height: 1.55;
+  text-align: left;
+}
+
 .divider { height: 1px; background: var(--line); margin: 28px 0 22px; }
 
 /* ------------------------------------------- Diverging contribution chart */
@@ -1305,6 +1321,14 @@ textarea:focus {
   color: var(--ink);
 }
 .compare-band { font-size: 0.86rem; color: var(--ink-soft); }
+.compare-ood {
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--warn-bg);
+  border: 1px solid var(--warn-line);
+  color: var(--warn-ink);
+}
 
 /* --------------------------------------------- No-JavaScript fallback */
 

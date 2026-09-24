@@ -17,7 +17,7 @@
  * couple of hundred training examples.
  */
 
-import { extractFeatures } from "./features.js?v=21";
+import { extractFeatures } from "./features.js?v=22";
 
 let MODEL = null;
 
@@ -64,15 +64,32 @@ function score(text) {
 
   const rawFeatures = extractFeatures(text);
   const contributions = [];
+  const clampedFeatures = [];
   let z = MODEL.bias;
+  // Read the clamp out of the model rather than hard-coding it here, so
+  // this file cannot drift away from what training used. An older model.json
+  // without the field gets the default, matching logreg.CLAMP_SIGMAS.
+  const clamp =
+    typeof MODEL.standardize_clamp === "number" ? MODEL.standardize_clamp : 4.0;
 
   MODEL.feature_names.forEach((name, index) => {
     // Standardize exactly as training did, using the means and standard
     // deviations saved alongside the weights. Skipping this step would feed
     // the model numbers on a completely different scale, and the output
     // would be confidently wrong rather than obviously broken.
-    const standardized =
+    const rawStandardized =
       (rawFeatures[name] - MODEL.means[index]) / MODEL.stds[index];
+    /*
+     * Then clamp, for the reason set out at length in logreg.CLAMP_SIGMAS.
+     * Short version: a feature this far outside the training range is a
+     * question the model has no fitted answer to, and left unclamped a
+     * single one of them can swamp every other signal and pin the score at
+     * 0% or 100%. That is exactly what happened here, so the clamp stays,
+     * and a clamped feature is reported rather than quietly swallowed.
+     */
+    const standardized = Math.max(-clamp, Math.min(clamp, rawStandardized));
+    const wasClamped = standardized !== rawStandardized;
+    if (wasClamped) clampedFeatures.push(name);
     // This feature's push on the final answer. Positive means "toward
     // ghost". Because the features were standardized, these numbers are
     // directly comparable to one another.
@@ -94,6 +111,7 @@ function score(text) {
       neutralLabel: MODEL.feature_labels[name] || name,
       rawValue: rawFeatures[name],
       contribution,
+      clamped: wasClamped,
     });
   });
 
@@ -140,7 +158,21 @@ function score(text) {
 
   contributions.sort((a, b) => Math.abs(b.contribution) - Math.abs(a.contribution));
 
-  return { probability, z, contributions, rawFeatures };
+  /*
+   * clampedFeatures is not just diagnostics: it is the honest answer to
+   * "should the visitor trust this number at all?". If a feature had to be
+   * clamped, this posting is unlike anything in the training data on that
+   * signal, and the score is an extrapolation rather than a reading. The UI
+   * says so instead of presenting a confident percentage.
+   */
+  return {
+    probability,
+    z,
+    contributions,
+    rawFeatures,
+    clampedFeatures,
+    outOfDistribution: clampedFeatures.length > 0,
+  };
 }
 
 /**

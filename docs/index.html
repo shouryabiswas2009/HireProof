@@ -29,7 +29,7 @@
      page. BUMP THIS NUMBER whenever index.html, style.css or app.js change
      shape. (The proper fix is content-hashed filenames from a build step;
      this project has no build step on purpose, so the number is manual.) -->
-<link rel="stylesheet" href="style.css?v=21">
+<link rel="stylesheet" href="style.css?v=22">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>&#128123;</text></svg>">
 </head>
 <body>
@@ -92,7 +92,7 @@
           <li><strong>Precision</strong> &mdash; 100% of postings called ghost really were</li>
           <li><strong>Recall</strong> &mdash; 100% of ghost postings were caught</li>
           <li><strong>Signals</strong> &mdash; 11, weighted and summed</li>
-          <li><strong>Last trained</strong> &mdash; 2026-09-20</li>
+          <li><strong>Last trained</strong> &mdash; 2026-09-24</li>
         </ul>
         <!-- MODEL-SUMMARY:END -->
     <p>
@@ -260,6 +260,11 @@
             </p>
             <p id="verdict-blurb" class="verdict-blurb"></p>
           </div>
+
+          <!-- Shown only when a signal fell outside the range the model was
+               trained on, which makes the score above an extrapolation
+               rather than a reading. app.js fills and unhides it. -->
+          <p id="ood-note" class="ood-note" hidden></p>
 
           <!-- The model's record in one line, sitting with the score
                rather than on another tab: someone reading a result should
@@ -700,7 +705,7 @@
     <p class="footer-meta">
       <!-- bump_version.py rewrites both the attribute and the text on every
            deploy, so this cannot drift from what is actually published. -->
-      Last updated <time id="last-updated" datetime="2026-09-20">2026-09-20</time>
+      Last updated <time id="last-updated" datetime="2026-09-24">2026-09-24</time>
       &middot;
       <a href="https://github.com/shouryabiswas2009/hireproof/commits/main">
         See what changed
@@ -716,6 +721,6 @@
 
 </div>
 
-<script type="module" src="app.js?v=21"></script>
+<script type="module" src="app.js?v=22"></script>
 </body>
 </html>

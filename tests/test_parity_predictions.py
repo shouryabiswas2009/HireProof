@@ -51,6 +51,24 @@ SAMPLE_TEXTS = [
     # Deliberately awkward: punctuation, accents, odd spacing, line breaks.
     "Café Manager\r\n\r\n  Salary: $52,000–58,000.   You'll report to "
     "the owner, Renée.\n\nDay-to-day you will open the café at 6am.",
+
+    # REAL-WORLD LENGTH, and the reason this entry exists: everything above
+    # is 30-50 words, the length of the synthetic training postings. An
+    # actual job advert is closer to 900, which put log_word_count about 25
+    # standard deviations outside the demo model's training range and past
+    # the clamp in logreg.CLAMP_SIGMAS. Without a sample long enough to
+    # trigger the clamp, the two implementations could disagree about it and
+    # every test here would still pass.
+    (
+        "Software Developer Co-op. About the company. We are a growing team "
+        "of engineers building data infrastructure for the automotive "
+        "industry, and we are looking for a student to join us for a four "
+        "month term. You will report to the engineering manager. "
+        "Day-to-day you will own a service, ship to production, write tests "
+        "and review pull requests alongside the rest of the team. "
+    )
+    * 45
+    + "Applications close 30 November. Email careers@example.com.",
 ]
 
 
@@ -107,14 +125,59 @@ class PredictionParityTests(unittest.TestCase):
         for text, js in zip(SAMPLE_TEXTS, self.js_results):
             raw = features.extract_features(text)
             for index, name in enumerate(self.model["feature_names"]):
-                standardized = (
-                    raw[name] - self.model["means"][index]
-                ) / self.model["stds"][index]
+                # Call the real function rather than repeating the formula
+                # here. A copy of it in the test would have gone on passing
+                # when the clamp was added to only one of the two
+                # implementations, which is the exact bug this file exists
+                # to catch.
+                standardized = logreg.standardize_value(
+                    raw[name],
+                    self.model["means"][index],
+                    self.model["stds"][index],
+                )
                 expected = self.model["weights"][index] * standardized
                 with self.subTest(text=text[:30], feature=name):
                     self.assertAlmostEqual(
                         expected, js["contributions"][name], places=9
                     )
+
+    def test_at_least_one_sample_actually_triggers_the_clamp(self):
+        """Guards the guard.
+
+        test_probabilities_match only proves the clamp is implemented
+        identically on both sides if some sample reaches it. If the long
+        posting above were ever shortened, that test would quietly stop
+        checking the clamp and still pass.
+        """
+        clamp = self.model.get("standardize_clamp", logreg.CLAMP_SIGMAS)
+        triggered = False
+        for text in SAMPLE_TEXTS:
+            raw = features.extract_features(text)
+            for index, name in enumerate(self.model["feature_names"]):
+                unclamped = (
+                    raw[name] - self.model["means"][index]
+                ) / self.model["stds"][index]
+                if abs(unclamped) > clamp:
+                    triggered = True
+        self.assertTrue(
+            triggered,
+            "no sample posting is far enough outside the training range to "
+            "reach the clamp, so its parity is untested",
+        )
+
+    def test_a_normal_length_posting_does_not_saturate(self):
+        """The bug, as a test.
+
+        A real ~900-word posting scored 0.0003 on the demo model because
+        log_word_count was 25 standard deviations out and contributed -8 all
+        by itself. The score was not a judgement about the posting, it was
+        one feature running away. Any probability that extreme from ordinary
+        input means the clamp has stopped working.
+        """
+        long_posting = SAMPLE_TEXTS[-1]
+        probability = self.python_probability(long_posting)
+        self.assertGreater(probability, 0.01, "score saturated toward 0")
+        self.assertLess(probability, 0.99, "score saturated toward 1")
 
     def test_contributions_and_bias_sum_to_z(self):
         # The claim the website makes to visitors: these factors add up to

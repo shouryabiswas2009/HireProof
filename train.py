@@ -390,6 +390,10 @@ def main():
         # did, so these travel with the weights.
         "means": means,
         "stds": stds,
+        # And so does the clamp, rather than scorer.js keeping a second copy
+        # of the number that could drift away from this one. See
+        # logreg.CLAMP_SIGMAS for what it is guarding against.
+        "standardize_clamp": logreg.CLAMP_SIGMAS,
         "metrics": {
             # The fold count travels with the numbers so the site can say
             # "5-fold" honestly instead of assuming it.

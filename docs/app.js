@@ -4,11 +4,11 @@
  * only moves values onto the screen.
  */
 
-import { loadPhrases } from "./features.js?v=21";
-import { loadModel, score, band } from "./scorer.js?v=21";
-import { annotate } from "./highlight.js?v=21";
-import { setUpTabs } from "./tabs.js?v=21";
-import { checkInput, MIN_WORDS } from "./validate.js?v=21";
+import { loadPhrases } from "./features.js?v=22";
+import { loadModel, score, band } from "./scorer.js?v=22";
+import { annotate } from "./highlight.js?v=22";
+import { setUpTabs } from "./tabs.js?v=22";
+import { checkInput, MIN_WORDS } from "./validate.js?v=22";
 
 // Change this if you fork the project.
 const REPO_URL = "https://github.com/shouryabiswas2009/hireproof";
@@ -248,6 +248,7 @@ const elements = {
   annotatedText: document.getElementById("annotated-text"),
   missingWrap: document.getElementById("missing-signals-wrap"),
   missingChips: document.getElementById("missing-signals"),
+  oodNote: document.getElementById("ood-note"),
 };
 
 /** Show the honest facts about which model is loaded. */
@@ -566,6 +567,47 @@ function animateScore(target) {
   animateScore.frame = requestAnimationFrame(step);
 }
 
+/*
+ * Warn when the posting is outside the range the model was trained on.
+ *
+ * This is here because of the bug it catches. The demo model learned from
+ * hand-written postings of about 60 words; a real job advert runs to ~900,
+ * which is 25 standard deviations off that average. The score for every
+ * real posting collapsed to "0% ghost" and the page showed that number with
+ * a full breakdown and no hint anything was wrong.
+ *
+ * scorer.js now clamps such a feature, which stops it swamping the total,
+ * but clamping is not a fix for the underlying situation: the model has
+ * never seen a posting like this one and has no fitted answer for it. The
+ * only honest thing to do is say so next to the number, rather than let a
+ * confident percentage imply a measurement that was not made.
+ */
+function renderOutOfDistribution(result) {
+  const note = elements.oodNote;
+  if (!note) return;
+
+  if (!result.outOfDistribution) {
+    note.hidden = true;
+    note.textContent = "";
+    return;
+  }
+
+  const names = result.contributions
+    .filter((item) => item.clamped)
+    .map((item) => item.neutralLabel.toLowerCase());
+  const list =
+    names.length === 1
+      ? names[0]
+      : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+
+  note.textContent =
+    `Treat this score with extra caution: ${list} ` +
+    `${names.length === 1 ? "is" : "are"} outside the range of the postings ` +
+    `this model was trained on, so the number is an extrapolation rather ` +
+    `than a reading. Retraining on postings more like this one is the fix.`;
+  note.hidden = false;
+}
+
 function render(result) {
   const percent = Math.round(result.probability * 100);
   const verdict = band(result.probability);
@@ -587,6 +629,8 @@ function render(result) {
   elements.bandIcon.innerHTML = BAND_ICONS[verdict.key];
   elements.verdictTitle.textContent = verdict.title;
   elements.verdictBlurb.textContent = verdict.blurb;
+
+  renderOutOfDistribution(result);
 
   const meaningful = result.contributions.filter(
     (item) => Math.abs(item.contribution) > MEANINGFUL
@@ -935,6 +979,17 @@ function renderCompareSide(container, result, letter) {
         : "reads genuine";
 
   container.append(value, label);
+
+  // Compare is a side-by-side of two scores, so an untrustworthy one matters
+  // twice over: the DIFFERENCE between an extrapolated score and a real one
+  // says nothing at all. Flag it here too rather than only on the main tab.
+  if (result.outOfDistribution) {
+    const flag = document.createElement("span");
+    flag.className = "compare-ood";
+    flag.textContent = "outside training range";
+    container.append(flag);
+  }
+
   container.hidden = false;
   container.setAttribute(
     "aria-label",

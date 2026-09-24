@@ -17,7 +17,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import {
   initPhrases, normalize, extractFeatures, maxYearsRequired, FEATURE_NAMES,
-} from "../../docs/features.js?v=21";
+} from "../../docs/features.js?v=22";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(here, "..", "..");

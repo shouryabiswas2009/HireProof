@@ -98,6 +98,39 @@ It has a second benefit that this project depends on: after standardizing,
 the weights are **directly comparable**, so a bigger weight really does mean
 a more influential feature. That is what makes the breakdown honest.
 
+The standardized value is then **clamped to &plusmn;4** (`logreg.CLAMP_SIGMAS`),
+which is worth its own explanation because a real bug is buried in it.
+
+The demo model was trained on hand-written postings of about 60 words, so
+`log_word_count` had mean 4.10 and a standard deviation of only **0.11** &mdash;
+every synthetic posting was nearly the same length. A real job advert runs
+to roughly 900 words, which is `log_word_count` 6.8, or **25 standard
+deviations** above the training mean. Multiplied by its weight, that one
+feature contributed &minus;8.0 while all ten others together were worth less
+than 0.7. Since `sigmoid(-8) = 0.0003`, the site reported **&ldquo;0% ghost&rdquo;
+for every real posting pasted into it**, obvious ghost postings included,
+with a full confident breakdown underneath and nothing indicating a problem.
+The arithmetic was correct throughout; the answer was garbage.
+
+The underlying error is asking a linear model to **extrapolate**. Inside the
+range it has seen, &ldquo;one more standard deviation means this much more
+log-odds&rdquo; is a fitted, testable claim. Twenty-five deviations out it is an
+unchecked guess. Clamping says so explicitly: beyond this point the feature
+is treated as &ldquo;off the end of the scale we measured&rdquo; rather than being
+assigned a magnitude nothing supports.
+
+Two consequences the code takes seriously:
+
+- The clamp is applied **during training too**, not only at scoring time.
+  Clamping on just one side would be the same train/serve mismatch in a
+  different place. `scorer.js` reads the value out of `model.json` rather
+  than keeping its own copy that could drift.
+- A clamped feature is **reported, not swallowed**. `score()` returns
+  `outOfDistribution`, and the page shows a caution next to the number,
+  because a clamped score is an extrapolation rather than a reading. Clamping
+  stops one feature swamping the total; it does not make the model
+  knowledgeable about postings it never saw.
+
 ### Step 4: Weighted sum, then squash
 
 ```
