@@ -1530,3 +1530,17 @@ html[data-motion="off"] .gradient-text { background-position: 0% 50% !important;
   background: var(--status-good);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--status-good) 22%, transparent);
 }
+
+/* ------------------------------------------- "Where the data disagreed" */
+
+.surprises { list-style: none; margin: 0 0 14px; padding: 0; display: grid; gap: 8px; }
+.surprise {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--status-warn);
+  border-radius: var(--radius-md);
+  background: var(--line-soft);
+}
+.surprise-label { font-weight: 600; font-size: 0.9rem; }
+.surprise-detail { color: var(--ink-soft); font-size: 0.84rem; }

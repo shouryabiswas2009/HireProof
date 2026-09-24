@@ -78,6 +78,28 @@ class LabelerAppTests(unittest.TestCase):
             dataset.load_postings()[0]["source_url"], "https://example.com/job/7"
         )
 
+    def test_posting_age_is_stored(self):
+        self.client.post(
+            "/add",
+            data={"text": SAMPLE, "label": "ghost", "confidence": "sure",
+                  "posting_age": "6m_plus"},
+        )
+        self.assertEqual(dataset.load_postings()[0]["posting_age"], "6m_plus")
+
+    def test_posting_age_defaults_to_unknown_rather_than_a_guess(self):
+        # Submitting the form without touching the age buttons must record
+        # "I don't know", never a made-up bucket.
+        self.client.post(
+            "/add",
+            data={"text": SAMPLE, "label": "ghost", "confidence": "sure"},
+        )
+        self.assertEqual(dataset.load_postings()[0]["posting_age"], "")
+
+    def test_add_page_offers_every_posting_age(self):
+        page = self.client.get("/").get_data(as_text=True)
+        for key in dataset.POSTING_AGES:
+            self.assertIn(f'name="posting_age" value="{key}"', page)
+
     def test_saving_reports_what_the_model_would_have_said(self):
         # The comparison is feedback only, and must appear AFTER saving so it
         # cannot anchor the label. Here we just check it is reported at all.

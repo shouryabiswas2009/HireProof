@@ -438,6 +438,10 @@ def main():
         "feature_names": features.FEATURE_NAMES,
         "feature_labels": features.FEATURE_LABELS,
         "feature_state_labels": features.FEATURE_STATE_LABELS,
+        # The prior direction for each feature, so the site can show where
+        # the fitted weights disagree with the reasoning that justified
+        # building them. See features.FEATURE_HYPOTHESIS.
+        "feature_hypothesis": features.FEATURE_HYPOTHESIS,
         "weights": weights,
         "bias": bias,
         # The site must standardize incoming postings exactly as training

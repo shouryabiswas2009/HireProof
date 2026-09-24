@@ -39,6 +39,23 @@ record what evidence the label is based on. Saved to
 `data/labeled_postings.csv`, which is gitignored because job postings are
 the companies' copyrighted text.
 
+**Set "How long has it been up?"** (Alt+A cycles it). This is the one field
+that cannot be recovered later, because it is not in the text you paste.
+Checked against the first 30 labelled postings, not one of them contained
+any wording about when it was posted &mdash; copying a job description gives
+you the description, while "Reposted 3 weeks ago" lives in the site's header
+furniture that nobody copies.
+
+It is worth the extra click because how long a posting has been open is
+probably the strongest ghost signal there is, and it is the only signal here
+that adds genuinely new information rather than re-reading the same wording.
+Leave it on Unknown rather than guessing: unknown is stored as its own value
+and is never treated as "posted today".
+
+The first 30 postings predate the field, so it stays inert until enough new
+rows carry a real value &mdash; roughly 10 per class before it is worth training
+on.
+
 ### 2. Train the model
 
 ```powershell

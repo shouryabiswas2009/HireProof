@@ -83,6 +83,10 @@ def empty_form():
     return {
         "text": "", "label": "", "confidence": "sure",
         "evidence": [], "notes": "", "source_url": "",
+        # Not defaulted to a real bucket: guessing "under a month" for every
+        # posting you forget to set would be inventing data, and this field
+        # only earns its keep if it is accurate.
+        "posting_age": "",
     }
 
 
@@ -116,6 +120,7 @@ def render_form(values, error=None):
         target=TARGET_POSTINGS,
         warning=balance_warning(stats),
         evidence_options=dataset.EVIDENCE_OPTIONS,
+        posting_age_labels=dataset.POSTING_AGE_LABELS,
         last_id=postings[-1]["id"] if postings else None,
         error=error,
     )
@@ -135,6 +140,7 @@ def add():
         "evidence": request.form.getlist("evidence"),
         "notes": request.form.get("notes", ""),
         "source_url": request.form.get("source_url", ""),
+        "posting_age": request.form.get("posting_age", ""),
     }
     try:
         dataset.add_posting(
@@ -144,6 +150,7 @@ def add():
             evidence=values["evidence"],
             notes=values["notes"],
             source_url=values["source_url"],
+            posting_age=values["posting_age"],
         )
     except ValueError as problem:
         # Show the form again WITH what you typed, so a mistake doesn't
@@ -174,6 +181,7 @@ def postings():
         postings=all_postings,
         stats=dataset.summarize(all_postings),
         evidence_options=dataset.EVIDENCE_OPTIONS,
+        posting_age_labels=dataset.POSTING_AGE_LABELS,
     )
 
 

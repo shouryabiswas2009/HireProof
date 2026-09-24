@@ -60,11 +60,34 @@ FEATURE_NAMES = [
     "experience_mismatch",
 ]
 
+# FEATURES THAT WERE TRIED AND REMOVED, recorded so the experiment is not
+# quietly repeated:
+#
+#   urgency_without_date   "apply now" / "immediate start" with no date
+#   boilerplate_density    stock EEO, benefits and culture paragraphs
+#   numeric_density        concrete figures per 100 words
+#
+# All three are defensible on paper, and two of them separate the classes
+# when you look at raw averages. Added to the model they made it WORSE:
+# cross-validated accuracy fell from 0.658 to 0.617 across 20 seeds, and
+# leave-one-out put urgency_without_date and boilerplate_density among the
+# features the model would rather not have.
+#
+# The reason is arithmetic, not bad ideas. Fourteen weights fitted on 30
+# postings is about two examples per parameter, so each extra feature buys
+# a little signal and a lot of freedom to fit noise. Under those conditions
+# the fix for accuracy is more postings, never more features.
+#
+# They are worth trying again once the dataset is several times bigger.
+
 # Plain-English names for the full feature table on the website.
 FEATURE_LABELS = {
     "has_salary_range": "Pay figure given",
     "vague_pay_phrase": "Vague pay wording ('competitive salary')",
-    "log_word_count": "Length of the posting",
+    # "Length" on its own reads as how long the posting has been UP, which
+    # is a different (and better) ghost signal this feature does not
+    # measure. Say "word count" so the two are never confused.
+    "log_word_count": "Word count of the posting",
     "buzzword_density": "Buzzwords and filler phrases",
     "concrete_duty_density": "Specific, concrete duties",
     "names_reporting_line": "Names a team or manager",
@@ -73,6 +96,37 @@ FEATURE_LABELS = {
     "multiple_openings_language": "Vague 'multiple openings' wording",
     "has_deadline_or_start_date": "Deadline or start date given",
     "experience_mismatch": "Junior title, senior experience demanded",
+}
+
+# Which way each feature was EXPECTED to point, before any training.
+#
+# These are the guesses that justified building each feature in the first
+# place. Writing them down turns "the model learned something odd" from a
+# vague feeling into a checkable claim: train.py compares these against the
+# weights it actually fits, and the website shows the visitor every place
+# the data disagreed with the hypothesis.
+#
+# Recording them matters because it is the only defence against quietly
+# rewriting the hypothesis to match whatever came out. A feature that
+# trained backwards is a real finding - it means either the belief was
+# wrong, the labels are noisy, or the feature is measuring something other
+# than what its name says. All three are worth knowing; none of them are
+# worth hiding.
+#
+# "unsure" means no honest prior existed. Posting length is the only one:
+# a ghost posting can be a two-line placeholder or six screens of padding.
+FEATURE_HYPOTHESIS = {
+    "has_salary_range": "legit",
+    "vague_pay_phrase": "ghost",
+    "log_word_count": "unsure",
+    "buzzword_density": "ghost",
+    "concrete_duty_density": "legit",
+    "names_reporting_line": "legit",
+    "has_contact_email": "legit",
+    "evergreen_language": "ghost",
+    "multiple_openings_language": "ghost",
+    "has_deadline_or_start_date": "legit",
+    "experience_mismatch": "ghost",
 }
 
 # Labels for the score breakdown, which must describe what this posting
@@ -97,8 +151,8 @@ FEATURE_STATE_LABELS = {
         "off": "No vague pay wording",
     },
     "log_word_count": {
-        "on": "Longer than the average posting",
-        "off": "Shorter than the average posting",
+        "on": "More words than the average posting",
+        "off": "Fewer words than the average posting",
     },
     "buzzword_density": {
         "on": "More buzzwords than average",
@@ -175,6 +229,11 @@ def extract_features(text):
 
     buzzword_hits = count_phrases(normalized, PHRASES["buzzwords"])
     concrete_hits = count_phrases(normalized, PHRASES["concrete_duty"])
+    # NOTE: "immediate start" and "as soon as possible" used to live in the
+    # deadline_or_start list. They were removed, because urgency with no
+    # date attached is closer to the opposite of a real deadline. See the
+    # note in shared/phrases.json.
+    has_date = count_phrases(normalized, PHRASES["deadline_or_start"]) > 0
 
     # A junior posting demanding years of experience is a well-known sign of
     # a posting nobody can actually fill, which is one way ghost postings
@@ -219,7 +278,7 @@ def extract_features(text):
         # --- Signs of an active, time-bound process ---
         # A real search has a timeline; a posting left open indefinitely
         # usually doesn't mention one.
-        "has_deadline_or_start_date": 1.0 if count_phrases(normalized, PHRASES["deadline_or_start"]) else 0.0,
+        "has_deadline_or_start_date": 1.0 if has_date else 0.0,
         "experience_mismatch": 1.0 if (is_entry_level and demands_experience) else 0.0,
     }
 

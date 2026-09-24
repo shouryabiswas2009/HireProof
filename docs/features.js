@@ -136,6 +136,9 @@ function extractFeatures(text) {
 
   const buzzwordHits = countPhrases(normalized, PHRASES.buzzwords);
   const concreteHits = countPhrases(normalized, PHRASES.concrete_duty);
+  // NOTE: "immediate start" and "as soon as possible" were removed from
+  // the deadline_or_start list; see shared/phrases.json for why.
+  const hasDate = countPhrases(normalized, PHRASES.deadline_or_start) > 0;
 
   const isEntryLevel = countPhrases(normalized, PHRASES.entry_level) > 0;
   const demandsExperience =
@@ -151,7 +154,7 @@ function extractFeatures(text) {
     has_contact_email: PATTERNS.contact_email.single.test(normalized) ? 1.0 : 0.0,
     evergreen_language: countPhrases(normalized, PHRASES.evergreen) ? 1.0 : 0.0,
     multiple_openings_language: countPhrases(normalized, PHRASES.multiple_openings) ? 1.0 : 0.0,
-    has_deadline_or_start_date: countPhrases(normalized, PHRASES.deadline_or_start) ? 1.0 : 0.0,
+    has_deadline_or_start_date: hasDate ? 1.0 : 0.0,
     experience_mismatch: isEntryLevel && demandsExperience ? 1.0 : 0.0,
   };
 }

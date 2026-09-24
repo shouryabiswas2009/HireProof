@@ -21,7 +21,7 @@
   "feature_labels": {
     "has_salary_range": "Pay figure given",
     "vague_pay_phrase": "Vague pay wording ('competitive salary')",
-    "log_word_count": "Length of the posting",
+    "log_word_count": "Word count of the posting",
     "buzzword_density": "Buzzwords and filler phrases",
     "concrete_duty_density": "Specific, concrete duties",
     "names_reporting_line": "Names a team or manager",
@@ -41,8 +41,8 @@
       "off": "No vague pay wording"
     },
     "log_word_count": {
-      "on": "Longer than the average posting",
-      "off": "Shorter than the average posting"
+      "on": "More words than the average posting",
+      "off": "Fewer words than the average posting"
     },
     "buzzword_density": {
       "on": "More buzzwords than average",
@@ -76,6 +76,19 @@
       "on": "Junior title but senior experience demanded",
       "off": "No junior/senior experience mismatch"
     }
+  },
+  "feature_hypothesis": {
+    "has_salary_range": "legit",
+    "vague_pay_phrase": "ghost",
+    "log_word_count": "unsure",
+    "buzzword_density": "ghost",
+    "concrete_duty_density": "legit",
+    "names_reporting_line": "legit",
+    "has_contact_email": "legit",
+    "evergreen_language": "ghost",
+    "multiple_openings_language": "ghost",
+    "has_deadline_or_start_date": "legit",
+    "experience_mismatch": "ghost"
   },
   "weights": [
     0.12494204524929424,

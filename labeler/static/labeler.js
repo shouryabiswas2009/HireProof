@@ -25,12 +25,12 @@
   }
 
   /**
-   * The wording of a checkbox's label, without its "Alt+N" hint.
+   * The wording of a control's label, without its "Alt+N" hint.
    * Reading the label's textContent directly would include the hint, so the
    * toast would read "+ Alt+6 I judged it from the wording alone".
    */
-  function describeCheckbox(box) {
-    const label = box.closest("label");
+  function describeControl(input) {
+    const label = input.closest("label");
     if (!label) return "";
     const copy = label.cloneNode(true);
     copy.querySelectorAll(".key").forEach((hint) => hint.remove());
@@ -85,6 +85,19 @@
         pick("confidence", "unsure");
         flashFeedback("Unsure");
       }
+    } else if (key === "a") {
+      // Alt+A cycles the posting-age buttons rather than binding five more
+      // keys. There are only five, and unlike the label they are ordered,
+      // so stepping through them reads naturally: unknown, under a month,
+      // 1-3, 3-6, 6+, back to unknown.
+      event.preventDefault();
+      const ages = [...form.querySelectorAll('input[name="posting_age"]')];
+      if (ages.length) {
+        const current = ages.findIndex((input) => input.checked);
+        const next = ages[(current + 1) % ages.length];
+        next.checked = true;
+        flashFeedback(describeControl(next));
+      }
     } else if (key >= "1" && key <= "9") {
       // Alt+1..9 tick the evidence boxes in the order they appear.
       const boxes = form.querySelectorAll('input[name="evidence"]');
@@ -92,7 +105,7 @@
       if (box) {
         event.preventDefault();
         toggleCheckbox(box);
-        flashFeedback((box.checked ? "+ " : "- ") + describeCheckbox(box));
+        flashFeedback((box.checked ? "+ " : "- ") + describeControl(box));
       }
     }
   });

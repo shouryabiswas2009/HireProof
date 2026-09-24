@@ -20,11 +20,40 @@ DEFAULT_PATH = REPO_ROOT / "data" / "labeled_postings.csv"
 # load_postings() fills it in as empty for rows saved before it existed.
 FIELDS = [
     "id", "added_at", "label", "confidence", "evidence",
-    "source_url", "notes", "text",
+    "source_url", "posting_age", "notes", "text",
 ]
 
 LABELS = ("ghost", "legit")
 CONFIDENCES = ("sure", "unsure")
+
+# How long the posting had been up when you saved it.
+#
+# WHY THIS IS A SEPARATE FIELD rather than a feature read out of the text:
+# it is not in the text. Checked against the first 30 labelled postings,
+# NONE of them contained any wording about when they were posted - not
+# "reposted", not "3 weeks ago", nothing. That is not bad luck. Copying a
+# job description gives you the description; the "Reposted 2 weeks ago"
+# line lives in the site's header furniture, which nobody copies.
+#
+# It is worth the extra click because age is probably the strongest ghost
+# signal there is, and it is the one thing the wording genuinely cannot
+# tell you. A posting open for eight months is suspicious no matter how
+# carefully it is written.
+#
+# "" means unknown, and unknown is kept DISTINCT from "fresh" rather than
+# being quietly treated as zero. Every row saved before this field existed
+# is unknown, so conflating the two would invent data.
+POSTING_AGES = ("", "under_1m", "1_3m", "3_6m", "6m_plus")
+
+# What the labeling page shows, and the midpoint in months used later when
+# this becomes a model feature.
+POSTING_AGE_LABELS = {
+    "": ("Unknown / can't tell", None),
+    "under_1m": ("Under a month", 0.5),
+    "1_3m": ("1 to 3 months", 2.0),
+    "3_6m": ("3 to 6 months", 4.5),
+    "6m_plus": ("6 months or more", 9.0),
+}
 
 # Why do you believe this label? Each key is stored in the CSV; the sentence
 # is what the labeling page shows next to the checkbox.
@@ -105,7 +134,8 @@ def save_postings(postings, path=None):
     os.replace(tmp_path, path)
 
 
-def add_posting(text, label, confidence, evidence, notes="", source_url="", path=None):
+def add_posting(text, label, confidence, evidence, notes="", source_url="",
+                posting_age="", path=None):
     """Validate and save one new labeled posting. Returns its ID.
 
     Raises ValueError with a readable message if something is wrong, so the
@@ -121,6 +151,8 @@ def add_posting(text, label, confidence, evidence, notes="", source_url="", path
         raise ValueError("Pick a label: ghost or legit.")
     if confidence not in CONFIDENCES:
         raise ValueError("Pick a confidence: sure or unsure.")
+    if posting_age not in POSTING_AGES:
+        raise ValueError(f"Unknown posting age: {posting_age}")
     for key in evidence:
         if key not in EVIDENCE_OPTIONS:
             raise ValueError(f"Unknown evidence option: {key}")
@@ -141,6 +173,9 @@ def add_posting(text, label, confidence, evidence, notes="", source_url="", path
             # Where you found it. Useful later for checking whether the same
             # role gets reposted, which is real evidence rather than a hunch.
             "source_url": source_url.strip(),
+            # How long it had been up. "" means you could not tell, which is
+            # deliberately not the same as "posted today".
+            "posting_age": posting_age,
             "notes": notes.strip(),
             "text": text,
         }

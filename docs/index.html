@@ -29,7 +29,7 @@
      page. BUMP THIS NUMBER whenever index.html, style.css or app.js change
      shape. (The proper fix is content-hashed filenames from a build step;
      this project has no build step on purpose, so the number is manual.) -->
-<link rel="stylesheet" href="style.css?v=22">
+<link rel="stylesheet" href="style.css?v=24">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>&#128123;</text></svg>">
 </head>
 <body>
@@ -476,6 +476,29 @@
         <ul id="model-weights" class="contributions"></ul>
       </section>
 
+      <!-- Where the fitted weights contradict the reasoning that justified
+           building each feature. Filled from model.json, so it cannot be
+           quietly left stale after a retrain. Hidden when they all agree. -->
+      <section class="card" id="model-surprises-card" hidden>
+        <h2>Where the data disagreed with me</h2>
+        <p class="hint">
+          Each signal was added because of a guess about which way it ought to
+          point. Training ignores those guesses entirely &mdash; it only fits the
+          labelled postings. These are the signals where the answer came back
+          the <strong>opposite</strong> way round.
+        </p>
+        <ul id="model-surprises" class="surprises"></ul>
+        <p class="hint">
+          This is not a bug being confessed to, but it is not a result to lean
+          on either. On a dataset this small the most likely explanation is
+          simply too few examples: a signal present in only three or four
+          postings can train to a confident weight on nothing but coincidence.
+          The other possibilities are worth keeping in mind &mdash; that the guess
+          was wrong, or that the signal measures something other than what its
+          name suggests.
+        </p>
+      </section>
+
       <section class="card card-warn" id="model-warnings-card" hidden>
         <h2 class="warn-title">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><line x1="12" y1="7.5" x2="12" y2="13"/><line x1="12" y1="16.5" x2="12" y2="16.5"/></svg>
@@ -721,6 +744,6 @@
 
 </div>
 
-<script type="module" src="app.js?v=22"></script>
+<script type="module" src="app.js?v=24"></script>
 </body>
 </html>

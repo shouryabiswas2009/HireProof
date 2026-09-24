@@ -48,6 +48,20 @@
     </p>
   </fieldset>
 
+  <fieldset>
+    <legend>How long has it been up? <span class="key">Alt+A</span> cycles</legend>
+    {% for key, pair in posting_age_labels.items() %}
+      <label><input type="radio" name="posting_age" value="{{ key }}"
+        {% if values["posting_age"] == key %}checked{% endif %}> {{ pair[0] }}</label>
+    {% endfor %}
+    <p class="hint">
+      On LinkedIn this is the line above the description ("Reposted 3 weeks ago").
+      It is NOT in the text you paste, which is why it needs its own click &mdash;
+      and it may be the single strongest ghost signal there is. Leave it on
+      Unknown rather than guessing; unknown is stored as its own value, not as zero.
+    </p>
+  </fieldset>
+
   <label for="source_url">Link to the posting (optional)</label>
   <input id="source_url" name="source_url" type="text" value="{{ values['source_url'] }}"
          placeholder="Paste the URL so you can check later whether it gets reposted">

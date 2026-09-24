@@ -23,10 +23,10 @@ class DatasetTests(unittest.TestCase):
         self.path = Path(self._tmp.name) / "labeled.csv"
 
     def add(self, text=SAMPLE, label="legit", confidence="sure", evidence=(),
-            source_url=""):
+            source_url="", posting_age=""):
         return dataset.add_posting(
             text, label, confidence, list(evidence),
-            source_url=source_url, path=self.path,
+            source_url=source_url, posting_age=posting_age, path=self.path,
         )
 
     def test_missing_file_loads_as_empty_list(self):
@@ -68,6 +68,34 @@ class DatasetTests(unittest.TestCase):
         self.add(source_url="https://example.com/jobs/123")
         loaded = dataset.load_postings(self.path)
         self.assertEqual(loaded[0]["source_url"], "https://example.com/jobs/123")
+
+    def test_posting_age_is_saved_and_validated(self):
+        self.add(posting_age="6m_plus")
+        self.assertEqual(dataset.load_postings(self.path)[0]["posting_age"], "6m_plus")
+        with self.assertRaises(ValueError):
+            self.add(text="A different posting. " * 20, posting_age="ages_ago")
+
+    def test_unknown_posting_age_stays_distinct_from_a_real_bucket(self):
+        """Unknown must not quietly become "posted today".
+
+        Every row labelled before this field existed is unknown, and there
+        are 30 of them. If unknown were stored as 0 months, the model would
+        later read 30 invented "freshly posted" examples as fact.
+        """
+        self.add()
+        stored = dataset.load_postings(self.path)[0]["posting_age"]
+        self.assertEqual(stored, "")
+        self.assertIsNone(dataset.POSTING_AGE_LABELS[stored][1])
+
+    def test_old_file_without_posting_age_still_loads(self):
+        legacy = (
+            "id,added_at,label,confidence,evidence,source_url,notes,text\n"
+            "abc123,2026-01-01T00:00:00,ghost,sure,reposted,,,Some posting text\n"
+        )
+        self.path.write_text(legacy, encoding="utf-8")
+        loaded = dataset.load_postings(self.path)
+        self.assertEqual(loaded[0]["posting_age"], "")
+        self.assertEqual(loaded[0]["label"], "ghost")
 
     def test_old_file_without_source_url_still_loads(self):
         # A dataset written before source_url existed must keep working
