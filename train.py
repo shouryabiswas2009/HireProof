@@ -117,6 +117,51 @@ def refuse_if_untrainable(labels):
         sys.exit(1)
 
 
+def refuse_if_worse_than_guessing(cv_accuracy, baseline_accuracy, write_anyway):
+    """Don't overwrite the deployed model with one that loses to guessing.
+
+    refuse_if_untrainable above stops before training, on data that cannot
+    support a model at all. This stops AFTER training, on a model that was
+    fitted successfully and simply is not any good.
+
+    WHY IT IS WORTH A HARD STOP. The first real run of this script produced
+    70% cross-validated accuracy against a 75% baseline, from 20 postings of
+    which only 5 were ghost. It also learned relationships that are backwards
+    from every hypothesis in features.py: naming a manager and giving a
+    deadline both pushed a posting TOWARD ghost. With five examples in the
+    rare class, cross-validation is putting one posting in each test fold,
+    so those weights are noise wearing a lab coat.
+
+    The report said all of this in plain language, and docs/model.json had
+    ALREADY been overwritten by the time anyone read it. One `git push`
+    later, the live site would be scoring visitors' postings with it. A
+    warning that arrives after the damage is not a warning.
+
+    --write-anyway exists because this is a judgement call, not a law of
+    nature, and the author may have a reason. It has to be typed out.
+    """
+    if write_anyway or cv_accuracy > baseline_accuracy:
+        return
+
+    print()
+    print("  NOT WRITING THE MODEL: it does no better than guessing.")
+    print()
+    print(f"  Cross-validated accuracy is {cv_accuracy:.1%}, and always")
+    print(f"  answering with the commonest label scores {baseline_accuracy:.1%}.")
+    print("  A model that cannot beat that has found no usable pattern, and")
+    print("  the weights above are fitting noise rather than ghost postings.")
+    print()
+    print("  Deploying it would be worse than deploying nothing: the site")
+    print("  would show a confident percentage and a per-signal breakdown")
+    print("  built entirely on that noise.")
+    print()
+    print("  The fix is more data, especially in the rarer class.")
+    print("  The existing model has been left untouched.")
+    print()
+    print("  Pass --write-anyway to overwrite it regardless.")
+    sys.exit(1)
+
+
 def collect_warnings(labels, evidence, kind, cv_accuracy=None):
     """Everything about this dataset that should make you distrust the model."""
     warnings = []
@@ -316,6 +361,11 @@ def main():
         action="store_true",
         help="train on the synthetic demo postings instead of your labeled data",
     )
+    parser.add_argument(
+        "--write-anyway",
+        action="store_true",
+        help="write docs/model.json even if the model cannot beat guessing",
+    )
     parser.add_argument("--epochs", type=int, default=3000)
     parser.add_argument("--learning-rate", type=float, default=0.1)
     parser.add_argument(
@@ -371,6 +421,10 @@ def main():
 
     warnings = collect_warnings(labels, evidence, kind, cv["mean"]["accuracy"])
     print_report(kind, labels, cv, baseline_accuracy, weights, means, stds, warnings)
+
+    refuse_if_worse_than_guessing(
+        cv["mean"]["accuracy"], baseline_accuracy, args.write_anyway
+    )
 
     # Write everything the website needs. It contains no posting text, only
     # aggregate numbers, so publishing it does not publish anyone's data.

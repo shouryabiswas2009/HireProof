@@ -100,6 +100,39 @@ class UntrainableGuardTests(unittest.TestCase):
         train.refuse_if_untrainable([1] * 60 + [0] * 55)
 
 
+class BeatsGuessingGuardTests(unittest.TestCase):
+    """A model that loses to guessing must not overwrite the deployed one.
+
+    The case that prompted this: the first run on real data gave 70%
+    cross-validated accuracy against a 75% baseline, from 20 postings with
+    only 5 ghost among them. It also learned relationships that are
+    backwards from the hypotheses in features.py - naming a manager and
+    giving a deadline both pushed toward ghost - which is what fitting five
+    examples looks like. The report said so clearly, but docs/model.json had
+    already been overwritten by then.
+    """
+
+    def assert_refuses(self, cv_accuracy, baseline):
+        with self.assertRaises(SystemExit) as caught:
+            train.refuse_if_worse_than_guessing(cv_accuracy, baseline, False)
+        self.assertEqual(caught.exception.code, 1)
+
+    def test_refuses_when_below_the_baseline(self):
+        self.assert_refuses(0.70, 0.75)
+
+    def test_refuses_when_merely_equal_to_the_baseline(self):
+        # Matching the baseline means the features added nothing at all.
+        self.assert_refuses(0.75, 0.75)
+
+    def test_allows_a_model_that_beats_the_baseline(self):
+        train.refuse_if_worse_than_guessing(0.78, 0.75, False)
+
+    def test_write_anyway_overrides_it(self):
+        # The escape hatch has to work, or the only way past the guard is
+        # editing the source, which is how guards end up deleted.
+        train.refuse_if_worse_than_guessing(0.10, 0.75, True)
+
+
 class DemoDataTests(unittest.TestCase):
     def test_demo_data_loads_and_is_balanced(self):
         texts, labels, evidence, kind = train.load_demo_data()

@@ -50,6 +50,16 @@ simply guessing the commonest answer, what each feature learned, and
 warnings when the dataset is too small, too lopsided, or too circular to
 trust. Writes `docs/model.json`.
 
+It refuses to write in two cases, leaving the deployed model untouched:
+
+- **Before training**, when a class is empty or has fewer than 5 examples.
+  There is nothing to learn from, and the resulting all-zero model would
+  report a meaningless 100%.
+- **After training**, when cross-validated accuracy does not beat the
+  baseline. Such a model has found no usable pattern, and shipping it would
+  put a confident percentage and a per-signal breakdown on the site with
+  nothing but noise underneath. `--write-anyway` overrides this.
+
 To try it before you have labelled anything, use the synthetic demo data:
 
 ```powershell
@@ -94,6 +104,14 @@ hand (`data/demo_postings.json`), because the real labelled dataset is still
 being collected. It scores 100% in cross-validation, which is a warning sign
 rather than an achievement: those examples are far more cleanly separated
 than real postings ever are. Both the training report and the website say so.
+
+The first attempt at training on real labels (20 postings, 5 of them ghost)
+produced 70% cross-validated accuracy against a 75% baseline, and learned
+relationships that are backwards from the hypotheses in `features.py`:
+naming a manager and giving a deadline both pushed a posting *toward* ghost.
+That is what fitting five examples looks like. The guard above refused to
+deploy it, which is the tooling working rather than a setback. The dataset
+needs to grow, especially the ghost side.
 
 
 ## Why this isn't production-ready
