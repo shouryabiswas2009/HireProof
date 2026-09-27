@@ -4,11 +4,11 @@
  * only moves values onto the screen.
  */
 
-import { loadPhrases } from "./features.js?v=36";
-import { loadModel, score, band, sigmoid } from "./scorer.js?v=36";
-import { annotate } from "./highlight.js?v=36";
-import { setUpTabs } from "./tabs.js?v=36";
-import { checkInput, MIN_WORDS } from "./validate.js?v=36";
+import { loadPhrases } from "./features.js?v=41";
+import { loadModel, score, band, sigmoid } from "./scorer.js?v=41";
+import { annotate } from "./highlight.js?v=41";
+import { setUpTabs } from "./tabs.js?v=41";
+import { checkInput, MIN_WORDS } from "./validate.js?v=41";
 
 // Change this if you fork the project.
 const REPO_URL = "https://github.com/shouryabiswas2009/hireproof";
@@ -426,6 +426,9 @@ setUpMotionToggle();
 
 let PHRASE_CONFIG = null;
 let MODEL_READY = false;
+// The loaded model, kept so a result can be drawn against the postings it
+// was measured on. describeModel() is called before anything can score.
+let LOADED_MODEL = null;
 
 const elements = {
   textarea: document.getElementById("posting"),
@@ -942,6 +945,121 @@ function renderSigmoid(model) {
   figure.hidden = false;
 }
 
+/* ================================================ "Where that puts it"
+ *
+ * The score on its own is a number with no scale attached. 84% sounds
+ * high, but high compared to what? This puts the posting in front of you
+ * next to the thirty whose real answer is known, so the reader can see
+ * whether 84% is a crowd of ghost postings or a spot where both kinds
+ * turn up.
+ *
+ * It is the same data as the plot on the model tab, drawn small and with
+ * one extra mark - and it is the honest way to present a score from a
+ * model that is right about seven times in ten: not "this is a ghost
+ * job", but "postings that scored here were mostly ghost jobs".
+ */
+function renderWhereItLands(result, model) {
+  const figure = document.getElementById("lands-figure");
+  const host = document.getElementById("lands-chart");
+  const points = (model && model.out_of_fold) || [];
+  if (!figure || !host || points.length === 0) return;
+
+  const W = 720, H = 132;
+  const PAD = 18;
+  const plotW = W - PAD * 2;
+  const xOf = (p) => PAD + p * plotW;
+  const AXIS = 86;
+  const R = 4.5;
+
+  host.replaceChildren();
+  const root = svgEl("svg", {
+    viewBox: `0 0 ${W} ${H}`, class: "lands-svg", role: "img",
+    "aria-label":
+      `Your posting scored ${Math.round(result.probability * 100)} percent, ` +
+      `shown against the thirty labelled postings.`,
+  }, host);
+
+  const lo = (model.thresholds && model.thresholds.low) || 0.40;
+  const hi = (model.thresholds && model.thresholds.high) || 0.70;
+  for (const b of [
+    { from: 0, to: lo, cls: "oof-band-low" },
+    { from: lo, to: hi, cls: "oof-band-mid" },
+    { from: hi, to: 1, cls: "oof-band-high" },
+  ]) {
+    svgEl("rect", {
+      x: xOf(b.from), y: 40, width: xOf(b.to) - xOf(b.from), height: 62,
+      class: `oof-band ${b.cls}`,
+    }, root);
+  }
+
+  // The known postings, ghost above the line and genuine below it, so the
+  // two groups can be compared without reading a legend.
+  for (const key of ["ghost", "legit"]) {
+    const wanted = key === "ghost" ? 1 : 0;
+    const placed = [];
+    for (const d of points.filter((x) => x.ghost === wanted).sort((a, b) => a.p - b.p)) {
+      const cx = xOf(d.p);
+      let level = 0;
+      while (placed.some((q) => Math.abs(q.cx - cx) < R * 2.1 && q.level === level)) {
+        level += 1;
+      }
+      placed.push({ cx, level });
+      const dir = key === "ghost" ? -1 : 1;
+      svgEl("circle", {
+        cx, cy: AXIS + dir * (10 + level * (R * 2.1)), r: R,
+        class: `oof-dot oof-dot-${key}`,
+      }, root);
+    }
+  }
+
+  svgEl("line", {
+    x1: PAD, y1: AXIS, x2: W - PAD, y2: AXIS, class: "lands-axis",
+  }, root);
+
+  // This posting: a full-height rule plus a labelled marker, so it reads
+  // as a different kind of thing from the thirty dots rather than a dot
+  // that happens to be a different colour.
+  const x = xOf(result.probability);
+  svgEl("line", { x1: x, y1: 24, x2: x, y2: 112, class: "lands-marker" }, root);
+  svgEl("circle", { cx: x, cy: AXIS, r: 6, class: "lands-you" }, root);
+  const label = svgEl("text", {
+    x: Math.min(Math.max(x, PAD + 46), W - PAD - 46), y: 18,
+    class: "lands-label", "text-anchor": "middle",
+  }, root);
+  label.textContent = `this posting, ${Math.round(result.probability * 100)}%`;
+
+  svgEl("text", {
+    x: PAD, y: 126, class: "oof-tick",
+  }, root).textContent = "0%";
+  svgEl("text", {
+    x: W - PAD, y: 126, class: "oof-tick", "text-anchor": "end",
+  }, root).textContent = "100%";
+
+  // How many of each kind actually landed near this score. A window rather
+  // than an exact match, because with thirty postings an exact match is
+  // usually nobody.
+  const WINDOW = 0.12;
+  const near = points.filter((d) => Math.abs(d.p - result.probability) <= WINDOW);
+  const nearGhost = near.filter((d) => d.ghost === 1).length;
+  const nearLegit = near.length - nearGhost;
+
+  const summary = document.getElementById("lands-summary");
+  if (near.length === 0) {
+    summary.textContent =
+      `No labelled posting scored anywhere near this, so there is nothing ` +
+      `to compare it against. Treat the number with extra caution.`;
+  } else {
+    summary.textContent =
+      `Of the ${near.length} labelled posting${near.length === 1 ? "" : "s"} ` +
+      `that scored within ${Math.round(WINDOW * 100)} points of this one, ` +
+      `${nearGhost} ${nearGhost === 1 ? "was" : "were"} ghost and ` +
+      `${nearLegit} ${nearLegit === 1 ? "was" : "were"} genuine. ` +
+      `Dots above the line are ghost postings, below it genuine ones.`;
+  }
+
+  figure.hidden = false;
+}
+
 function share(part, whole) {
   if (!whole) return "";
   return `${Math.round((part / whole) * 100)}% of the set`;
@@ -1180,6 +1298,7 @@ function render(result) {
   elements.verdictBlurb.textContent = verdict.blurb;
 
   renderOutOfDistribution(result);
+  renderWhereItLands(result, LOADED_MODEL);
 
   const meaningful = result.contributions.filter(
     (item) => Math.abs(item.contribution) > MEANINGFUL
@@ -1654,6 +1773,7 @@ async function start() {
     // to build features, and the model to weigh them.
     const [phraseConfig, model] = await Promise.all([loadPhrases(), loadModel()]);
     PHRASE_CONFIG = phraseConfig;
+    LOADED_MODEL = model;
     describeModel(model);
     renderModelTab(model);
     MODEL_READY = true;

@@ -129,7 +129,14 @@
      colour blobs on separate drift animations, twenty floating motes and
      a glow chasing the cursor - five moving light sources, which is why
      none of them read as deliberate. One that does not move does. */
-  --glow: light-dark(rgba(169, 83, 28, 0.09), rgba(237, 160, 89, 0.22));
+  --glow:      light-dark(rgba(169, 83, 28, 0.10), rgba(237, 160, 89, 0.20));
+  /* The bloom behind the hero drawing, and the bright rim at its foot.
+     The drawing is lit from behind, so the ghost reads as the thing the
+     light is coming from rather than a sticker on a dark page. */
+  --glow-core: light-dark(rgba(201, 108, 40, 0.20), rgba(240, 150, 70, 0.34));
+  --glow-rim:  light-dark(rgba(214, 126, 56, 0.55), rgba(255, 196, 132, 0.72));
+  /* Edges pulled down so the middle of the page is where the eye goes. */
+  --vignette:  light-dark(rgba(120, 100, 76, 0.16), rgba(0, 0, 0, 0.55));
 
   --font-display: ui-serif, "Iowan Old Style", "Palatino Linotype", Palatino,
                   Georgia, "Times New Roman", serif;
@@ -155,7 +162,18 @@
    win an argument with. */
 [hidden] { display: none !important; }
 
-html { -webkit-text-size-adjust: 100%; }
+html {
+  -webkit-text-size-adjust: 100%;
+  /* The hero's horizon is deliberately wider than the content column, so
+     the arc runs off both edges instead of stopping politely at the text.
+     That overflow was adding a horizontal scrollbar to the whole page.
+
+     `clip` rather than `hidden`: hidden would turn the root into a scroll
+     container, which breaks scroll anchoring and would have made the
+     vertical scrollbar behave oddly. clip just stops the overflow being
+     reachable, and leaves the vertical axis alone. */
+  overflow-x: clip;
+}
 
 body {
   margin: 0;
@@ -187,7 +205,29 @@ body::before {
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  background: radial-gradient(ellipse 85% 55% at 50% -12%, var(--glow), transparent 68%);
+  background:
+    /* The ambient wash from above. */
+    radial-gradient(ellipse 95% 48% at 50% -14%, var(--glow), transparent 72%),
+    /* A vignette, so the page has a middle rather than four equal
+       corners. Drawn as a gradient rather than an inset shadow because a
+       shadow would sit above the content rather than behind it. */
+    radial-gradient(ellipse 78% 70% at 50% 38%, transparent 42%, var(--vignette) 100%);
+}
+
+/* Grain, back after being deleted - for a reason rather than for texture.
+   Large smooth gradients on a dark background band visibly into stripes on
+   8-bit displays, and there are three of them on this page now. A little
+   noise breaks the bands up. At 3.5% it is invisible as texture and doing
+   its whole job; the version that was removed ran at 5.5% over a moving
+   colour field, which was decoration. */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
 .shell {
@@ -460,8 +500,42 @@ html[data-motion="off"] .tab-indicator { transition: opacity 0.2s ease; }
    page that gets to be large, so it is given the whole measure and a lot
    of air rather than being packed against the form. */
 .hero {
+  position: relative;
   padding: 68px 0 44px;
   text-align: center;
+}
+
+/* The light itself: a bloom behind the drawing, sitting on a bright rim
+   like a horizon. This is the page's one moment of drama, and it is
+   placed deliberately - centred on the illustration, falling away before
+   it reaches the headline, so nothing bright ever ends up behind body
+   text. Contrast on the hero was measured against the composited result
+   rather than against the flat page colour. */
+.hero::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  left: 50%;
+  top: 0;
+  width: min(1100px, 100vw);
+  height: 420px;
+  transform: translateX(-50%);
+  pointer-events: none;
+  background:
+    /* THE HORIZON. A circle of radius 560px whose centre sits 750px down,
+       so only the top 190px of its rim is inside this box - a shallow arc
+       rather than a halo. The first attempt used an ellipse the height of
+       the whole hero, which drew a ring right through the headline.
+
+       Everything below the arc is transparent, so the page stays dark
+       exactly where the text is, and the only bright pixels are on the
+       drawing's own line. */
+    radial-gradient(circle 560px at 50% 750px,
+      transparent 0 557px,
+      var(--glow-rim) 559px 561px,
+      transparent 563px),
+    /* The light coming off it, above the line. */
+    radial-gradient(ellipse 360px 150px at 50% 140px, var(--glow-core), transparent 74%);
 }
 
 /* One short fade, once, and only on the headline block. The old version
@@ -486,7 +560,12 @@ html[data-motion="off"] .tab-indicator { transition: opacity 0.2s ease; }
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--ink-muted);
+  /* --ink-soft, not --ink-muted. This line sits in the brightest part of
+     the ambient wash, and muted grey measures 3.75:1 against the warm
+     light at full strength - under the 4.5 floor for text this size.
+     Every other token on the hero clears it: 10.8:1 for the headline and
+     5.2:1 for the tagline against the same worst case. */
+  color: var(--ink-soft);
 }
 
 .hero h1 {
@@ -1411,3 +1490,14 @@ html[data-motion="off"] .card-input::before { display: none !important; }
   stroke: none;
 }
 .art-eye { fill: var(--bg-elevated); }
+
+/* ---- "Where that puts it", on a result ---- */
+
+.figure-inline { border-top: none; padding-top: 0; margin-top: 18px; text-align: left; }
+.lands-svg { display: block; width: 100%; min-width: 520px; height: auto; }
+.lands-axis { stroke: var(--line); stroke-width: 1; }
+/* The posting being scored is a different kind of thing from the thirty
+   known ones, so it gets a different mark rather than another dot. */
+.lands-marker { stroke: var(--accent); stroke-width: 2; stroke-dasharray: 4 3; }
+.lands-you { fill: var(--accent); stroke: var(--bg-elevated); stroke-width: 2.5; }
+.lands-label { fill: var(--accent); font-size: 12px; font-weight: 600; }

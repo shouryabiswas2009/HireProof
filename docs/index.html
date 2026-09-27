@@ -29,7 +29,7 @@
      page. BUMP THIS NUMBER whenever index.html, style.css or app.js change
      shape. (The proper fix is content-hashed filenames from a build step;
      this project has no build step on purpose, so the number is manual.) -->
-<link rel="stylesheet" href="style.css?v=36">
+<link rel="stylesheet" href="style.css?v=41">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>&#128123;</text></svg>">
 </head>
 <body>
@@ -265,6 +265,15 @@
                not have to go looking for how much the number is worth.
                Filled from model.json, so it cannot drift. -->
           <p id="model-line" class="model-line"></p>
+
+          <!-- Where this posting's score falls among the thirty whose real
+               answer is known. Drawn by app.js; hidden if the model file
+               has no held-out scores to compare against. -->
+          <figure class="figure figure-inline" id="lands-figure" hidden>
+            <figcaption class="figure-title">Where that puts it</figcaption>
+            <div id="lands-chart" class="figure-plot"></div>
+            <p class="hint" id="lands-summary"></p>
+          </figure>
 
           <div class="divider" aria-hidden="true"></div>
 
@@ -774,6 +783,6 @@
 
 </div>
 
-<script type="module" src="app.js?v=36"></script>
+<script type="module" src="app.js?v=41"></script>
 </body>
 </html>
