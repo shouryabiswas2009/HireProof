@@ -541,7 +541,10 @@ html[data-motion="off"] .tab-indicator { transition: opacity 0.2s ease; }
 /* One short fade, once, and only on the headline block. The old version
    staggered three elements in with a 30px rise and a scale, which is a
    title sequence rather than a page load. */
-.js .hero > * { animation: rise-in 0.5s ease-out backwards; }
+/* Not the canvas: rise-in sets `transform`, which would replace the
+   translateX(-50%) that centres it and slide the whole field sideways
+   for the first half-second. */
+.js .hero > *:not(.hero-field) { animation: rise-in 0.5s ease-out backwards; }
 .js .hero h1       { animation-delay: 0.05s; }
 .js .hero .tagline { animation-delay: 0.1s; }
 
@@ -1501,3 +1504,16 @@ html[data-motion="off"] .card-input::before { display: none !important; }
 .lands-marker { stroke: var(--accent); stroke-width: 2; stroke-dasharray: 4 3; }
 .lands-you { fill: var(--accent); stroke: var(--bg-elevated); stroke-width: 2.5; }
 .lands-label { fill: var(--accent); font-size: 12px; font-weight: 600; }
+
+/* ---- The hero particle field ---- */
+
+.hero-field {
+  position: absolute;
+  z-index: -1;            /* behind the drawing and the type */
+  left: 50%;
+  top: 0;
+  width: min(760px, 100%);
+  height: 300px;
+  transform: translateX(-50%);
+  pointer-events: none;
+}

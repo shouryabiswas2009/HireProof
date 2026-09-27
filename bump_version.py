@@ -36,6 +36,7 @@ TARGETS = {
         r'(\./highlight\.js\?v=)(\d+)',
         r'(\./tabs\.js\?v=)(\d+)',
         r'(\./validate\.js\?v=)(\d+)',
+        r'(\./hero-field\.js\?v=)(\d+)',
     ],
     "docs/scorer.js": [r'(\./features\.js\?v=)(\d+)'],
     "tests/js/test_features.mjs": [r'(features\.js\?v=)(\d+)'],

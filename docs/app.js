@@ -4,11 +4,19 @@
  * only moves values onto the screen.
  */
 
-import { loadPhrases } from "./features.js?v=41";
-import { loadModel, score, band, sigmoid } from "./scorer.js?v=41";
-import { annotate } from "./highlight.js?v=41";
-import { setUpTabs } from "./tabs.js?v=41";
-import { checkInput, MIN_WORDS } from "./validate.js?v=41";
+import { loadPhrases } from "./features.js?v=48";
+import { loadModel, score, band, sigmoid } from "./scorer.js?v=48";
+import { annotate } from "./highlight.js?v=48";
+import { setUpTabs } from "./tabs.js?v=48";
+import { checkInput, MIN_WORDS } from "./validate.js?v=48";
+import { createHeroField } from "./hero-field.js?v=48";
+
+/* Declared up here, above the first call to applyMotionSetting(), rather
+   than beside the other module state further down. `let` is hoisted but
+   left uninitialised until its declaration runs, so reading it earlier is
+   a ReferenceError, not undefined - and applyMotionSetting() is called at
+   module top level, so that error killed the whole script. */
+let HERO_FIELD = null;
 
 // Change this if you fork the project.
 const REPO_URL = "https://github.com/shouryabiswas2009/hireproof";
@@ -329,6 +337,10 @@ function motionEnabled() {
 function applyMotionSetting() {
   const on = motionEnabled();
   document.documentElement.dataset.motion = on ? "on" : "off";
+  // The canvas is not styled by CSS, so the data-motion attribute above
+  // means nothing to it. Tell it directly, or switching motion off would
+  // stop every animation on the page except the conspicuous one.
+  if (HERO_FIELD) HERO_FIELD.refreshMotion();
 
   const button = document.getElementById("motion-toggle");
   if (button) {
@@ -389,6 +401,9 @@ function savedTheme() {
 }
 
 function applyTheme() {
+  // The canvas holds resolved rgb() strings, so it has to be told when
+  // the theme changes; CSS variables reach everything else on their own.
+  if (HERO_FIELD) HERO_FIELD.setColours(heroColours());
   const theme = savedTheme();
   // Removing the attribute (rather than setting "system") lets the
   // stylesheet's `color-scheme: light dark` fall back to the OS.
@@ -1767,6 +1782,53 @@ function setUpCompare() {
   refreshCompareState();
 }
 
+/* The field is created before anything is fetched, so the ghost is
+   already gathering while model.json is in flight. It is handed a
+   placeholder set of thirty, then the real scores when they land - which
+   is what makes the resolve read as the model arriving rather than as an
+   animation that was going to play anyway. */
+/* Read a custom property as a COLOUR the canvas can actually use.
+   Reading --raise straight off the root gives back the literal text
+   "light-dark(#b23b33, #d87264)", because light-dark() is resolved when a
+   property is used as a colour, not when the variable is read. Canvas
+   silently ignores a fillStyle it cannot parse and keeps the previous
+   one, so every particle was being painted in the default black - dots
+   that were there, on the right path, and invisible against a dark page.
+
+   Letting the browser resolve it on a throwaway element gives an rgb()
+   string, and costs one layout read per theme change. */
+function resolvedColour(token, fallback) {
+  const probe = document.createElement("span");
+  probe.style.cssText = "position:absolute;left:-9999px;visibility:hidden";
+  probe.style.color = `var(${token})`;
+  document.body.appendChild(probe);
+  const value = getComputedStyle(probe).color;
+  probe.remove();
+  return value || fallback;
+}
+
+function heroColours() {
+  return {
+    ghost: resolvedColour("--raise", "#d87264"),
+    legit: resolvedColour("--lower", "#4595d8"),
+    mote: resolvedColour("--ink-soft", "#aaa197"),
+  };
+}
+
+function startHeroField() {
+  const canvas = document.getElementById("hero-field");
+  if (!canvas) return null;
+  const field = createHeroField(canvas, {
+    motionOn: motionEnabled,
+    colours: heroColours(),
+  });
+  field.setData(
+    Array.from({ length: 30 }, () => ({ p: 0.5, ghost: 0 })),
+    false
+  );
+  return field;
+}
+
 async function start() {
   try {
     // Both files are needed before anything can be scored: the phrase lists
@@ -1774,6 +1836,9 @@ async function start() {
     const [phraseConfig, model] = await Promise.all([loadPhrases(), loadModel()]);
     PHRASE_CONFIG = phraseConfig;
     LOADED_MODEL = model;
+    if (HERO_FIELD && (model.out_of_fold || []).length) {
+      HERO_FIELD.setData(model.out_of_fold, true);
+    }
     describeModel(model);
     renderModelTab(model);
     MODEL_READY = true;
@@ -1813,4 +1878,6 @@ elements.clearButton.addEventListener("click", () => {
 refreshInputState();   // starts disabled: no text yet, and no model yet
 setUpTabs();
 setUpCompare();
+HERO_FIELD = startHeroField();
+
 start();

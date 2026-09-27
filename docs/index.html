@@ -29,7 +29,7 @@
      page. BUMP THIS NUMBER whenever index.html, style.css or app.js change
      shape. (The proper fix is content-hashed filenames from a build step;
      this project has no build step on purpose, so the number is manual.) -->
-<link rel="stylesheet" href="style.css?v=41">
+<link rel="stylesheet" href="style.css?v=48">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>&#128123;</text></svg>">
 </head>
 <body>
@@ -109,6 +109,13 @@
     <section class="panel-view" id="panel-check" role="tabpanel" aria-labelledby="tab-check" tabindex="-1">
 
       <div class="hero">
+        <!-- The particle field. Decorative in the sense that the page is
+             complete without it, but what it draws is real: thirty dots,
+             one per labelled posting. Hidden from the accessibility tree
+             because the same data is on the model tab as a chart with a
+             text description. -->
+        <canvas class="hero-field" id="hero-field" aria-hidden="true"></canvas>
+
         <!-- Drawn for this page rather than dropped in from an icon set.
              The idea is the whole product in one image: a posting that
              looks like every other posting, with nothing behind it. The
@@ -783,6 +790,6 @@
 
 </div>
 
-<script type="module" src="app.js?v=41"></script>
+<script type="module" src="app.js?v=48"></script>
 </body>
 </html>
