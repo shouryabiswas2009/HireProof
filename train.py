@@ -462,6 +462,17 @@ def main():
             "cv_f1": cv["mean"]["f1"],
             "baseline_accuracy": baseline_accuracy,
         },
+        # Every posting's held-out score, paired with its true label, for
+        # the distribution plot on the site. Numbers only - no posting text
+        # leaves the machine this trains on.
+        # The band edges the site applies, travelling with the weights so
+        # the distribution plot draws the same lines scorer.js scores by.
+        "thresholds": {"low": 0.40, "high": 0.70},
+        "out_of_fold": [
+            {"p": round(p, 4), "ghost": int(y)}
+            for p, y in zip(cv.get("out_of_fold", []), labels)
+            if p is not None
+        ],
         "warnings": warnings,
         "hyperparameters": {
             "learning_rate": args.learning_rate,

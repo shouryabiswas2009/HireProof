@@ -315,6 +315,7 @@ def cross_validate(rows, labels, k=5, seed=0, **train_kwargs):
     n_samples = len(rows)
     folds = k_fold_indices(n_samples, k, seed)
     results = []
+    out_of_fold = [None] * n_samples
 
     for fold_index, test_indices in enumerate(folds):
         test_set = set(test_indices)
@@ -337,11 +338,22 @@ def cross_validate(rows, labels, k=5, seed=0, **train_kwargs):
         result["fold"] = fold_index
         results.append(result)
 
+        # Keep each held-out posting's own prediction, not just the fold's
+        # summary. These are the only honest per-posting scores that exist:
+        # every one was produced by a model that had never seen it. The
+        # website plots them, which turns "70% accuracy" from a number you
+        # have to take on trust into a picture of how far the two groups
+        # actually overlap.
+        for position, index in enumerate(test_indices):
+            out_of_fold[index] = predict_probability(
+                standardize_apply([rows[index]], means, stds)[0], weights, bias
+            )
+
     if not results:
-        return {"folds": [], "mean": {}}
+        return {"folds": [], "mean": {}, "out_of_fold": []}
 
     mean = {
         metric: sum(r[metric] for r in results) / len(results)
         for metric in ("accuracy", "precision", "recall", "f1", "log_loss")
     }
-    return {"folds": results, "mean": mean}
+    return {"folds": results, "mean": mean, "out_of_fold": out_of_fold}

@@ -29,7 +29,7 @@
      page. BUMP THIS NUMBER whenever index.html, style.css or app.js change
      shape. (The proper fix is content-hashed filenames from a build step;
      this project has no build step on purpose, so the number is manual.) -->
-<link rel="stylesheet" href="style.css?v=30">
+<link rel="stylesheet" href="style.css?v=36">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>&#128123;</text></svg>">
 </head>
 <body>
@@ -57,7 +57,7 @@
           <li><strong>Precision</strong> &mdash; 73% of postings called ghost really were</li>
           <li><strong>Recall</strong> &mdash; 78% of ghost postings were caught</li>
           <li><strong>Signals</strong> &mdash; 11, weighted and summed</li>
-          <li><strong>Last trained</strong> &mdash; 2026-09-24</li>
+          <li><strong>Last trained</strong> &mdash; 2026-09-27</li>
         </ul>
         <!-- MODEL-SUMMARY:END -->
     <p>
@@ -109,6 +109,35 @@
     <section class="panel-view" id="panel-check" role="tabpanel" aria-labelledby="tab-check" tabindex="-1">
 
       <div class="hero">
+        <!-- Drawn for this page rather than dropped in from an icon set.
+             The idea is the whole product in one image: a posting that
+             looks like every other posting, with nothing behind it. The
+             real sheet is ruled and solid, the one behind it is the same
+             sheet with its lines dissolving and a ghost where the job
+             should be. Decorative, so it is hidden from the tree - the
+             headline underneath says the same thing in words. -->
+        <svg class="hero-art" viewBox="0 0 200 150" aria-hidden="true" focusable="false">
+          <g class="art-ghost-sheet">
+            <path d="M118 22 h58 a4 4 0 0 1 4 4 v92 a4 4 0 0 1-4 4 h-58 a4 4 0 0 1-4-4 v-92 a4 4 0 0 1 4-4z"/>
+            <path class="art-rule" d="M126 40 h42 M126 52 h42 M126 64 h30"/>
+            <path class="art-rule art-fade" d="M126 78 h42 M126 90 h24 M126 102 h34"/>
+          </g>
+          <!-- The ghost itself, the same silhouette as the wordmark. It is
+               translated up and right so it rises OUT of the dashed sheet
+               rather than sitting in the gap between the two, and it is
+               painted after that sheet so it covers the ruled lines where
+               the job description should have been. -->
+          <g class="art-ghost" transform="translate(47 -30)">
+            <path d="M100 44a22 22 0 0 0-22 22v26.5c0 2.6 2.9 4 5 2.6l4.9-3.6a2 2 0 0 1 2.4 0l4 3a2 2 0 0 0 2.4 0l4-3a2 2 0 0 1 2.4 0l4.9 3.6c2.1 1.5 5 0 5-2.6V66a22 22 0 0 0-22-22z"/>
+            <circle class="art-eye" cx="92" cy="65" r="3.4"/>
+            <circle class="art-eye" cx="108" cy="65" r="3.4"/>
+          </g>
+          <g class="art-sheet">
+            <path d="M24 30 h58 a4 4 0 0 1 4 4 v92 a4 4 0 0 1-4 4 h-58 a4 4 0 0 1-4-4 v-92 a4 4 0 0 1 4-4z"/>
+            <path class="art-rule" d="M32 48 h42 M32 60 h42 M32 72 h30 M32 84 h42 M32 96 h36 M32 108 h22"/>
+          </g>
+        </svg>
+
         <p class="eyebrow">
           <span class="eyebrow-dot" aria-hidden="true"></span>
           Runs entirely in your browser
@@ -424,6 +453,21 @@
           &mdash; a model that cannot beat it has learned nothing.
         </p>
         <div id="model-metrics" class="stat-row"></div>
+
+        <!-- Every labelled posting, plotted at the score a model that had
+             never seen it gave it. Drawn by app.js from out_of_fold in
+             model.json, so it cannot disagree with the numbers above. -->
+        <figure class="figure" id="oof-figure" hidden>
+          <figcaption class="figure-title">Every posting, scored blind</figcaption>
+          <p class="hint">
+            One dot per labelled posting, placed at the score it was given by a
+            model trained without it. This is the same 70% accuracy as the tiles
+            above, drawn out &mdash; and the overlap in the middle is the part a
+            single percentage hides.
+          </p>
+          <div id="oof-chart" class="figure-plot"></div>
+          <p class="hint" id="oof-summary"></p>
+        </figure>
       </section>
 
       <section class="card">
@@ -523,6 +567,27 @@
             <pre class="code">probability = 1 &divide; (1 + e^&minus;z)</pre>
           </li>
         </ol>
+
+        <!-- The curve, plotted from the same sigmoid the scorer runs.
+             app.js draws it so the shape and the band edges cannot drift
+             from the code they are explaining. -->
+        <figure class="figure" id="sigmoid-figure" hidden>
+          <figcaption class="figure-title">What the squashing does</figcaption>
+          <p class="hint">
+            The S is the whole reason a score of 95% and a score of 99% are
+            barely different evidence, while 45% and 55% are worlds apart. Near
+            the middle the curve is steep, so a small change in the sum swings
+            the answer; out at the ends it flattens, and even a large change
+            barely moves it.
+          </p>
+          <div id="sigmoid-chart" class="figure-plot"></div>
+          <p class="hint">
+            It is also why the per-signal figures on a result are given in
+            percentage points and do not add up to the total: the same step in
+            <em>z</em> is worth a different number of points depending on where
+            on this curve the posting already sits.
+          </p>
+        </figure>
       </section>
 
       <section class="card">
@@ -709,6 +774,6 @@
 
 </div>
 
-<script type="module" src="app.js?v=30"></script>
+<script type="module" src="app.js?v=36"></script>
 </body>
 </html>

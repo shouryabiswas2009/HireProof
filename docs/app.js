@@ -4,11 +4,11 @@
  * only moves values onto the screen.
  */
 
-import { loadPhrases } from "./features.js?v=30";
-import { loadModel, score, band } from "./scorer.js?v=30";
-import { annotate } from "./highlight.js?v=30";
-import { setUpTabs } from "./tabs.js?v=30";
-import { checkInput, MIN_WORDS } from "./validate.js?v=30";
+import { loadPhrases } from "./features.js?v=36";
+import { loadModel, score, band, sigmoid } from "./scorer.js?v=36";
+import { annotate } from "./highlight.js?v=36";
+import { setUpTabs } from "./tabs.js?v=36";
+import { checkInput, MIN_WORDS } from "./validate.js?v=36";
 
 // Change this if you fork the project.
 const REPO_URL = "https://github.com/shouryabiswas2009/hireproof";
@@ -575,6 +575,8 @@ function renderModelTab(model) {
     });
   }
 
+  renderDistribution(model);
+  renderSigmoid(model);
   renderSurprises(model);
 
   // --- Whatever the training run complained about ---------------------
@@ -661,6 +663,283 @@ function renderSurprises(model) {
     list.appendChild(li);
   }
   card.hidden = false;
+}
+
+/* ==================================================== The distribution plot
+ *
+ * One dot per labelled posting, at the score a model that never saw it gave
+ * it. Those numbers come from model.json, where train.py stores the
+ * out-of-fold prediction for every posting.
+ *
+ * WHY THIS CHART AND NOT A BAR OF ACCURACY. "70%" is a single number
+ * standing in for thirty decisions, and it hides the only thing a reader
+ * actually needs: how far the two groups overlap. Drawn out, the ghost
+ * postings sit mostly right, the genuine ones mostly left, and there is a
+ * crowd in the middle the model genuinely cannot separate. That middle is
+ * the honest argument for having a "mixed signals" band at all, and no
+ * summary statistic can make it visible.
+ *
+ * Every point is drawn rather than binned or averaged. With thirty of them
+ * that is not a simplification, it is the whole dataset - so nobody has to
+ * trust a smoothing choice made on their behalf.
+ */
+function svgEl(tag, attrs, parent) {
+  const el = document.createElementNS("http://www.w3.org/2000/svg", tag);
+  for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+  if (parent) parent.appendChild(el);
+  return el;
+}
+
+function renderDistribution(model) {
+  const figure = document.getElementById("oof-figure");
+  const host = document.getElementById("oof-chart");
+  const points = model.out_of_fold || [];
+  if (!figure || !host || points.length === 0) return;
+
+  const W = 720, H = 212;
+  const PAD = 18;
+  // A left gutter for the row labels, so they sit beside their row rather
+  // than above it. Labels floating over the plot are fine until a dot
+  // lands under one - which it will, because the leftmost ghost posting
+  // scored 4% and sits exactly there.
+  const LABEL_W = 112;
+  const plotX = PAD + LABEL_W;
+  const plotW = W - plotX - PAD;
+  const xOf = (p) => plotX + p * plotW;
+  const ROW = { ghost: 82, legit: 148 };
+  const R = 6;
+
+  host.replaceChildren();
+  const root = svgEl("svg", {
+    viewBox: `0 0 ${W} ${H}`,
+    class: "oof-svg",
+    role: "img",
+    "aria-labelledby": "oof-a11y",
+  }, host);
+
+  // The three bands, drawn first so every dot sits on top of them. Read
+  // from the model file rather than hardcoded, so the picture cannot drift
+  // away from the thresholds scorer.js actually applies.
+  const lo = (model.thresholds && model.thresholds.low) || 0.40;
+  const hi = (model.thresholds && model.thresholds.high) || 0.70;
+  const bands = [
+    { from: 0, to: lo, cls: "oof-band-low", label: "reads genuine" },
+    { from: lo, to: hi, cls: "oof-band-mid", label: "mixed signals" },
+    { from: hi, to: 1, cls: "oof-band-high", label: "reads ghost" },
+  ];
+  for (const b of bands) {
+    svgEl("rect", {
+      x: xOf(b.from), y: 40, width: xOf(b.to) - xOf(b.from), height: 140,
+      class: `oof-band ${b.cls}`,
+    }, root);
+    svgEl("text", {
+      x: (xOf(b.from) + xOf(b.to)) / 2, y: 26,
+      class: "oof-band-label", "text-anchor": "middle",
+    }, root).textContent = b.label;
+  }
+  for (const t of [lo, hi]) {
+    svgEl("line", {
+      x1: xOf(t), y1: 40, x2: xOf(t), y2: 180, class: "oof-rule",
+    }, root);
+    svgEl("text", {
+      x: xOf(t), y: 198, class: "oof-tick", "text-anchor": "middle",
+    }, root).textContent = `${Math.round(t * 100)}%`;
+  }
+
+  // Equal-sized dots overlap into an unreadable blob where scores cluster:
+  // three postings land within a point of each other at 91%. Stacking any
+  // dot that would collide with one already placed keeps every posting
+  // visible and turns density into height, which is the information the
+  // clustering is carrying.
+  for (const key of ["ghost", "legit"]) {
+    const wanted = key === "ghost" ? 1 : 0;
+    const placed = [];
+    const sorted = points
+      .filter((d) => d.ghost === wanted)
+      .sort((a, b) => a.p - b.p);
+
+    for (const d of sorted) {
+      const cx = xOf(d.p);
+      let level = 0;
+      while (placed.some((q) => Math.abs(q.cx - cx) < R * 2.15 && q.level === level)) {
+        level += 1;
+      }
+      placed.push({ cx, level });
+      const dir = key === "ghost" ? -1 : 1;
+      const dot = svgEl("circle", {
+        cx,
+        cy: ROW[key] + dir * level * (R * 2.15),
+        r: R,
+        class: `oof-dot oof-dot-${key}`,
+      }, root);
+      // A native per-mark tooltip: no JS, no layer to position, and it
+      // reaches assistive technology as well as the pointer.
+      svgEl("title", {}, dot).textContent =
+        `${key === "ghost" ? "Ghost" : "Genuine"} posting, scored ` +
+        `${Math.round(d.p * 100)}%`;
+    }
+
+    svgEl("text", {
+      x: PAD, y: ROW[key] + 4, class: "oof-row-label",
+    }, root).textContent =
+      key === "ghost" ? "Labelled ghost" : "Labelled genuine";
+  }
+
+  // The numbers behind the picture, in words. Identity is never carried by
+  // colour alone here - each row is labelled, and this says it again.
+  const pct = (arr) => arr.map((d) => Math.round(d.p * 100)).sort((a, b) => a - b);
+  const ghost = pct(points.filter((d) => d.ghost === 1));
+  const legit = pct(points.filter((d) => d.ghost === 0));
+  const median = (a) => a[Math.floor(a.length / 2)];
+  const falseAlarms = legit.filter((v) => v >= hi * 100).length;
+  const missed = ghost.filter((v) => v < lo * 100).length;
+
+  let a11y = document.getElementById("oof-a11y");
+  if (!a11y) {
+    a11y = document.createElement("p");
+    a11y.id = "oof-a11y";
+    a11y.className = "visually-hidden";
+    figure.appendChild(a11y);
+  }
+  a11y.textContent =
+    `Dot plot of every labelled posting by the score it was given by a model ` +
+    `that never saw it. Ghost postings scored ${ghost.join(", ")} percent. ` +
+    `Genuine postings scored ${legit.join(", ")} percent.`;
+
+  document.getElementById("oof-summary").textContent =
+    `Median ${median(ghost)}% for the ghost postings against ${median(legit)}% ` +
+    `for the genuine ones. ${falseAlarms} genuine posting` +
+    `${falseAlarms === 1 ? " was" : "s were"} pushed past ` +
+    `${Math.round(hi * 100)}%, and ${missed} ghost posting` +
+    `${missed === 1 ? "" : "s"} fell below ${Math.round(lo * 100)}% - which is ` +
+    `the trade the two thresholds were chosen to make, since wrongly ` +
+    `flagging a real job costs more than missing a fake one.`;
+
+  figure.hidden = false;
+}
+
+/* ===================================================== The sigmoid curve
+ *
+ * Plotted by running the real sigmoid from scorer.js, not by drawing a
+ * nice-looking S in a vector editor. The curve, the band edges and the
+ * scores the page reports therefore cannot disagree with one another,
+ * which matters because this picture is the page's explanation of why the
+ * per-signal points do not sum to the total.
+ */
+function renderSigmoid(model) {
+  const figure = document.getElementById("sigmoid-figure");
+  const host = document.getElementById("sigmoid-chart");
+  if (!figure || !host) return;
+
+  const W = 720, H = 300;
+  const PAD_L = 54, PAD_R = 20, PAD_T = 18, PAD_B = 42;
+  const plotW = W - PAD_L - PAD_R;
+  const plotH = H - PAD_T - PAD_B;
+
+  // z from -6 to 6 covers the curve from 0.2% to 99.8%: far enough that
+  // both tails are visibly flat, close enough that the steep middle still
+  // has room to read as steep.
+  const Z = 6;
+  const xOf = (z) => PAD_L + ((z + Z) / (2 * Z)) * plotW;
+  const yOf = (p) => PAD_T + (1 - p) * plotH;
+
+  const lo = (model.thresholds && model.thresholds.low) || 0.40;
+  const hi = (model.thresholds && model.thresholds.high) || 0.70;
+
+  host.replaceChildren();
+  const root = svgEl("svg", {
+    viewBox: `0 0 ${W} ${H}`,
+    class: "sig-svg",
+    role: "img",
+    "aria-label":
+      "The sigmoid curve. It is nearly flat below minus three and above " +
+      "plus three, and steep in between, crossing 50 percent at zero.",
+  }, host);
+
+  // Horizontal band tints, matching the score bands elsewhere.
+  const bands = [
+    { from: 0, to: lo, cls: "oof-band-low" },
+    { from: lo, to: hi, cls: "oof-band-mid" },
+    { from: hi, to: 1, cls: "oof-band-high" },
+  ];
+  for (const b of bands) {
+    svgEl("rect", {
+      x: PAD_L, y: yOf(b.to),
+      width: plotW, height: yOf(b.from) - yOf(b.to),
+      class: `oof-band ${b.cls}`,
+    }, root);
+  }
+
+  // Axes: recessive, and only where they carry a reading.
+  for (const p of [0, 0.5, 1]) {
+    svgEl("line", {
+      x1: PAD_L, y1: yOf(p), x2: W - PAD_R, y2: yOf(p), class: "sig-grid",
+    }, root);
+    svgEl("text", {
+      x: PAD_L - 10, y: yOf(p) + 4, class: "sig-tick", "text-anchor": "end",
+    }, root).textContent = `${p * 100}%`;
+  }
+  for (const t of [lo, hi]) {
+    svgEl("text", {
+      x: PAD_L - 10, y: yOf(t) + 4, class: "sig-tick sig-tick-band",
+      "text-anchor": "end",
+    }, root).textContent = `${Math.round(t * 100)}%`;
+  }
+  svgEl("line", {
+    x1: xOf(0), y1: PAD_T, x2: xOf(0), y2: PAD_T + plotH, class: "sig-grid",
+  }, root);
+  for (const z of [-Z, -3, 0, 3, Z]) {
+    svgEl("text", {
+      x: xOf(z), y: H - 18, class: "sig-tick", "text-anchor": "middle",
+    }, root).textContent = z > 0 ? `+${z}` : String(z);
+  }
+  svgEl("text", {
+    x: PAD_L + plotW / 2, y: H - 2, class: "sig-axis-label",
+    "text-anchor": "middle",
+  }, root).textContent = "z  (the weighted sum, before squashing)";
+
+  // The curve itself, sampled from the shipped sigmoid.
+  const steps = 240;
+  let d = "";
+  for (let i = 0; i <= steps; i += 1) {
+    const z = -Z + (i / steps) * (2 * Z);
+    d += `${i === 0 ? "M" : "L"}${xOf(z).toFixed(2)} ${yOf(sigmoid(z)).toFixed(2)}`;
+  }
+  svgEl("path", { d, class: "sig-curve" }, root);
+
+  /* Two markers making the point the caption claims, rather than asking
+     the reader to take it on trust: the same one-unit step in z is worth
+     23 points in the middle of the curve and about 2 at the end. */
+  const marks = [
+    { from: 0, to: 1, label: "one step of z here" },
+    { from: 3.5, to: 4.5, label: "the same step here" },
+  ];
+  for (const m of marks) {
+    const gain = Math.round((sigmoid(m.to) - sigmoid(m.from)) * 100);
+    svgEl("line", {
+      x1: xOf(m.from), y1: yOf(sigmoid(m.from)),
+      x2: xOf(m.from), y2: yOf(sigmoid(m.to)),
+      class: "sig-mark",
+    }, root);
+    svgEl("line", {
+      x1: xOf(m.from), y1: yOf(sigmoid(m.to)),
+      x2: xOf(m.to), y2: yOf(sigmoid(m.to)),
+      class: "sig-mark",
+    }, root);
+    svgEl("circle", {
+      cx: xOf(m.from), cy: yOf(sigmoid(m.from)), r: 4, class: "sig-dot",
+    }, root);
+    svgEl("circle", {
+      cx: xOf(m.to), cy: yOf(sigmoid(m.to)), r: 4, class: "sig-dot",
+    }, root);
+    svgEl("text", {
+      x: xOf(m.to) + 10,
+      y: yOf(sigmoid(m.to)) + (m.from === 0 ? 16 : 4),
+      class: "sig-note",
+    }, root).textContent = `+${gain} points`;
+  }
+
+  figure.hidden = false;
 }
 
 function share(part, whole) {

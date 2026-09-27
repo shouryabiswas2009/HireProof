@@ -1315,3 +1315,99 @@ html[data-motion="off"] .card-input::before { display: none !important; }
 }
 .surprise-label { font-weight: 600; font-size: 0.9rem; }
 .surprise-detail { color: var(--ink-soft); font-size: 0.84rem; }
+
+/* --------------------------------------------- Figures and the dot plot */
+
+.figure { margin: 22px 0 0; padding: 20px 0 0; border-top: 1px solid var(--line); }
+.figure-title {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin: 0 0 6px;
+}
+/* An SVG with a viewBox scales its text along with everything else, so at
+   phone width the 12-unit labels on a 720-unit chart were rendering at
+   about 5px - present, but not readable, which is worse than absent
+   because it looks like the chart is working. A minimum width turns that
+   into a short sideways scroll instead: the chart stays at a size its own
+   labels can be read at, and the reader moves rather than squints. The
+   floor is under the desktop card width, so a laptop never sees a
+   scrollbar. */
+.figure-plot {
+  margin: 16px 0 10px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+
+.oof-svg { display: block; width: 100%; min-width: 620px; height: auto; }
+
+/* The bands are context, not data, so they stay faint enough that the dots
+   are unambiguously the foreground. Tinted with the status hues rather
+   than grey, because they ARE the score bands the rest of the page uses. */
+.oof-band { opacity: 0.1; }
+.oof-band-low  { fill: var(--status-good); }
+.oof-band-mid  { fill: var(--status-warn); }
+.oof-band-high { fill: var(--status-bad); }
+
+.oof-band-label {
+  fill: var(--ink-muted);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.oof-rule { stroke: var(--line); stroke-width: 1; }
+.oof-tick { fill: var(--ink-muted); font-size: 12px; }
+.oof-row-label { fill: var(--ink-soft); font-size: 13px; font-weight: 600; }
+
+/* A ring in the surface colour so overlapping dots stay countable instead
+   of merging into one shape. */
+.oof-dot {
+  stroke: var(--bg-elevated);
+  stroke-width: 2;
+}
+.oof-dot-ghost { fill: var(--raise); }
+.oof-dot-legit { fill: var(--lower); }
+
+/* ---- The sigmoid curve ---- */
+
+.sig-svg { display: block; width: 100%; min-width: 620px; height: auto; }
+.sig-grid { stroke: var(--line); stroke-width: 1; }
+.sig-tick { fill: var(--ink-muted); font-size: 12px; }
+.sig-tick-band { fill: var(--ink-soft); }
+.sig-axis-label { fill: var(--ink-muted); font-size: 12px; }
+/* 2px, like every other line mark on the page. */
+.sig-curve { fill: none; stroke: var(--accent); stroke-width: 2.5; stroke-linecap: round; }
+.sig-mark { stroke: var(--ink-soft); stroke-width: 1.5; stroke-dasharray: 3 3; }
+.sig-dot { fill: var(--ink); stroke: var(--bg-elevated); stroke-width: 2; }
+.sig-note { fill: var(--ink); font-size: 12px; font-weight: 600; }
+
+/* ---- The hero drawing ---- */
+
+.hero-art {
+  display: block;
+  width: 200px;
+  height: 150px;
+  margin: 0 auto 22px;
+  overflow: visible;
+}
+/* Line art, so it inherits the page's ink and needs no second set of
+   colours for dark mode. */
+.art-sheet path,
+.art-ghost-sheet path {
+  fill: var(--bg-elevated);
+  stroke: var(--ink-soft);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+.art-rule { fill: none !important; stroke: var(--ink-muted); stroke-width: 1.6; }
+/* The lines of the second posting giving out halfway down: the sheet says
+   all the right things and then stops meaning them. */
+.art-fade { opacity: 0.35; stroke-dasharray: 5 5; }
+.art-ghost-sheet { opacity: 0.55; }
+.art-ghost-sheet path:first-child { stroke-dasharray: 6 5; }
+
+.art-ghost path {
+  fill: var(--accent);
+  stroke: none;
+}
+.art-eye { fill: var(--bg-elevated); }

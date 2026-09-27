@@ -1,7 +1,7 @@
 {
   "_readme": "Written by train.py. Do not edit by hand. The website reads this file and scores postings in the visitor's browser.",
   "trained_on": "real",
-  "trained_date": "2026-09-24",
+  "trained_date": "2026-09-27",
   "n_examples": 30,
   "n_ghost": 15,
   "n_legit": 15,
@@ -139,6 +139,132 @@
     "cv_f1": 0.6895238095238094,
     "baseline_accuracy": 0.5
   },
+  "thresholds": {
+    "low": 0.4,
+    "high": 0.7
+  },
+  "out_of_fold": [
+    {
+      "p": 0.0388,
+      "ghost": 1
+    },
+    {
+      "p": 0.6915,
+      "ghost": 1
+    },
+    {
+      "p": 0.6466,
+      "ghost": 1
+    },
+    {
+      "p": 0.1289,
+      "ghost": 1
+    },
+    {
+      "p": 0.0149,
+      "ghost": 0
+    },
+    {
+      "p": 0.2899,
+      "ghost": 0
+    },
+    {
+      "p": 0.2113,
+      "ghost": 0
+    },
+    {
+      "p": 0.5745,
+      "ghost": 0
+    },
+    {
+      "p": 0.5756,
+      "ghost": 0
+    },
+    {
+      "p": 0.0231,
+      "ghost": 0
+    },
+    {
+      "p": 0.2104,
+      "ghost": 0
+    },
+    {
+      "p": 0.8375,
+      "ghost": 0
+    },
+    {
+      "p": 0.241,
+      "ghost": 1
+    },
+    {
+      "p": 0.3779,
+      "ghost": 0
+    },
+    {
+      "p": 0.2211,
+      "ghost": 0
+    },
+    {
+      "p": 0.3756,
+      "ghost": 0
+    },
+    {
+      "p": 0.1238,
+      "ghost": 0
+    },
+    {
+      "p": 0.3418,
+      "ghost": 0
+    },
+    {
+      "p": 0.6062,
+      "ghost": 0
+    },
+    {
+      "p": 0.5405,
+      "ghost": 0
+    },
+    {
+      "p": 0.0769,
+      "ghost": 1
+    },
+    {
+      "p": 0.9139,
+      "ghost": 1
+    },
+    {
+      "p": 0.8474,
+      "ghost": 1
+    },
+    {
+      "p": 0.9118,
+      "ghost": 1
+    },
+    {
+      "p": 0.6569,
+      "ghost": 1
+    },
+    {
+      "p": 0.9127,
+      "ghost": 1
+    },
+    {
+      "p": 0.5279,
+      "ghost": 1
+    },
+    {
+      "p": 0.8523,
+      "ghost": 1
+    },
+    {
+      "p": 0.9603,
+      "ghost": 1
+    },
+    {
+      "p": 0.9778,
+      "ghost": 1
+    }
+  ],
   "warnings": [
     "Only 30 labeled postings. Below about 60 the accuracy estimate swings wildly depending on which examples land in which fold, so do not read much into it. Aim for 200."
   ],
