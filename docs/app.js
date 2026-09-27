@@ -4,12 +4,12 @@
  * only moves values onto the screen.
  */
 
-import { loadPhrases } from "./features.js?v=48";
-import { loadModel, score, band, sigmoid } from "./scorer.js?v=48";
-import { annotate } from "./highlight.js?v=48";
-import { setUpTabs } from "./tabs.js?v=48";
-import { checkInput, MIN_WORDS } from "./validate.js?v=48";
-import { createHeroField } from "./hero-field.js?v=48";
+import { loadPhrases } from "./features.js?v=59";
+import { loadModel, score, band, sigmoid } from "./scorer.js?v=59";
+import { annotate } from "./highlight.js?v=59";
+import { setUpTabs } from "./tabs.js?v=59";
+import { checkInput, MIN_WORDS } from "./validate.js?v=59";
+import { createHeroField } from "./hero-field.js?v=59";
 
 /* Declared up here, above the first call to applyMotionSetting(), rather
    than beside the other module state further down. `let` is hoisted but
@@ -1809,9 +1809,8 @@ function resolvedColour(token, fallback) {
 
 function heroColours() {
   return {
-    ghost: resolvedColour("--raise", "#d87264"),
-    legit: resolvedColour("--lower", "#4595d8"),
-    mote: resolvedColour("--ink-soft", "#aaa197"),
+    body: resolvedColour("--accent", "#eda059"),
+    core: resolvedColour("--glow-rim-solid", "#ffd8ae"),
   };
 }
 
@@ -1822,10 +1821,11 @@ function startHeroField() {
     motionOn: motionEnabled,
     colours: heroColours(),
   });
-  field.setData(
-    Array.from({ length: 30 }, () => ({ p: 0.5, ghost: 0 })),
-    false
-  );
+  /* Only hide the drawn ghost once the canvas one is definitely there.
+     createHeroField returns null if the 2D context or the offscreen
+     sampling fails, and a hero with no ghost at all would be a worse
+     outcome than one that never sparkles. */
+  if (field) document.documentElement.classList.add("has-field");
   return field;
 }
 
@@ -1836,9 +1836,6 @@ async function start() {
     const [phraseConfig, model] = await Promise.all([loadPhrases(), loadModel()]);
     PHRASE_CONFIG = phraseConfig;
     LOADED_MODEL = model;
-    if (HERO_FIELD && (model.out_of_fold || []).length) {
-      HERO_FIELD.setData(model.out_of_fold, true);
-    }
     describeModel(model);
     renderModelTab(model);
     MODEL_READY = true;

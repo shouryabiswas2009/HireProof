@@ -135,6 +135,10 @@
      light is coming from rather than a sticker on a dark page. */
   --glow-core: light-dark(rgba(201, 108, 40, 0.20), rgba(240, 150, 70, 0.34));
   --glow-rim:  light-dark(rgba(214, 126, 56, 0.55), rgba(255, 196, 132, 0.72));
+  /* The same rim colour at full opacity. The canvas draws its own alpha
+     per particle, so handing it a translucent token would multiply the
+     two and leave the brightest points dimmer than the rest. */
+  --glow-rim-solid: light-dark(#b4671f, #ffd0a0);
   /* Edges pulled down so the middle of the page is where the eye goes. */
   --vignette:  light-dark(rgba(120, 100, 76, 0.16), rgba(0, 0, 0, 0.55));
 
@@ -1488,6 +1492,9 @@ html[data-motion="off"] .card-input::before { display: none !important; }
 .art-ghost-sheet { opacity: 0.55; }
 .art-ghost-sheet path:first-child { stroke-dasharray: 6 5; }
 
+/* The drawing is the fallback: it stays put unless .has-field says the
+   canvas version is really running, so a browser that cannot do the
+   particles still gets a hero image. */
 .art-ghost path {
   fill: var(--accent);
   stroke: none;
@@ -1507,13 +1514,18 @@ html[data-motion="off"] .card-input::before { display: none !important; }
 
 /* ---- The hero particle field ---- */
 
+/* IN THE FLOW, where the drawn illustration was, rather than layered
+   behind the hero. Positioned absolutely it had no height of its own, so
+   once the drawing was hidden the headline moved up underneath it and the
+   particles sat straight on top of the words. It takes the drawing's
+   place in the stack instead: the type flows below it exactly as before,
+   and the two can never overlap. */
 .hero-field {
-  position: absolute;
-  z-index: -1;            /* behind the drawing and the type */
-  left: 50%;
-  top: 0;
-  width: min(760px, 100%);
-  height: 300px;
-  transform: translateX(-50%);
+  display: none;          /* only shown once the canvas is really running */
+  width: min(560px, 100%);
+  height: 190px;
+  margin: 0 auto 18px;
   pointer-events: none;
 }
+.has-field .hero-field { display: block; }
+.has-field .hero-art { display: none; }
