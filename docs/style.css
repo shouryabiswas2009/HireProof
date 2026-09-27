@@ -3,15 +3,30 @@
  * text, a form and one chart, so a framework would be more to learn and
  * explain than to write this directly.
  *
+ * THE LOOK, and why it changed. The first version of this page had an
+ * animated indigo-to-purple gradient behind frosted glass cards, drifting
+ * particles, a cursor glow and a headline with colour sliding through the
+ * letters. Every one of those is a default: they are what "make it modern"
+ * produces, which is exactly why they read as generated rather than
+ * designed. A tool whose whole argument is "here is a number and here is
+ * honestly how much it is worth" should not look like a product launch.
+ *
+ * So this is built like a printed reference instead. Warm paper rather
+ * than blue-white, a serif for the headings, hairline rules instead of
+ * shadows, and almost no colour - colour is spent only where it carries
+ * meaning: the score bands and the two chart directions. Nothing moves
+ * unless it is showing a value changing.
+ *
  * Everything is defined once as custom properties below and then referenced
  * BY ROLE, so light and dark mode swap in one place.
  *
- * TYPEFACE: the system UI font, not a web font. Modern operating systems
- * ship excellent ones (Segoe UI Variable on Windows 11, SF Pro on Mac), they
- * render instantly with no layout shift, and crucially they need no request
- * to a third party. This page promises that nothing leaves the visitor's
- * device, and pulling a font from someone else's CDN would weaken that
- * claim for the sake of decoration.
+ * TYPEFACES: both stacks are the ones already on the reader's machine, not
+ * web fonts. They render instantly with no layout shift, and crucially they
+ * need no request to a third party. This page promises that nothing leaves
+ * the visitor's device, and pulling a font from someone else's CDN would
+ * weaken that claim for the sake of decoration. The serif is the quiet part
+ * of the humanist feel: ui-serif resolves to New York on Apple systems and
+ * Georgia elsewhere, both of which were drawn for reading.
  *
  * The two chart colours (--raise / --lower) are a warm/cool diverging pair
  * checked with a colour-vision validator against both surfaces rather than
@@ -31,77 +46,93 @@
      The two rules below let the footer switch pin it either way. */
   color-scheme: light dark;
 
-  /* Neutrals: slightly warm, never pure black on pure white, which is
-     harsh to read. */
-  --bg:          light-dark(#f7f7f9, #0b0c10);
-  --bg-elevated: light-dark(#ffffff, #15171e);
-  --ink:         light-dark(#12131a, #f2f3f7);
-  --ink-soft:    light-dark(#565a6b, #a5aab9);
-  /* Dark enough to clear WCAG AA (4.5:1) as normal text on the composited
-     glass card. Darkened once already when the background was made
-     stronger: a bolder blob behind a translucent card eats contrast.
-     Worst case measures 5.08:1 light, 5.06:1 dark. */
-  --ink-muted:   light-dark(#5f6476, #8f95a6);
-  --line:        light-dark(#e6e7ee, #262933);
-  --line-soft:   light-dark(#f0f1f5, #1d2029);
+  /* PAPER AND INK, not white and blue-black. The light surface is a warm
+     off-white with a little yellow in it, the way uncoated stock is, and
+     the dark surface is a warm near-black rather than the cold navy that
+     every dark mode defaults to. It is a small change that does most of
+     the work: cool greys read as screen, warm greys read as page. */
+  --bg: light-dark(#f4f1ea, #100f0d);
+  --bg-elevated: light-dark(#fffdf8, #1c1a17);
+  --ink: light-dark(#1c1a17, #f2ece3);
+  --ink-soft: light-dark(#57534b, #aaa197);
+  /* Measured against --bg-elevated, the surface it actually sits on:
+     5.9:1 light, 6.1:1 dark, both clear of the 4.5 AA floor for body text.
+     There is no glass to composite through any more, so these are the real
+     numbers rather than a worst case over a moving background. */
+  --ink-muted: light-dark(#6b665c, #8f877c);
+  --line: light-dark(#ddd7ca, #302b26);
+  --line-soft: light-dark(#eae5da, #221f1b);
 
-  --accent:       light-dark(#4f46e5, #818cf8);
-  --accent-hover: light-dark(#4338ca, #a5b4fc);
-  --accent-soft:  light-dark(#eef2ff, #1e1f3a);
-  --accent-ink:   light-dark(#ffffff, #14152b);
+  /* One accent, used for links, focus rings and the active tab: a warm
+     ember. It is the same family as the single light source below, so
+     the page reads as lit from one direction rather than decorated in
+     several colours. Kept clearly more orange than --status-warn's
+     yellow, and status colours never appear without an icon and a word
+     beside them, so the two cannot be confused for one another. */
+  --accent: light-dark(#a9531c, #eda059);
+  --accent-hover: light-dark(#85400f, #f7b87c);
+  --accent-soft: light-dark(#fbefe2, #241c14);
+  --accent-ink: light-dark(#fffdf8, #140f0a);
 
-  /* Validated diverging pair for the contribution chart. */
-  --raise: light-dark(#e34948, #e66767);
-  --lower: light-dark(#2a78d6, #3987e5);
+  /* The diverging pair for the contribution chart, re-derived for the new
+     surfaces and checked with the colour-vision validator rather than
+     picked to match the palette by eye. Dark mode gets its own steps: an
+     automatic lightening of the light-mode pair put both poles above the
+     lightness band and left the blue reading grey (chroma 0.084, under
+     the 0.1 floor).
+
+     Worst adjacent separation now: light delta-E 15.8 protan / 24.8 normal,
+     dark delta-E 17.0 protan / 24.5 normal, against an 8 target and a 15
+     normal-vision floor. Colour is never the only channel anyway: bar
+     direction, the +/- glyph, the legend and the row text all say the
+     same thing. */
+  --raise: light-dark(#b23b33, #d87264);
+  --lower: light-dark(#2a6098, #4595d8);
 
   /* Status colours for the score band and gauge zones. Always shipped
      with an icon and words, never on their own. */
-  --status-good: light-dark(#0ca30c, #34d058);
-  --status-warn: light-dark(#d98a04, #fab219);
-  --status-bad:  light-dark(#d03b3b, #f87171);
+  --status-good: light-dark(#3f6b3a, #8fc08a);
+  --status-warn: light-dark(#9a6b12, #dba851);
+  --status-bad:  light-dark(#a8382f, #e0857c);
 
-  --warn-bg:    light-dark(#fffaf0, #241c0c);
-  --warn-line:  light-dark(#f5dfae, #4a3a12);
-  --warn-ink:   light-dark(#7a5807, #f0c36d);
-  --error-bg:   light-dark(#fdf0ef, #2a1614);
-  --error-line: light-dark(#f0c4c0, #5a2b26);
-  --error-ink:  light-dark(#8c2f27, #f2a9a2);
+  --warn-bg:    light-dark(#faf3e4, #241f14);
+  --warn-line:  light-dark(#e3d5b4, #453a24);
+  --warn-ink:   light-dark(#6b4a09, #dfba77);
+  --error-bg:   light-dark(#f9ece9, #251815);
+  --error-line: light-dark(#e2c3bd, #4d2b26);
+  --error-ink:  light-dark(#8a2e24, #e5a89f);
 
-  /* Shadow colour varies by theme; the geometry does not. */
-  --shadow-tint: light-dark(rgba(18, 19, 26, 0.05), rgba(0, 0, 0, 0.4));
-  --shadow-tint-2: light-dark(rgba(18, 19, 26, 0.05), rgba(0, 0, 0, 0.35));
-  --shadow-tint-3: light-dark(rgba(18, 19, 26, 0.08), rgba(0, 0, 0, 0.45));
-  /* Layered shadows read as real depth; one flat shadow reads as a sticker. */
+  /* Shadows are almost gone. A printed page has no drop shadows; it has
+     rules and margins. One barely-there shadow is kept for the two things
+     that genuinely float above the page (the toast and the focused
+     input), and everything else is separated by a hairline instead. */
+  --shadow-tint: light-dark(rgba(28, 26, 23, 0.07), rgba(0, 0, 0, 0.45));
   --shadow-sm: 0 1px 2px var(--shadow-tint);
-  --shadow-md: 0 1px 2px var(--shadow-tint), 0 4px 12px var(--shadow-tint-2);
-  --shadow-lg: 0 1px 2px var(--shadow-tint), 0 8px 28px var(--shadow-tint-3);
-  --shadow-accent: 0 1px 2px var(--shadow-tint),
-                   0 6px 18px light-dark(rgba(79, 70, 229, 0.25), rgba(129, 140, 248, 0.22));
+  --shadow-md: 0 1px 3px var(--shadow-tint);
+  --shadow-lg: 0 2px 10px var(--shadow-tint);
+  --shadow-accent: 0 1px 2px var(--shadow-tint);
 
-  --grid-dot: light-dark(rgba(18, 19, 26, 0.16), rgba(255, 255, 255, 0.13));
-  --mote:     light-dark(rgba(79, 70, 229, 0.85), rgba(165, 180, 252, 0.95));
-  --spot:     light-dark(rgba(79, 70, 229, 0.20), rgba(129, 140, 248, 0.22));
-
-  /* Blob colours, as tokens so the gradients below need no theme rules. */
-  --blob-1: light-dark(rgba(79, 70, 229, 0.80), rgba(129, 140, 248, 0.72));
-  --blob-2: light-dark(rgba(226, 73, 72, 0.62), rgba(230, 103, 103, 0.55));
-  --blob-3: light-dark(rgba(147, 51, 234, 0.58), rgba(168, 85, 247, 0.52));
-
-  /* Card opacity; the remainder is background showing through. Not a
-     taste value: contrast is measured against the COMPOSITED card, and a
-     card over the brightest blob drops the muted grey below the 4.5 AA
-     floor if this goes much lower. light-dark() only works for colours,
-     so the two values are set by the rules underneath instead. */
-  --glass: 0.86;
-  --blob-opacity: 0.85;
-  --grain-opacity: 0.05;
-
-  --radius-lg: 18px;
-  --radius-md: 12px;
-  --radius-sm: 9px;
+  /* Corners: 6px, not 18px. Large radii are the other half of the
+     generated-app look; at this size a card reads as a sheet of paper
+     with a ruled edge rather than a rounded tile. */
+  --radius-lg: 6px;
+  --radius-md: 5px;
+  --radius-sm: 4px;
 
   --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI Variable Text",
           "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  /* ui-serif is New York on Apple systems; Georgia and Palatino are on
+     essentially every Windows and Linux desktop. All three were drawn for
+     long-form reading, which is the point. */
+  /* THE LIGHT SOURCE. One static warm glow, high and centred, as if the
+     page were lit from above. The version this replaced had three blurred
+     colour blobs on separate drift animations, twenty floating motes and
+     a glow chasing the cursor - five moving light sources, which is why
+     none of them read as deliberate. One that does not move does. */
+  --glow: light-dark(rgba(169, 83, 28, 0.09), rgba(237, 160, 89, 0.22));
+
+  --font-display: ui-serif, "Iowan Old Style", "Palatino Linotype", Palatino,
+                  Georgia, "Times New Roman", serif;
 }
 
 /* The footer switch pins the theme; without it, color-scheme above just
@@ -109,23 +140,20 @@
 :root[data-theme="light"] { color-scheme: light; }
 :root[data-theme="dark"]  { color-scheme: dark; }
 
-/* The three non-colour values light-dark() cannot express. Each needs a
-   media-query copy (for "follow the OS") and an attribute copy (for the
-   switch), because they are numbers rather than colours. */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --glass: 0.78;
-    --blob-opacity: 0.8;
-    --grain-opacity: 0.055;
-  }
-}
-:root[data-theme="dark"] {
-  --glass: 0.78;
-  --blob-opacity: 0.8;
-  --grain-opacity: 0.055;
-}
-
 * { box-sizing: border-box; }
+
+/* The hidden attribute must actually hide.
+   A browser's default is [hidden] { display: none }, but that is a UA
+   rule with the lowest priority there is, so ANY author rule setting
+   display beats it. This page has 31 of those, and five elements that
+   JavaScript hides by setting .hidden were matching one - including the
+   "Demo model" banner, which went on telling visitors the model was
+   synthetic for the whole time it was not. Nothing looked broken: the
+   attribute was set correctly, the JS was right, and the element simply
+   kept rendering. !important is the correct tool here rather than a
+   smell: "hidden means hidden" should not be something a later rule can
+   win an argument with. */
+[hidden] { display: none !important; }
 
 html { -webkit-text-size-adjust: 100%; }
 
@@ -142,175 +170,33 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-/* ------------------------------------------------ Animated background
-   A slow-drifting colour field. Three blobs, each on its own duration and
-   direction, so the pattern never visibly repeats. position:fixed keeps it
-   out of the scroll area so it can't create a scrollbar, and the whole
-   thing is inert: aria-hidden, pointer-events:none, behind everything.
+/* The animated background that used to live here - three drifting blurred
+   blobs, a dot grid, twenty floating motes, a cursor-following glow and a
+   film-grain overlay - has been deleted rather than toned down. About 200
+   lines of CSS and a requestAnimationFrame loop, all of it decoration
+   competing with a page whose job is to be read carefully. The page now
+   has a flat warm background and gets its depth from type and rules. */
 
-   Only transform and opacity are animated. Those two are the properties a
-   browser can composite on the GPU without recalculating layout, so this
-   costs almost nothing per frame; animating width/left/background would
-   force a relayout on every tick and make the page stutter. */
-.bg {
-  position: fixed;
-  inset: 0;
-  overflow: hidden;
-  pointer-events: none;
-  z-index: 0;
-}
-.blob {
-  position: absolute;
-  display: block;
-  border-radius: 50%;
-  filter: blur(80px);
-  opacity: var(--blob-opacity);
-  will-change: transform;
-}
-.blob-1 {
-  width: 58vw; height: 58vw; min-width: 380px; min-height: 380px;
-  top: -16vw; left: -12vw;
-  background: radial-gradient(circle, var(--blob-1), transparent 68%);
-  animation: drift-1 16s ease-in-out infinite;
-}
-.blob-2 {
-  width: 48vw; height: 48vw; min-width: 320px; min-height: 320px;
-  top: -8vw; right: -10vw;
-  background: radial-gradient(circle, var(--blob-2), transparent 68%);
-  animation: drift-2 21s ease-in-out infinite;
-}
-.blob-3 {
-  width: 46vw; height: 46vw; min-width: 300px; min-height: 300px;
-  top: 30vh; left: 38vw;
-  background: radial-gradient(circle, var(--blob-3), transparent 68%);
-  animation: drift-3 26s ease-in-out infinite;
-}
-
-/* Deliberately un-round numbers and three different durations, so the
-   three loops never line up into an obvious pulse. */
-@keyframes drift-1 {
-  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
-  33%      { transform: translate3d(12vw, 9vh, 0) scale(1.25); }
-  66%      { transform: translate3d(-7vw, 15vh, 0) scale(0.85); }
-}
-@keyframes drift-2 {
-  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
-  40%      { transform: translate3d(-14vw, 13vh, 0) scale(1.3); }
-  70%      { transform: translate3d(5vw, -7vh, 0) scale(0.8); }
-}
-@keyframes drift-3 {
-  0%, 100% { transform: translate3d(0, 0, 0) scale(0.95); }
-  50%      { transform: translate3d(-18vw, -13vh, 0) scale(1.35); }
-}
-
-
-
-/* ---- Dot grid -------------------------------------------------------
-   A faint pinned-dot texture. It gives the colour field something to sit
-   against, so the background reads as designed rather than as a blur.
-   The mask fades it out toward the bottom so it never competes with the
-   text below. Drifting exactly one tile per loop makes the motion
-   seamless: at the end of the cycle the pattern lines up with where it
-   began, so there is no visible jump. */
-.grid-layer {
-  position: absolute;
-  inset: -40px;
-  background-image: radial-gradient(circle, var(--grid-dot) 1px, transparent 1px);
-  background-size: 34px 34px;
-  -webkit-mask-image: radial-gradient(ellipse 90% 65% at 50% 0%, #000 30%, transparent 85%);
-  mask-image: radial-gradient(ellipse 90% 65% at 50% 0%, #000 30%, transparent 85%);
-  animation: grid-drift 14s linear infinite;
-  will-change: transform;
-}
-@keyframes grid-drift {
-  from { transform: translate3d(0, 0, 0); }
-  to   { transform: translate3d(34px, 34px, 0); }
-}
-
-/* ---- Floating motes -------------------------------------------------
-   A dozen slow specks rising through the page. Enough to make the
-   background feel alive, few enough to stay cheap and not distract. */
-.motes { position: absolute; inset: 0; overflow: hidden; }
-.mote {
-  position: absolute;
-  bottom: -12px;
-  width: 3px;
-  height: 3px;
-  border-radius: 50%;
-  background: var(--mote);
-  opacity: 0;
-  animation: float-up linear infinite;
-  will-change: transform, opacity;
-}
-/* Each mote gets its own column, speed and start offset. Spreading these
-   by hand (rather than one shared timing) is what stops them reading as a
-   marching row. */
-/* Each mote gets its own column, speed and start offset. Spreading these
-   by hand (rather than one shared timing) is what stops them reading as
-   a marching row. Negative delays start each one mid-flight, so the
-   screen is already populated on the first frame instead of filling up
-   over the first twenty seconds. */
-.mote:nth-child(1 ) { left: 4%; animation-duration: 13s; animation-delay: -1s; }
-.mote:nth-child(2 ) { left: 9%; animation-duration: 17s; animation-delay: -5s; width: 2px; height: 2px; }
-.mote:nth-child(3 ) { left: 15%; animation-duration: 15s; animation-delay: -9s; width: 4px; height: 4px; }
-.mote:nth-child(4 ) { left: 21%; animation-duration: 19s; animation-delay: -3s; }
-.mote:nth-child(5 ) { left: 26%; animation-duration: 12s; animation-delay: -11s; width: 2px; height: 2px; }
-.mote:nth-child(6 ) { left: 32%; animation-duration: 16s; animation-delay: -7s; }
-.mote:nth-child(7 ) { left: 37%; animation-duration: 14s; animation-delay: -14s; width: 4px; height: 4px; }
-.mote:nth-child(8 ) { left: 43%; animation-duration: 20s; animation-delay: -2s; width: 2px; height: 2px; }
-.mote:nth-child(9 ) { left: 48%; animation-duration: 13s; animation-delay: -16s; }
-.mote:nth-child(10) { left: 54%; animation-duration: 18s; animation-delay: -6s; }
-.mote:nth-child(11) { left: 59%; animation-duration: 15s; animation-delay: -12s; width: 2px; height: 2px; }
-.mote:nth-child(12) { left: 65%; animation-duration: 21s; animation-delay: -4s; width: 4px; height: 4px; }
-.mote:nth-child(13) { left: 70%; animation-duration: 14s; animation-delay: -18s; }
-.mote:nth-child(14) { left: 76%; animation-duration: 17s; animation-delay: -8s; width: 2px; height: 2px; }
-.mote:nth-child(15) { left: 81%; animation-duration: 16s; animation-delay: -13s; }
-.mote:nth-child(16) { left: 86%; animation-duration: 19s; animation-delay: -10s; width: 4px; height: 4px; }
-.mote:nth-child(17) { left: 90%; animation-duration: 13s; animation-delay: -15s; width: 2px; height: 2px; }
-.mote:nth-child(18) { left: 94%; animation-duration: 18s; animation-delay: -17s; }
-.mote:nth-child(19) { left: 97%; animation-duration: 15s; animation-delay: -19s; }
-.mote:nth-child(20) { left: 12%; animation-duration: 20s; animation-delay: -20s; width: 2px; height: 2px; }
-
-@keyframes float-up {
-  0%        { transform: translate3d(0, 0, 0);            opacity: 0; }
-  10%       { opacity: 0.9; }
-  85%       { opacity: 0.9; }
-  100%      { transform: translate3d(26px, -104vh, 0);   opacity: 0; }
-}
-
-/* ---- Cursor spotlight -----------------------------------------------
-   A soft light that trails the pointer. app.js positions it; it stays
-   invisible until the first mouse move, so touch devices never see it. */
-.spotlight {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 680px;
-  height: 680px;
-  margin: -340px 0 0 -340px;   /* centre it on the cursor */
-  border-radius: 50%;
-  background: radial-gradient(circle, var(--spot) 0%, transparent 62%);
-  opacity: 0;
-  transition: opacity 0.4s ease;
-  will-change: transform;
-}
-.spotlight.on { opacity: 1; }
-
-/* A faint film grain over the gradients. Large flat gradients tend to show
-   colour banding on 8-bit displays; a little noise breaks the bands up and
-   also stops the background looking like plastic. */
-.grain {
+/* The light, painted once behind everything. A pseudo-element rather than
+   a div, so the page keeps no decorative markup at all: there is nothing
+   in the HTML now that is only there to be looked at. Fixed, so it stays
+   put as the page scrolls, and inert to the pointer. */
+body::before {
+  content: "";
   position: fixed;
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  opacity: var(--grain-opacity);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+  background: radial-gradient(ellipse 85% 55% at 50% -12%, var(--glow), transparent 68%);
 }
 
 .shell {
   position: relative;
-  z-index: 1;          /* above the glow */
+  z-index: 1;          /* above the light */
+  /* A measure, not a container. 780px at this body size is roughly 75
+     characters of the tagline and about 90 of the smaller text - the
+     range typography has settled on for reading without losing the line
+     you are returning to. */
   max-width: 780px;
   margin: 0 auto;
   padding: 0 20px 80px;  /* side gutter so nothing touches a phone edge */
@@ -320,22 +206,19 @@ body {
 /* ================================================== Top bar and tabs */
 
 .topbar {
-  /* NOT sticky, deliberately.
-     A pinned bar has to paint a backdrop to stay readable over whatever
-     scrolls beneath it, and on a page with a colourful moving background
-     that backdrop reads as a dark slab sitting on the content. Three
-     attempts at softening it (lighter tint, appear-on-scroll, retract
-     while scrolling down) each left an edge case where the box showed
-     over the text - the last one because a browser restoring its scroll
-     position lands a few pixels down, which counts as "scrolled".
-     A header that simply scrolls away cannot do any of that. The cost is
-     scrolling up to reach the tabs, which is how most sites work. */
+  /* NOT sticky, deliberately. A pinned bar has to paint a backdrop to
+     stay readable over whatever scrolls beneath it, and every attempt at
+     softening that left an edge case where the slab covered the text -
+     the last one because a browser restoring its scroll position lands a
+     few pixels down, which counts as "scrolled". A header that simply
+     scrolls away cannot do any of that. The cost is scrolling up to
+     reach the tabs, which is how most sites work. */
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: 18px;
   flex-wrap: wrap;
-  padding: 16px 0 14px;
-  margin-bottom: 4px;
+  padding: 18px 0 0;
+  margin-bottom: 8px;
   border-bottom: 1px solid var(--line);
 }
 
@@ -343,34 +226,26 @@ body {
 
 .brand {
   display: inline-flex;
-  align-items: center;
-  gap: 9px;
+  align-items: baseline;
+  gap: 8px;
   text-decoration: none;
   color: var(--ink);
-  font-weight: 700;
-  font-size: 1.04rem;
-  letter-spacing: -0.025em;
-  border-radius: 10px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.22rem;
+  letter-spacing: -0.01em;
 }
 .brand:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
 
-/* The mark sits in a tinted rounded square, which gives the wordmark
-   something to align to and stops it floating next to bare text. */
+/* The mark used to sit in a tinted rounded square with a tilt on hover.
+   The box was there to give the wordmark something to align to; setting
+   the name in the display serif does that on its own, so the ghost can
+   just be a small drawing next to it. */
 .brand-mark {
-  display: grid;
+  display: inline-grid;
   place-items: center;
-  width: 30px;
-  height: 30px;
-  border-radius: 9px;
-  background: color-mix(in srgb, var(--accent) 16%, transparent);
-  border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
-  color: var(--accent);
-  transition: transform 0.2s cubic-bezier(0.34, 1.4, 0.5, 1),
-              background-color 0.2s ease;
-}
-.brand:hover .brand-mark {
-  transform: translateY(-1px) rotate(-6deg);
-  background: color-mix(in srgb, var(--accent) 24%, transparent);
+  color: var(--ink-soft);
+  transform: translateY(2px);
 }
 /* The eyes are punched out in the page colour rather than drawn, so they
    stay correct in both themes without a second set of values. */
@@ -380,81 +255,58 @@ body {
 /* --------------------------------------------------------------- Tabs */
 
 .tabs {
-  position: relative;          /* the pill is positioned against this */
+  position: relative;          /* the underline is positioned against this */
   display: flex;
-  gap: 2px;
+  gap: 4px;
   margin-left: auto;
-  /* No container box. A bordered, filled capsule around the tabs put a
-     second rectangle inside the bar and made the whole thing look boxed
-     in. The sliding pill is the only chrome the tab strip needs. */
   overflow-x: auto;
   scrollbar-width: none;
-  /* Room for the pill's shadow, which a scroll container would clip. */
-  padding: 4px 2px;
+  padding: 0 2px;
   margin-right: -2px;
 }
 .tabs::-webkit-scrollbar { display: none; }
 
+/* Was a filled capsule with a coloured glow that slid between tabs. It is
+   a 2px rule under the active label now: the same information, sitting on
+   the baseline where a reader already expects section marking, and it no
+   longer needs a contrasting text colour to stay legible on top of it. */
 .tab-indicator {
   position: absolute;
   z-index: 0;
-  top: 4px;
+  bottom: 0;
   left: 0;
-  bottom: 4px;
+  height: 2px;
   width: 0;
   pointer-events: none;
-  border-radius: 999px;
-  background: var(--accent);
-  box-shadow: 0 1px 2px var(--shadow-tint),
-              0 4px 12px color-mix(in srgb, var(--accent) 35%, transparent);
+  background: var(--ink);
   opacity: 0;                  /* JS reveals it once it has a position */
-  /* Slightly overshooting easing: the pill arrives and settles rather
-     than stopping dead, which is what makes it feel physical. */
-  transition: transform 0.42s cubic-bezier(0.34, 1.3, 0.5, 1),
-              width 0.42s cubic-bezier(0.34, 1.3, 0.5, 1),
-              opacity 0.2s ease;
+  transition: transform 0.25s ease, width 0.25s ease, opacity 0.2s ease;
 }
 
 .tab {
   position: relative;
-  z-index: 1;                  /* above the pill */
+  z-index: 1;
   flex: none;
   font: inherit;
-  font-size: 0.85rem;
-  font-weight: 600;
+  font-size: 0.86rem;
+  font-weight: 500;
   white-space: nowrap;
-  padding: 7px 16px;
+  padding: 8px 12px 10px;
   border: none;
-  border-radius: 999px;
   background: transparent;
-  color: var(--ink-soft);
+  color: var(--ink-muted);
   cursor: pointer;
-  transition: color 0.25s ease, transform 0.12s ease;
+  transition: color 0.2s ease;
 }
-/* A faint wash on hover, drawn as a pseudo-element so it sits under the
-   label and never fights the pill for the same background property. */
-.tab::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: var(--ink);
-  opacity: 0;
-  transition: opacity 0.2s ease;
-}
-.tab:hover:not([aria-selected="true"]) { color: var(--ink); }
-.tab:hover:not([aria-selected="true"])::before { opacity: 0.06; }
-.tab:active { transform: scale(0.96); }
-.tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.tab:hover:not([aria-selected="true"]) { color: var(--ink-soft); }
+.tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* aria-selected is the source of truth, so the styling reads it directly
-   rather than a parallel class that could fall out of step. The pill
-   provides the background; the tab only changes its text colour. */
-.tab[aria-selected="true"] { color: var(--accent-ink); }
-.tab[aria-selected="true"]::before { opacity: 0; }
+   rather than a parallel class that could fall out of step. */
+.tab[aria-selected="true"] { color: var(--ink); font-weight: 600; }
 
-/* With motion off the pill would still slide, which is the one animation
-   a reader cannot look away from. Snap it instead. */
+/* With motion off the underline would still slide, which is the one
+   animation a reader cannot look away from. Snap it instead. */
 html[data-motion="off"] .tab-indicator { transition: opacity 0.2s ease; }
 
 /* ------------------------------------------------------- Panel views */
@@ -604,97 +456,81 @@ html[data-motion="off"] .tab-indicator { transition: opacity 0.2s ease; }
 
 /* ---------------------------------------------------------------- Hero */
 
-.hero { padding: 40px 0 28px; }
+/* Centred, with room around it. The headline is the only thing on the
+   page that gets to be large, so it is given the whole measure and a lot
+   of air rather than being packed against the form. */
+.hero {
+  padding: 68px 0 44px;
+  text-align: center;
+}
 
-/* The hero animates in on load, each piece slightly after the one above,
-   so the eye is led down the page rather than hit with everything at once. */
-.js .hero > * { animation: rise-in 0.85s cubic-bezier(0.16, 1, 0.3, 1) backwards; }
-.js .hero .eyebrow  { animation-delay: 0.06s; }
-.js .hero h1        { animation-delay: 0.20s; }
-.js .hero .tagline  { animation-delay: 0.36s; }
+/* One short fade, once, and only on the headline block. The old version
+   staggered three elements in with a 30px rise and a scale, which is a
+   title sequence rather than a page load. */
+.js .hero > * { animation: rise-in 0.5s ease-out backwards; }
+.js .hero h1       { animation-delay: 0.05s; }
+.js .hero .tagline { animation-delay: 0.1s; }
 
 @keyframes rise-in {
-  from { opacity: 0; transform: translateY(30px) scale(0.97); }
+  from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: none; }
 }
 
+/* Was a bordered pill with a pulsing green dot - a status badge for a
+   status nothing was checking. It is a caption now, set in small caps
+   above the headline the way a standfirst sits above a piece. */
 .eyebrow {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0 0 20px;
-  padding: 6px 14px 6px 11px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: var(--bg-elevated);
-  box-shadow: var(--shadow-sm);
-  font-size: 0.8rem;
-  font-weight: 550;
-  color: var(--ink-soft);
-}
-.eyebrow-dot {
-  width: 7px; height: 7px; border-radius: 50%;
-  background: var(--status-good);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--status-good) 20%, transparent);
-  animation: pulse 2.6s ease-in-out infinite;
-}
-@keyframes pulse {
-  0%, 100% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--status-good) 20%, transparent); }
-  50%      { box-shadow: 0 0 0 6px color-mix(in srgb, var(--status-good) 6%, transparent); }
+  display: block;
+  margin: 0 0 14px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
 }
 
 .hero h1 {
+  font-family: var(--font-display);
   /* clamp() scales the headline with the viewport between two sensible
      bounds, so it never looks cramped on a phone or oversized on a laptop. */
-  font-size: clamp(2.1rem, 6.4vw, 3.1rem);
-  line-height: 1.08;
-  letter-spacing: -0.035em;
-  font-weight: 700;
-  margin: 0 0 16px;
+  font-size: clamp(2.2rem, 6vw, 3.4rem);
+  line-height: 1.12;
+  letter-spacing: -0.02em;
+  font-weight: 600;
+  margin: 0 auto 20px;
+  max-width: 16ch;
 }
-.gradient-text {
-  /* Oversized background plus a moving position = the colours slide
-     through the letterforms. Animating background-position is cheap here
-     because the painted area is only the text itself. */
-  background: linear-gradient(100deg, var(--accent), #9333ea 40%, var(--raise) 70%, var(--accent));
-  background-size: 250% 100%;
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  animation: hue-slide 5.5s ease-in-out infinite;
-}
-@keyframes hue-slide {
-  0%, 100% { background-position: 0% 50%; }
-  50%      { background-position: 100% 50%; }
+/* The second line is the question the tool actually answers, so it is
+   the one thing allowed emphasis - italic, in the same serif. Previously
+   it was rainbow gradient text with the colours sliding through it. */
+.hero h1 em {
+  font-style: italic;
+  font-weight: 500;
+  color: var(--ink-soft);
 }
 
 .tagline {
-  margin: 0;
-  max-width: 54ch;
-  font-size: 1.05rem;
+  margin: 0 auto;
+  /* ~65 characters is the measure long-form text has used since metal
+     type; past it the eye loses the line it is returning to. */
+  max-width: 56ch;
+  font-size: 1.04rem;
   color: var(--ink-soft);
 }
 .tagline strong { color: var(--ink); font-weight: 600; }
 
 /* --------------------------------------------------------------- Cards */
 
+/* A sheet, not a tile. Solid surface, one hairline, small radius, no
+   shadow and no backdrop blur. The frosted-glass version existed to show
+   the animated colour field through it; with the field gone, glass was
+   just an expensive way to make text slightly harder to read. */
 .card {
-  /* Frosted glass: partly transparent, with the backdrop blurred behind
-     it. This is what makes the moving background feel part of the design
-     instead of something hidden behind opaque boxes.
-
-     The opacity is deliberately high (see --glass). Text contrast is
-     measured against the card, so the more background bleeds through the
-     less predictable that becomes. 0.80 keeps the worst case comfortably
-     inside AA while still showing the colour moving underneath. */
-  background: color-mix(in srgb, var(--bg-elevated) calc(var(--glass) * 100%), transparent);
-  -webkit-backdrop-filter: blur(16px) saturate(1.4);
-  backdrop-filter: blur(16px) saturate(1.4);
+  background: var(--bg-elevated);
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
-  padding: 24px;
-  margin: 18px 0;
-  box-shadow: var(--shadow-md);
+  padding: 26px 28px;
+  margin: 20px 0;
 }
 
 /* Browsers without backdrop-filter get a solid card instead of a
@@ -702,62 +538,23 @@ html[data-motion="off"] .tab-indicator { transition: opacity 0.2s ease; }
 @supports not (backdrop-filter: blur(1px)) {
   .card { background: var(--bg-elevated); }
 }
-/* A light travelling around the edge of the input card, marking it as the
-   live thing on the page. Built from a conic gradient clipped to a 1px
-   ring by two masks that cancel each other out everywhere except the
-   border. @property is what makes the angle animatable at all: a plain
-   custom property is just a string to the browser, so it would jump from
-   0 to 360 instead of sweeping. Where @property is unsupported the ring
-   still renders, just without rotating. */
-@property --angle {
-  syntax: "<angle>";
-  initial-value: 0deg;
-  inherits: false;
-}
+/* The input card used to carry a light travelling around its border on a
+   four-second loop, built from an animated conic gradient. It marked the
+   card as "the live thing", but a page with one form does not need an
+   arrow pointing at the form, and a perpetual animation next to a text
+   box is a poor companion while someone is reading. A slightly darker
+   rule does the same job silently. */
+.card-input { border-color: var(--ink-muted); }
 
-.card-input { box-shadow: var(--shadow-lg); position: relative; }
-
-.card-input::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  padding: 1px;
-  background: conic-gradient(
-    from var(--angle),
-    transparent 0%,
-    var(--accent) 8%,
-    transparent 22%,
-    transparent 100%
-  );
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  mask-composite: exclude;
-  animation: spin-border 4s linear infinite;
-  pointer-events: none;
-}
-@keyframes spin-border {
-  to { --angle: 360deg; }
-}
-.card-result { box-shadow: var(--shadow-lg); }
-
-/* A small lift on hover. transform and box-shadow only, so it composites
-   on the GPU rather than re-running layout. */
-.card {
-  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
-}
-.card:hover {
-  transform: translateY(-4px) scale(1.006);
-  box-shadow: var(--shadow-lg);
-  border-color: color-mix(in srgb, var(--accent) 35%, var(--line));
-}
+/* Cards do not lift on hover. They are not buttons and nothing happens
+   when you click one, so moving them on approach promised an interaction
+   that does not exist. */
 
 /* Scroll reveal. Elements start slightly down and transparent; app.js adds
    .in-view when they scroll into frame. The starting state is only applied
    when JS is present (html.js), so with JavaScript disabled everything
    stays visible instead of being permanently invisible. */
-.js .reveal { opacity: 0; transform: translateY(30px) scale(0.985); }
+.js .reveal { opacity: 0; transform: translateY(10px); }
 .js .reveal.in-view {
   opacity: 1;
   transform: none;
@@ -813,33 +610,27 @@ textarea:focus {
   border-radius: var(--radius-sm);
   border: 1px solid transparent;
   cursor: pointer;
-  transition: transform 0.12s ease, box-shadow 0.15s ease,
-              background-color 0.15s ease, border-color 0.15s ease;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.btn:disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; transform: none; }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
+/* The one saturated thing on the page. Everything else is paper, ink and
+   hairlines, so the single ember button reads as the action without
+   needing a size, a shadow or an arrow to say so - it is the only place
+   the light actually lands.
+
+   The hover sheen that used to sweep across it - a skewed white gradient
+   on a 0.55s transition - is gone. It is the single most recognisable
+   piece of generated-UI decoration, and a button does not need to
+   glitter to look clickable. */
 .btn-primary {
   background: var(--accent);
   color: var(--accent-ink);
-  box-shadow: var(--shadow-accent);
-  position: relative;
-  overflow: hidden;   /* clips the sheen to the button */
+  border-color: var(--accent);
+  font-weight: 600;
 }
-/* A light sweep that crosses the button on hover. Purely a affordance
-   cue: it makes the primary action feel like the live one on the page. */
-.btn-primary::after {
-  content: "";
-  position: absolute;
-  inset: 0 auto 0 -60%;
-  width: 45%;
-  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.28), transparent);
-  transform: skewX(-18deg);
-  transition: left 0.55s ease;
-}
-.btn-primary:hover:not(:disabled)::after { left: 115%; }
-.btn-primary:hover:not(:disabled) { background: var(--accent-hover); transform: translateY(-1px); }
-.btn-primary:active:not(:disabled) { transform: translateY(0); }
+.btn-primary:hover:not(:disabled) { background: var(--accent-hover); border-color: var(--accent-hover); }
 
 .btn-ghost { background: transparent; color: var(--ink-soft); border-color: var(--line); }
 .btn-ghost:hover:not(:disabled) { background: var(--line-soft); color: var(--ink); }
@@ -1405,15 +1196,8 @@ a:hover { text-decoration-color: currentColor; }
 /* -------------------------------------------------------------- Phones */
 
 @media (max-width: 580px) {
-  /* A large blur radius is one of the most expensive things to composite,
-     and phones are exactly where that hurts. Drop the third layer and
-     soften the blur: the effect still reads, at roughly half the cost. */
-  .blob-3 { display: none; }
-  .blob { filter: blur(60px); }
-  /* backdrop-filter on several stacked cards is heavy on phones, and the
-     grid texture is barely visible at this size anyway. */
-  .grid-layer { display: none; }
-  .card { -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+  /* Nothing to scale back on phones any more: there is no blurred
+     backdrop and no decorative layer to switch off. */
 
   .shell { padding: 0 16px 60px; }
   .topbar { gap: 10px; padding: 10px 0; }
@@ -1471,27 +1255,14 @@ html[data-motion="off"] .crow-name {
 }
 html[data-motion="off"] .bar { transform: none !important; }
 
-/* These three exist ONLY as movement. Frozen motes are twelve invisible
-   dots doing nothing, and a frozen border ring leaves a bright arc stuck
-   on one corner that reads as a rendering fault, so remove them. */
-html[data-motion="off"] .motes,
-html[data-motion="off"] .spotlight,
+/* A frozen border ring leaves a bright arc stuck on one corner that reads
+   as a rendering fault, so remove it rather than pausing it. */
 html[data-motion="off"] .card-input::before { display: none !important; }
-
-/* The drifting colour field and grid are held still rather than removed,
-   so the design still looks deliberate with motion off. */
-html[data-motion="off"] .gradient-text { background-position: 0% 50% !important; }
 
 /* Fallback for visitors without JavaScript, where data-motion is never
    set: honour the system preference on its own. */
 @media (prefers-reduced-motion: reduce) {
-  html:not(.js) .blob,
-  html:not(.js) .grid-layer,
-  html:not(.js) .gradient-text,
-  html:not(.js) .eyebrow-dot,
   html:not(.js) .card-input::before { animation: none !important; }
-  html:not(.js) .motes,
-  html:not(.js) .spotlight { display: none !important; }
 }
 
 /* ---- The toggle itself ---- */

@@ -4,11 +4,11 @@
  * only moves values onto the screen.
  */
 
-import { loadPhrases } from "./features.js?v=24";
-import { loadModel, score, band } from "./scorer.js?v=24";
-import { annotate } from "./highlight.js?v=24";
-import { setUpTabs } from "./tabs.js?v=24";
-import { checkInput, MIN_WORDS } from "./validate.js?v=24";
+import { loadPhrases } from "./features.js?v=30";
+import { loadModel, score, band } from "./scorer.js?v=30";
+import { annotate } from "./highlight.js?v=30";
+import { setUpTabs } from "./tabs.js?v=30";
+import { checkInput, MIN_WORDS } from "./validate.js?v=30";
 
 // Change this if you fork the project.
 const REPO_URL = "https://github.com/shouryabiswas2009/hireproof";
@@ -215,8 +215,8 @@ disadvantage, tell us when you apply and we will change it.`,
 About the role
 
 We are looking for an Operations Associate to join our growing team. This is
-an chance to learn how a scaling business works at a company that is scaling
-quickly, and to work across a number of different areas of the business.
+a chance to learn how a business works from the inside as it scales, and to
+work across a number of different areas at once.
 
 Reporting into the operations function, you will support the day-to-day
 running of our fulfilment and customer operations. This is a varied role and
@@ -1118,61 +1118,9 @@ function setUpScrollReveal() {
   targets.forEach((el) => observer.observe(el));
 }
 
-/**
- * A soft glow that follows the cursor.
- *
- * Two details that make it feel right rather than cheap:
- *
- * 1. It EASES toward the pointer instead of being pinned to it. Locking it
- *    to the exact cursor position reads as a stuck decal; trailing very
- *    slightly behind reads as light.
- * 2. The mousemove handler only records coordinates. The actual move
- *    happens in a requestAnimationFrame loop, so however often the mouse
- *    fires we touch the DOM at most once per frame.
- *
- * Skipped entirely for touch input and for reduced motion.
- */
-function setUpSpotlight() {
-  const spotlight = document.getElementById("spotlight");
-  if (!spotlight) return;
-  // A coarse pointer means touch, where there is no cursor to follow.
-  if (!window.matchMedia("(pointer: fine)").matches) return;
-
-  let targetX = window.innerWidth / 2;
-  let targetY = window.innerHeight / 2;
-  let x = targetX;
-  let y = targetY;
-  let running = false;
-
-  function frame() {
-    // Move a fraction of the remaining distance each frame: fast when far
-    // away, slowing as it arrives.
-    x += (targetX - x) * 0.12;
-    y += (targetY - y) * 0.12;
-    spotlight.style.transform = `translate3d(${x}px, ${y}px, 0)`;
-
-    // Stop the loop once it has essentially caught up, so an idle page
-    // isn't burning a frame callback forever.
-    if (Math.abs(targetX - x) > 0.5 || Math.abs(targetY - y) > 0.5) {
-      requestAnimationFrame(frame);
-    } else {
-      running = false;
-    }
-  }
-
-  window.addEventListener("pointermove", (event) => {
-    // Checked per event rather than once at setup, so flipping the toggle
-    // takes effect immediately instead of needing a reload.
-    if (!motionEnabled()) return;
-    targetX = event.clientX;
-    targetY = event.clientY;
-    spotlight.classList.add("on");
-    if (!running) {
-      running = true;
-      requestAnimationFrame(frame);
-    }
-  }, { passive: true });
-}
+/* The cursor-following glow that used to live here is gone, along with its
+   requestAnimationFrame easing loop and pointermove listener. The page has
+   one light now and it does not chase anyone around. */
 
 
 /* ==================================================== Compare two postings
@@ -1433,7 +1381,6 @@ async function start() {
     refreshInputState();
     refreshCompareState();
     setUpScrollReveal();
-    setUpSpotlight();
     setUpSignalFocus();
   } catch (error) {
     // Fail loudly and honestly rather than showing a broken page.

@@ -79,6 +79,23 @@ class StylesheetTests(unittest.TestCase):
             f"fallback, or set from JS: {sorted(missing)}",
         )
 
+    def test_hidden_attribute_cannot_be_overridden(self):
+        """[hidden] must beat every author display rule.
+
+        The browser's own [hidden] { display: none } is a user-agent rule,
+        which any author rule setting display outranks. Five elements the
+        JavaScript hides matched a class that sets display:flex and kept
+        rendering anyway - including the "Demo model" banner, which told
+        visitors the model was synthetic long after it stopped being so.
+        The attribute was set, the JavaScript was right, and the element
+        was on screen regardless.
+        """
+        self.assertRegex(
+            self.css,
+            r"\[hidden\]\s*\{[^}]*display:\s*none\s*!important",
+            "style.css must contain [hidden] { display: none !important }",
+        )
+
     def test_stylesheet_is_not_suspiciously_short(self):
         # A truncating write would leave a valid but tiny file.
         rules = self.css.count("{")
