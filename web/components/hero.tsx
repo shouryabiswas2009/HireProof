@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { useTheme } from "next-themes";
 import { createHeroField } from "@/lib/scoring/hero-field.js";
 import { motionEnabled } from "@/components/layout/motion-toggle";
+import { HeroSides } from "@/components/hero-sides";
 
 /**
  * The hero from the static site: the horizon arc drawn in CSS, and the
@@ -72,6 +73,8 @@ export function Hero({ children }: { children?: React.ReactNode }) {
 
   return (
     <div className="hero">
+      <HeroSides />
+
       {/* The stage reserves its own height, so nothing below it moves when
           the canvas and the arc finish setting themselves up. */}
       <div className="hero-stage">

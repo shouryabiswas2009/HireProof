@@ -3,60 +3,70 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import {
+  ScanLine,
+  GitCompareArrows,
+  History,
+  ChartNoAxesColumn,
+  BookOpen,
+} from "lucide-react";
 
-const navLinks = [
-  { href: "/check", label: "Check" },
-  { href: "/compare", label: "Compare" },
-  { href: "/history", label: "History" },
-  { href: "/model", label: "Model" },
-  { href: "/how", label: "How it works" },
+export const NAV_LINKS = [
+  { href: "/check", label: "Check", Icon: ScanLine },
+  { href: "/compare", label: "Compare", Icon: GitCompareArrows },
+  { href: "/history", label: "History", Icon: History },
+  { href: "/model", label: "Model", Icon: ChartNoAxesColumn },
+  { href: "/how", label: "How it works", Icon: BookOpen },
 ];
 
 /**
- * A segmented control with a pill that slides between items.
+ * The pill nav: a glass track with one amber pill that slides.
  *
  * MEASURED, NOT GUESSED. The pill's position comes from
- * getBoundingClientRect on the active link rather than from index times
- * an assumed item width, because the labels are different lengths and any
- * width-based guess drifts. It also has to be measured after the fonts
- * land: a pill placed while the fallback face is still showing ends up a
- * few pixels off once the real one swaps in.
+ * getBoundingClientRect on the target link rather than index times an
+ * assumed item width, because the labels are different lengths and any
+ * width-based guess drifts. It is re-measured once the webfont swaps in,
+ * since a pill placed against the fallback face lands a few pixels off.
  *
- * aria-current stays the source of truth for which route is active - the
- * pill is decoration, so it is hidden from the accessibility tree and a
- * screen reader reads the attribute instead.
+ * The pill follows the POINTER as well as the route, and returns to the
+ * active tab when the pointer leaves - so hovering previews where you are
+ * about to go. aria-current stays the source of truth for which route is
+ * actually active; the pill is decoration and is hidden from the
+ * accessibility tree.
  */
 export function NavLinks() {
   const pathname = usePathname();
-  const listRef = useRef<HTMLDivElement>(null);
+  const trackRef = useRef<HTMLDivElement>(null);
   const [pill, setPill] = useState<{ left: number; width: number } | null>(null);
 
+  const moveTo = (el: HTMLElement | null) => {
+    const track = trackRef.current;
+    if (!track || !el) return;
+    const a = el.getBoundingClientRect();
+    const parent = track.getBoundingClientRect();
+    setPill({ left: a.left - parent.left, width: a.width });
+  };
+
+  const settle = () =>
+    moveTo(trackRef.current?.querySelector<HTMLElement>('[aria-current="page"]') ?? null);
+
   useEffect(() => {
-    const list = listRef.current;
-    if (!list) return;
-
-    const place = () => {
-      const active = list.querySelector<HTMLElement>('[aria-current="page"]');
-      if (!active) {
-        setPill(null);
-        return;
-      }
-      const a = active.getBoundingClientRect();
-      const parent = list.getBoundingClientRect();
-      setPill({ left: a.left - parent.left, width: a.width });
-    };
-
-    place();
-    // Re-place when the box changes size, and once the webfont has
-    // actually swapped in.
-    const observer = new ResizeObserver(place);
-    observer.observe(list);
-    document.fonts?.ready.then(place).catch(() => {});
+    const track = trackRef.current;
+    if (!track) return;
+    settle();
+    const observer = new ResizeObserver(settle);
+    observer.observe(track);
+    document.fonts?.ready.then(settle).catch(() => {});
     return () => observer.disconnect();
   }, [pathname]);
 
   return (
-    <nav className="navpills" ref={listRef} aria-label="Sections">
+    <nav
+      className="navpills"
+      ref={trackRef}
+      aria-label="Sections"
+      onPointerLeave={settle}
+    >
       {pill && (
         <span
           className="navpill"
@@ -64,14 +74,18 @@ export function NavLinks() {
           style={{ transform: `translateX(${pill.left}px)`, width: pill.width }}
         />
       )}
-      {navLinks.map((link) => (
+      {NAV_LINKS.map(({ href, label, Icon }) => (
         <Link
-          key={link.href}
-          href={link.href}
+          key={href}
+          href={href}
           className="navlink"
-          aria-current={pathname === link.href ? "page" : undefined}
+          aria-current={pathname === href ? "page" : undefined}
+          onPointerEnter={(e) => moveTo(e.currentTarget)}
+          onFocus={(e) => moveTo(e.currentTarget)}
+          onBlur={settle}
         >
-          {link.label}
+          <Icon className="navlink-icon" aria-hidden="true" />
+          <span>{label}</span>
         </Link>
       ))}
     </nav>

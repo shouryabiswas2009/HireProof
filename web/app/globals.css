@@ -13,6 +13,9 @@
  * Tailwind utility still wins wherever the two disagree - which is the
  * relationship you actually want between a design and its primitives. */
 @import "./hireproof.css" layer(components);
+/* New work lives here so hireproof.css stays a verbatim copy of the
+   static site and can still be diffed against it. */
+@import "./hero-extras.css" layer(components);
 
 @custom-variant dark (&:is(.dark *));
 

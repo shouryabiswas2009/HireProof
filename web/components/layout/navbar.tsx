@@ -1,10 +1,11 @@
 import Link from "next/link";
-import { Ghost } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { LogoutButton } from "@/components/layout/logout-button";
 import { NavLinks } from "@/components/layout/nav-links";
 import { AccountMenu } from "@/components/layout/account-menu";
+import { Brand } from "@/components/layout/brand";
+import { MobileNav } from "@/components/layout/mobile-nav";
 
 /*
  * Three zones, evenly weighted: mark, links, account.
@@ -18,17 +19,13 @@ export function Navbar({ userEmail }: { userEmail: string | null }) {
   return (
     <header className="topbar">
       <div className="topbar-inner">
-        <Link href="/" className="brand">
-          <span className="brand-mark" aria-hidden="true">
-            <Ghost className="size-[17px]" />
-          </span>
-          <span className="brand-name">HireProof</span>
-        </Link>
+        <Brand />
 
         {userEmail && <NavLinks />}
 
         <div className="topbar-end">
           <ThemeToggle />
+          {userEmail && <MobileNav />}
           {userEmail ? (
             <AccountMenu email={userEmail}>
               <LogoutButton />
