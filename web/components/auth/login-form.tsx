@@ -13,7 +13,7 @@ export function LoginForm() {
   // The proxy puts the page they were trying to reach in ?next=, so a
   // deep link survives the detour through login instead of dropping
   // everyone on the same landing page.
-  const next = useSearchParams().get("next") ?? "/check";
+  const next = useSearchParams().get("next") ?? "/";
 
   return (
     <form action={formAction} className="space-y-4">

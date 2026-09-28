@@ -62,9 +62,12 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // Already signed in and asking for /login: send them to the landing
+  // page rather than into the tool. Arriving somewhere you did not choose
+  // is disorienting, and the landing page is where the nav is.
   if (user && isAuthPath) {
     const url = request.nextUrl.clone();
-    url.pathname = "/check";
+    url.pathname = "/";
     url.search = "";
     return NextResponse.redirect(url);
   }

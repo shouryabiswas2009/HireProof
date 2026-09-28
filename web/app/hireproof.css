@@ -1446,35 +1446,73 @@ html[data-motion="off"] .card-input::before { display: none !important; }
 .has-field .hero-field { display: block; }
 .has-field .hero-art { display: none; }
 
-/* ------------------------------------------------- Nav links (was: tabs)
-   The static site's tab strip is gone - these are real routes now - but
-   the behaviour it had is worth keeping: a rule that grows under the
-   label on hover, and stays put on the current page. Transform only, so
-   it composites on the GPU instead of re-running layout. */
+/* --------------------------------------------- Nav: a segmented control
+   The underline this replaced was honest but flat. This is the static
+   site's sliding pill, rebuilt for real routes: one track, one pill that
+   moves between items, and only transform and width animated so it
+   composites on the GPU instead of re-running layout on every frame. */
+
+.navpills {
+  position: relative;
+  display: none;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--bg-elevated) 70%, transparent);
+}
+@media (min-width: 960px) { .navpills { display: flex; } }
+
+.navpill {
+  position: absolute;
+  z-index: 0;
+  top: 3px;
+  bottom: 3px;
+  left: 0;
+  border-radius: 999px;
+  background: var(--bg-elevated);
+  border: 1px solid color-mix(in srgb, var(--hp-accent) 30%, transparent);
+  box-shadow: 0 1px 2px var(--shadow-tint);
+  /* Slightly overshooting easing, so the pill arrives and settles rather
+     than stopping dead - which is what makes it feel physical. */
+  transition: transform 0.38s cubic-bezier(0.34, 1.3, 0.5, 1),
+              width 0.38s cubic-bezier(0.34, 1.3, 0.5, 1);
+}
 
 .navlink {
   position: relative;
-  padding: 6px 2px;
+  z-index: 1;                    /* above the pill */
+  padding: 6px 13px;
+  border-radius: 999px;
   color: var(--ink-muted);
+  font-size: 0.83rem;
+  font-weight: 500;
   text-decoration: none;
+  white-space: nowrap;
   transition: color 0.2s ease;
 }
-.navlink::after {
+.navlink::before {
+  /* A faint wash on hover, drawn as a pseudo-element so it never fights
+     the pill for the same background property. */
   content: "";
   position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 2px;
+  inset: 0;
+  border-radius: inherit;
   background: var(--ink);
-  transform: scaleX(0);
-  transform-origin: center;
-  transition: transform 0.25s cubic-bezier(0.34, 1.2, 0.5, 1);
+  opacity: 0;
+  transition: opacity 0.2s ease;
 }
-.navlink:hover { color: var(--ink-soft); }
-.navlink:hover::after { transform: scaleX(0.6); }
+.navlink:hover:not([aria-current="page"]) { color: var(--ink); }
+.navlink:hover:not([aria-current="page"])::before { opacity: 0.06; }
+.navlink:focus-visible { outline: 2px solid var(--hp-accent); outline-offset: 2px; }
 .navlink[aria-current="page"] { color: var(--ink); font-weight: 600; }
-.navlink[aria-current="page"]::after { transform: scaleX(1); }
+
+/* With motion off the pill would still slide, which is the one animation
+   a reader cannot look away from. Snap it instead. */
+html[data-motion="off"] .navpill,
+html[data-motion="off"] .navlink,
+html[data-motion="off"] .navlink::before { transition: none; }
 
 /* Buttons and chips get a visible lift, not only a colour change. The
    colour-only hover was too quiet to read as feedback. */
@@ -1496,3 +1534,124 @@ html[data-motion="off"] .btn,
 html[data-motion="off"] .chip { transition: none; }
 html[data-motion="off"] .btn:hover:not(:disabled),
 html[data-motion="off"] .chip:hover { transform: none; }
+
+/* --------------------------------------------------------- The top bar */
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  border-bottom: 1px solid var(--line);
+  /* Translucent rather than solid, so content scrolling under it reads as
+     depth instead of disappearing behind a slab. */
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+.topbar-inner {
+  display: grid;
+  /* Three equal columns, so the links sit dead centre regardless of how
+     long the brand or the account control happen to be. */
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 16px;
+  max-width: 1100px;
+  height: 58px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+.topbar-end {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.account { position: relative; }
+.avatar-btn {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--bg-elevated);
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+.avatar-btn:hover { border-color: var(--hp-accent); color: var(--ink); }
+.avatar-btn:focus-visible { outline: 2px solid var(--hp-accent); outline-offset: 2px; }
+
+.account-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  min-width: 210px;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-lg);
+}
+.account-email {
+  margin: 0;
+  padding: 8px 10px 6px;
+  font-size: 0.78rem;
+  color: var(--ink-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.account-item {
+  display: block;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  color: var(--ink);
+  font-size: 0.86rem;
+  text-decoration: none;
+}
+.account-item:hover { background: var(--line-soft); }
+.account-sep { height: 1px; margin: 6px 4px; background: var(--line); }
+
+@media (max-width: 720px) {
+  .topbar-inner { grid-template-columns: 1fr auto; }
+}
+
+/* The hero canvas takes pointer events so the ghost can react to the
+   cursor. It sits above nothing that needs clicking, so this intercepts
+   no interaction a reader depends on. */
+.has-field .hero-field { pointer-events: auto; cursor: crosshair; }
+html[data-motion="off"] .hero-field { pointer-events: none; cursor: default; }
+
+/* The brand sat in a 1fr grid column and wrapped under its own mark once
+   the column got narrow. A grid item's min-width defaults to auto, which
+   refuses to shrink below its content - min-width:0 lets it, and nowrap
+   keeps the two parts on one line. */
+.topbar .brand { min-width: 0; white-space: nowrap; }
+.topbar-inner > * { min-width: 0; }
+
+/* Label left, word count right. */
+.input-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.input-head label { font-weight: 600; font-size: 0.92rem; }
+.word-count { font-size: 0.8rem; color: var(--ink-muted); font-variant-numeric: tabular-nums; }
+
+/* white-space:nowrap does not stop a FLEX CONTAINER wrapping its items -
+   that needs flex-wrap. Stated explicitly here because the mark and the
+   wordmark were stacking into two lines. */
+.topbar .brand {
+  display: inline-flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 8px;
+}

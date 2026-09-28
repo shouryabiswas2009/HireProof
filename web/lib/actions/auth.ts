@@ -12,7 +12,7 @@ export type AuthFormState = { error?: string; message?: string } | undefined;
 // off-site wearing a URL that started on yours.
 function safeNext(value: FormDataEntryValue | null): string {
   const next = typeof value === "string" ? value : "";
-  return next.startsWith("/") && !next.startsWith("//") ? next : "/check";
+  return next.startsWith("/") && !next.startsWith("//") ? next : "/";
 }
 
 export async function login(
@@ -64,7 +64,7 @@ export async function signup(
   }
 
   revalidatePath("/", "layout");
-  redirect("/check");
+  redirect("/");
 }
 
 export async function logout() {

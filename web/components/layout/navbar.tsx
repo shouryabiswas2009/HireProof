@@ -4,35 +4,41 @@ import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { LogoutButton } from "@/components/layout/logout-button";
 import { NavLinks } from "@/components/layout/nav-links";
+import { AccountMenu } from "@/components/layout/account-menu";
 
-// Server component: takes the signed-in user (or null) and renders the
-// right side of the navbar accordingly.
+/*
+ * Three zones, evenly weighted: mark, links, account.
+ *
+ * The previous version put a raw email address in the bar, which is the
+ * longest and least useful string on the page and shoved the links
+ * off-centre at every width. It lives behind an avatar now, so the middle
+ * of the bar is the navigation and nothing else competes with it.
+ */
 export function Navbar({ userEmail }: { userEmail: string | null }) {
   return (
-    <header className="sticky top-0 z-50 border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
-        <Link href="/" className="flex items-center gap-2 font-semibold">
-          <Ghost className="size-5 text-primary" />
-          <span>HireProof</span>
+    <header className="topbar">
+      <div className="topbar-inner">
+        <Link href="/" className="brand">
+          <span className="brand-mark" aria-hidden="true">
+            <Ghost className="size-[17px]" />
+          </span>
+          <span className="brand-name">HireProof</span>
         </Link>
 
         {userEmail && <NavLinks />}
 
-        <div className="flex items-center gap-2">
+        <div className="topbar-end">
           <ThemeToggle />
           {userEmail ? (
-            <>
-              <span className="hidden text-sm text-muted-foreground md:inline">
-                {userEmail}
-              </span>
+            <AccountMenu email={userEmail}>
               <LogoutButton />
-            </>
+            </AccountMenu>
           ) : (
             <>
-              <Button variant="ghost" asChild>
+              <Button variant="ghost" size="sm" asChild>
                 <Link href="/login">Log in</Link>
               </Button>
-              <Button asChild>
+              <Button size="sm" asChild>
                 <Link href="/signup">Sign up</Link>
               </Button>
             </>

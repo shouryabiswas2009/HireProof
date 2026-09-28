@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
   const next = searchParams.get("next");
   // Same open-redirect guard as the login action: only ever bounce to a
   // path on this site.
-  const target = next?.startsWith("/") && !next.startsWith("//") ? next : "/check";
+  const target = next?.startsWith("/") && !next.startsWith("//") ? next : "/";
 
   if (code) {
     const supabase = await createClient();

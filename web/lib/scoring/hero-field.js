@@ -104,6 +104,10 @@ function createHeroField(canvas, options) {
   let height = 0;
   let running = false;
   let inView = true;
+  /* Where the pointer is, in canvas coordinates, or null when it is not
+     over the ghost. Recorded by the listener and read by paint(), so
+     however often the mouse fires we touch the drawing once per frame. */
+  let pointer = null;
   let lastFrame = 0;
   const bornAt = performance.now();
 
@@ -114,6 +118,7 @@ function createHeroField(canvas, options) {
     // Each point keeps its own phase and rate, so the shimmer never
     // pulses in unison - which is what makes it read as a cloud of
     // separate things rather than one object being scaled.
+    lit: 0,
     phase: Math.random() * Math.PI * 2,
     rate: 0.4 + Math.random() * 0.9,
     amp: 0.6 + Math.random() * 1.4,
@@ -193,6 +198,26 @@ function createHeroField(canvas, options) {
       let size = 1.25;
 
       if (animate) {
+        /* THE CURSOR PUSHES THE GHOST AROUND.
+           Points near the pointer are shoved directly away from it, hard
+           up close and not at all past the radius, and they brighten as
+           they go. They are still easing toward their home the whole
+           time, so letting go of the shape is what makes it re-form by
+           itself rather than needing a second animation to put it back. */
+        if (pointer) {
+          const dx = p.homeX - pointer.x;
+          const dy = p.homeY - pointer.y;
+          const dist = Math.hypot(dx, dy) || 0.0001;
+          const REACH = 78;
+          if (dist < REACH) {
+            const push = (1 - dist / REACH) ** 2 * 34;
+            targetX += (dx / dist) * push;
+            targetY += (dy / dist) * push;
+            p.lit = Math.min(1, p.lit + 0.25);
+          }
+        }
+        p.lit *= 0.9;
+
         // A small private orbit, so the surface of the shape shimmers.
         targetX += Math.sin(now * 0.0006 * p.rate + p.phase) * p.amp;
         targetY += Math.cos(now * 0.0005 * p.rate + p.phase) * p.amp;
@@ -217,6 +242,9 @@ function createHeroField(canvas, options) {
         }
 
         alpha *= 0.72 + Math.sin(now * 0.0012 * p.rate + p.phase) * 0.28;
+        // Disturbed points burn brighter and bigger while they recover.
+        alpha = Math.min(1, alpha + p.lit * 0.5);
+        size += p.lit * 1.1;
         p.x += (targetX - p.x) * ease;
         p.y += (targetY - p.y) * ease;
       } else {
@@ -279,6 +307,19 @@ function createHeroField(canvas, options) {
   // it fires on the first real layout as well as on every later change,
   // so the positions are never computed from a box the browser has not
   // finished working out.
+  /* Pointer tracking. The canvas has to accept pointer events for this,
+     which is why the stylesheet no longer sets pointer-events:none on it.
+     Nothing else on the page sits underneath it, so it intercepts
+     nothing a reader needs. */
+  canvas.addEventListener("pointermove", (event) => {
+    const rect = canvas.getBoundingClientRect();
+    pointer = { x: event.clientX - rect.left, y: event.clientY - rect.top };
+    maybeRun();
+  });
+  canvas.addEventListener("pointerleave", () => {
+    pointer = null;
+  });
+
   new ResizeObserver(() => {
     layout();
     maybeRun();
