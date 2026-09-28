@@ -3,14 +3,7 @@ import { Ghost } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { LogoutButton } from "@/components/layout/logout-button";
-
-const navLinks = [
-  { href: "/check", label: "Check a posting" },
-  { href: "/compare", label: "Compare" },
-  { href: "/history", label: "History" },
-  { href: "/model", label: "The model" },
-  { href: "/how", label: "How it works" },
-];
+import { NavLinks } from "@/components/layout/nav-links";
 
 // Server component: takes the signed-in user (or null) and renders the
 // right side of the navbar accordingly.
@@ -23,19 +16,7 @@ export function Navbar({ userEmail }: { userEmail: string | null }) {
           <span>HireProof</span>
         </Link>
 
-        {userEmail && (
-          <nav className="hidden items-center gap-6 text-sm font-medium text-muted-foreground lg:flex">
-            {navLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="transition-colors hover:text-foreground"
-              >
-                {link.label}
-              </Link>
-            ))}
-          </nav>
-        )}
+        {userEmail && <NavLinks />}
 
         <div className="flex items-center gap-2">
           <ThemeToggle />

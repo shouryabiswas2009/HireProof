@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { useTheme } from "next-themes";
 import { createHeroField } from "@/lib/scoring/hero-field.js";
+import { motionEnabled } from "@/components/layout/motion-toggle";
 
 /**
  * The hero from the static site: the horizon arc drawn in CSS, and the
@@ -38,10 +39,9 @@ export function Hero({ children }: { children?: React.ReactNode }) {
   useEffect(() => {
     if (!canvasRef.current) return;
     const field = createHeroField(canvasRef.current, {
-      // The static site had its own motion toggle; here the OS preference
-      // is the whole answer, which is the setting that actually matters.
-      motionOn: () =>
-        !window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+      // The resolved setting - OS preference plus the footer override -
+      // not the raw media query.
+      motionOn: motionEnabled,
       colours: {
         body: resolvedColour("--hp-accent", "#eda059"),
         core: resolvedColour("--glow-rim-solid", "#ffd8ae"),
@@ -52,6 +52,13 @@ export function Hero({ children }: { children?: React.ReactNode }) {
     return () => {
       document.documentElement.classList.remove("has-field");
     };
+  }, []);
+
+  // The toggle fires this, because a canvas cannot read data-motion.
+  useEffect(() => {
+    const onToggle = () => fieldRef.current?.refreshMotion();
+    window.addEventListener("hireproof:motion", onToggle);
+    return () => window.removeEventListener("hireproof:motion", onToggle);
   }, []);
 
   // Light and dark have different palettes, and the canvas holds resolved

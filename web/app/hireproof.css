@@ -1445,3 +1445,54 @@ html[data-motion="off"] .card-input::before { display: none !important; }
 }
 .has-field .hero-field { display: block; }
 .has-field .hero-art { display: none; }
+
+/* ------------------------------------------------- Nav links (was: tabs)
+   The static site's tab strip is gone - these are real routes now - but
+   the behaviour it had is worth keeping: a rule that grows under the
+   label on hover, and stays put on the current page. Transform only, so
+   it composites on the GPU instead of re-running layout. */
+
+.navlink {
+  position: relative;
+  padding: 6px 2px;
+  color: var(--ink-muted);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+.navlink::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: var(--ink);
+  transform: scaleX(0);
+  transform-origin: center;
+  transition: transform 0.25s cubic-bezier(0.34, 1.2, 0.5, 1);
+}
+.navlink:hover { color: var(--ink-soft); }
+.navlink:hover::after { transform: scaleX(0.6); }
+.navlink[aria-current="page"] { color: var(--ink); font-weight: 600; }
+.navlink[aria-current="page"]::after { transform: scaleX(1); }
+
+/* Buttons and chips get a visible lift, not only a colour change. The
+   colour-only hover was too quiet to read as feedback. */
+.btn { transition: background-color 0.15s ease, border-color 0.15s ease,
+       color 0.15s ease, transform 0.12s ease; }
+.btn:hover:not(:disabled) { transform: translateY(-1px); }
+.btn:active:not(:disabled) { transform: translateY(0); }
+
+.chip { transition: background-color 0.15s ease, border-color 0.15s ease,
+        color 0.15s ease, transform 0.12s ease; }
+.chip:hover { transform: translateY(-1px); border-color: var(--hp-accent); }
+
+/* Reads data-motion, which the footer toggle sets from the OS preference
+   PLUS the visitor's override - not the raw media query. Honouring the
+   query directly would mean anyone who turned Windows animations off for
+   speed gets a dead page with no way to ask for anything else. */
+html[data-motion="off"] .navlink::after,
+html[data-motion="off"] .btn,
+html[data-motion="off"] .chip { transition: none; }
+html[data-motion="off"] .btn:hover:not(:disabled),
+html[data-motion="off"] .chip:hover { transform: none; }

@@ -32,7 +32,13 @@ export default async function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      /* `js` is not decoration: the stylesheet starts several elements
+         invisible and animates them in, and every one of those rules is
+         gated behind .js so that a browser without JavaScript renders
+         them plainly rather than leaving them blank forever. Without the
+         class the gate never opens and the entrance animations simply
+         never ran. */
+      className={`${geistSans.variable} ${geistMono.variable} js h-full antialiased`}
       style={{ "--font-display": DISPLAY_SERIF } as React.CSSProperties}
       suppressHydrationWarning
     >

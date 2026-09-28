@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { MotionToggle } from "@/components/layout/motion-toggle";
 
 export function Footer() {
   return (
@@ -8,6 +9,9 @@ export function Footer() {
           HireProof is a heuristic, not a detector, and it can be wrong in
           both directions. It compares wording against a small set of
           hand-labelled postings &mdash; it cannot know whether a job exists.
+        </p>
+        <p className="mt-4">
+          <MotionToggle />
         </p>
         <p className="mt-3">
           <Link href="/how" className="hover:text-foreground">
