@@ -8,6 +8,11 @@ import { Toaster } from "@/components/ui/sonner";
 import { createClient } from "@/lib/supabase/server";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
+
+// The display serif is a system stack, so there is nothing to download
+// and nothing leaves the visitor's machine to render a heading.
+const DISPLAY_SERIF =
+  'ui-serif, "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif';
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
@@ -28,6 +33,7 @@ export default async function RootLayout({
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      style={{ "--font-display": DISPLAY_SERIF } as React.CSSProperties}
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col">
