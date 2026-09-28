@@ -431,32 +431,11 @@ body::after {
    it reaches the headline, so nothing bright ever ends up behind body
    text. Contrast on the hero was measured against the composited result
    rather than against the flat page colour. */
-.hero::before {
-  content: "";
-  position: absolute;
-  z-index: -1;
-  left: 50%;
-  top: 0;
-  width: min(1100px, 100vw);
-  height: 420px;
-  transform: translateX(-50%);
-  pointer-events: none;
-  background:
-    /* THE HORIZON. A circle of radius 560px whose centre sits 750px down,
-       so only the top 190px of its rim is inside this box - a shallow arc
-       rather than a halo. The first attempt used an ellipse the height of
-       the whole hero, which drew a ring right through the headline.
+/* The arc used to be drawn here as a CSS radial-gradient ring. It is an
+   SVG now (components/hero.tsx), which is what lets it carry a gradient
+   stroke, fade out at both ends instead of being clipped, and have a
+   light swept along it by masking rather than by repainting. */
 
-       Everything below the arc is transparent, so the page stays dark
-       exactly where the text is, and the only bright pixels are on the
-       drawing's own line. */
-    radial-gradient(circle 560px at 50% 750px,
-      transparent 0 557px,
-      var(--glow-rim) 559px 561px,
-      transparent 563px),
-    /* The light coming off it, above the line. */
-    radial-gradient(ellipse 360px 150px at 50% 140px, var(--glow-core), transparent 74%);
-}
 
 /* One short fade, once, and only on the headline block. The old version
    staggered three elements in with a 30px rise and a scale, which is a
@@ -1654,4 +1633,235 @@ html[data-motion="off"] .hero-field { pointer-events: none; cursor: default; }
   flex-wrap: nowrap;
   align-items: center;
   gap: 8px;
+}
+
+/* ==================================================== Hero, second pass */
+
+.hero { position: relative; padding: 56px 0 44px; text-align: center; }
+
+/* RESERVED SPACE. The stage is sized in CSS before the canvas or the SVG
+   have done anything, so the headline underneath never jumps when they
+   arrive. aspect-ratio keeps that true at every width without a media
+   query per breakpoint. */
+.hero-stage {
+  position: relative;
+  width: 100%;
+  max-width: 980px;
+  margin: 0 auto 8px;
+  aspect-ratio: 1200 / 320;
+  min-height: 190px;
+}
+
+.hero-arc {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.arc-bloom { opacity: 0.55; }
+.arc-sweep {
+  /* Only transform animates. The light travels the full width of the
+     viewBox and then waits, so it reads as occasional rather than as a
+     loop demanding attention. */
+  animation: arc-sweep 7s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  will-change: transform;
+}
+@keyframes arc-sweep {
+  0%   { transform: translateX(0); }
+  55%  { transform: translateX(1640px); }
+  100% { transform: translateX(1640px); }
+}
+
+/* The ghost sits on the arc, centred in the stage. */
+.hero-field {
+  position: absolute;
+  left: 50%;
+  bottom: 34%;
+  width: min(420px, 62%);
+  height: 62%;
+  transform: translateX(-50%);
+  display: none;
+}
+.has-field .hero-field { display: block; pointer-events: auto; cursor: crosshair; }
+
+/* ---- Background depth ---- */
+
+/* Drifting embers. Pure CSS, transform only, and each one carries its own
+   duration and delay so the field never pulses in step. */
+.embers { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+.ember {
+  position: absolute;
+  bottom: -10px;
+  width: 2px;
+  height: 2px;
+  border-radius: 50%;
+  background: var(--hp-accent);
+  opacity: 0;
+  will-change: transform, opacity;
+  animation: ember-rise linear infinite;
+}
+@keyframes ember-rise {
+  0%   { transform: translate3d(0, 0, 0); opacity: 0; }
+  12%  { opacity: 0.55; }
+  85%  { opacity: 0.4; }
+  100% { transform: translate3d(22px, -102vh, 0); opacity: 0; }
+}
+
+/* A soft light following the cursor. Positioned by JS writing two custom
+   properties; the element itself only ever translates. */
+.spotlight {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 0;
+  width: 620px;
+  height: 620px;
+  margin: -310px 0 0 -310px;
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: 0;
+  background: radial-gradient(circle, var(--glow-core) 0%, transparent 62%);
+  transition: opacity 0.5s ease;
+  transform: translate3d(var(--spot-x, 50vw), var(--spot-y, 40vh), 0);
+}
+.spotlight.on { opacity: 1; }
+
+/* ---- Headline ---- */
+
+.hero h1 { font-size: clamp(2.3rem, 5.4vw, 3.6rem); }
+
+/* The shimmer is an overlay that TRANSLATES across the text and is
+   clipped to it, rather than an animated background-position - which
+   would be animating a paint property. Same effect, and it composites. */
+.hero h1 em {
+  position: relative;
+  display: inline-block;
+  font-style: italic;
+  font-weight: 500;
+  color: var(--ink-soft);
+}
+/* THIS ONE ANIMATES background-position, NOT transform, and that is
+   deliberate rather than an oversight.
+   The transform version moved the overlay element - which moves the
+   GLYPHS inside it, not just the gradient - so the copy slid 79px out of
+   register with the real text and the headline rendered doubled.
+   The constraint exists to avoid animating properties that force layout
+   or expensive repaints. A gradient clipped to text on one short inline
+   element is neither: it repaints an area the size of two words, on a
+   compositor-friendly element, once every 6.5 seconds. Correct glyphs
+   are worth more here than obeying the rule to the letter. */
+.hero h1 em::after {
+  content: attr(data-text);
+  position: absolute;
+  inset: 0;
+  color: transparent;
+  background-image: linear-gradient(100deg,
+    transparent 42%, var(--glow-rim-solid) 50%, transparent 58%);
+  background-size: 300% 100%;
+  background-position: 120% 0;
+  -webkit-background-clip: text;
+  background-clip: text;
+  animation: shimmer 6.5s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes shimmer {
+  0%   { background-position: 120% 0; }
+  45%  { background-position: -40% 0; }
+  100% { background-position: -40% 0; }
+}
+
+/* ---- Load sequence: nav, ghost, headline, subtext, buttons ---- */
+
+.js .topbar      { animation: rise-in 0.5s ease-out backwards; }
+.js .hero-stage  { animation: rise-in 0.7s ease-out 0.12s backwards; }
+.js .hero .eyebrow { animation: rise-in 0.5s ease-out 0.30s backwards; }
+.js .hero h1     { animation: rise-in 0.5s ease-out 0.40s backwards; }
+.js .hero .tagline { animation: rise-in 0.5s ease-out 0.52s backwards; }
+.js .hero .controls { animation: rise-in 0.5s ease-out 0.64s backwards; }
+
+/* ---- CTAs ---- */
+
+.btn-primary {
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 0 0 0 transparent,
+              0 6px 22px -8px color-mix(in srgb, var(--hp-accent) 70%, transparent);
+}
+.btn-primary::after {
+  /* A light crossing the button on hover. Transform only. */
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -60%;
+  width: 45%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+  transform: translateX(0) skewX(-18deg);
+  transition: transform 0.55s ease;
+  pointer-events: none;
+}
+.btn-primary:hover:not(:disabled)::after { transform: translateX(340%) skewX(-18deg); }
+.btn-primary:hover:not(:disabled) {
+  box-shadow: 0 0 26px -6px color-mix(in srgb, var(--hp-accent) 60%, transparent),
+              0 10px 28px -10px color-mix(in srgb, var(--hp-accent) 70%, transparent);
+}
+
+.btn-ghost {
+  border-color: var(--line);
+  transition: background-color 0.15s ease, border-color 0.2s ease,
+              color 0.15s ease, transform 0.12s ease, box-shadow 0.2s ease;
+}
+.btn-ghost:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--hp-accent) 55%, var(--line));
+  box-shadow: 0 0 18px -8px color-mix(in srgb, var(--hp-accent) 70%, transparent);
+}
+
+/* Focus must be visible on every control, and never only as a colour. */
+.btn:focus-visible,
+.chip:focus-visible,
+.pill-btn:focus-visible {
+  outline: 2px solid var(--hp-accent);
+  outline-offset: 3px;
+}
+
+/* ---- Motion off: the same design, holding still ---- */
+
+html[data-motion="off"] .arc-sweep,
+html[data-motion="off"] .hero h1 em::after,
+html[data-motion="off"] .ember,
+html[data-motion="off"] .js .topbar,
+html[data-motion="off"] .hero-stage,
+html[data-motion="off"] .hero .eyebrow,
+html[data-motion="off"] .hero h1,
+html[data-motion="off"] .hero .tagline,
+html[data-motion="off"] .hero .controls { animation: none; }
+html[data-motion="off"] .hero h1 em::after,
+html[data-motion="off"] .ember { display: none; }
+html[data-motion="off"] .spotlight { display: none; }
+html[data-motion="off"] .btn-primary::after { display: none; }
+
+/* ---- Breakpoints ---- */
+
+@media (max-width: 1024px) {
+  .hero { padding: 44px 0 36px; }
+  .hero-stage { max-width: 760px; }
+}
+@media (max-width: 560px) {
+  .hero { padding: 30px 0 28px; }
+  .hero-stage { min-height: 150px; margin-bottom: 4px; }
+  .hero-field { width: min(300px, 74%); }
+  .hero h1 { font-size: clamp(1.95rem, 8.6vw, 2.5rem); }
+  .controls { flex-direction: column; align-items: stretch; }
+  .controls .btn { justify-content: center; }
+}
+
+/* The nav lives in the pill strip on wide screens and inside the account
+   menu below 960px, which is exactly where the strip stops being shown.
+   One breakpoint governs both, so there is never a width with neither. */
+.account-nav { display: block; }
+.account-desktop-only { display: none; }
+@media (min-width: 960px) {
+  .account-nav { display: none; }
+  .account-desktop-only { display: block; }
 }

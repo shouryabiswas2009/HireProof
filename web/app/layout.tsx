@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Navbar } from "@/components/layout/navbar";
+import { Atmosphere } from "@/components/layout/atmosphere";
 import { Footer } from "@/components/layout/footer";
 import { Toaster } from "@/components/ui/sonner";
 import { createClient } from "@/lib/supabase/server";
@@ -49,6 +50,7 @@ export default async function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
+          <Atmosphere />
           <Navbar userEmail={user?.email ?? null} />
           <main className="flex-1">{children}</main>
           <Footer />

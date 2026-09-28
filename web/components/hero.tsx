@@ -72,7 +72,72 @@ export function Hero({ children }: { children?: React.ReactNode }) {
 
   return (
     <div className="hero">
-      <canvas className="hero-field" ref={canvasRef} aria-hidden="true" />
+      {/* The stage reserves its own height, so nothing below it moves when
+          the canvas and the arc finish setting themselves up. */}
+      <div className="hero-stage">
+        <svg
+          className="hero-arc"
+          viewBox="0 0 1200 320"
+          preserveAspectRatio="xMidYMax meet"
+          aria-hidden="true"
+          focusable="false"
+        >
+          <defs>
+            {/* Transparent at both ends, so the arc dissolves into the
+                page rather than being cut off at the viewport edge. */}
+            <linearGradient id="arcStroke" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stopColor="var(--hp-accent)" stopOpacity="0" />
+              <stop offset="22%" stopColor="var(--hp-accent)" stopOpacity="0.55" />
+              <stop offset="50%" stopColor="var(--glow-rim-solid)" stopOpacity="1" />
+              <stop offset="78%" stopColor="var(--hp-accent)" stopOpacity="0.55" />
+              <stop offset="100%" stopColor="var(--hp-accent)" stopOpacity="0" />
+            </linearGradient>
+            <linearGradient id="arcSweep" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stopColor="#fff" stopOpacity="0" />
+              <stop offset="50%" stopColor="#fff" stopOpacity="0.9" />
+              <stop offset="100%" stopColor="#fff" stopOpacity="0" />
+            </linearGradient>
+            <filter id="arcBloom" x="-20%" y="-200%" width="140%" height="500%">
+              <feGaussianBlur stdDeviation="14" />
+            </filter>
+            {/* The sweep is masked to the arc itself, so the travelling
+                light rides the curve instead of crossing the box. */}
+            <mask id="arcMask">
+              <path d="M -40 320 Q 600 40 1240 320" fill="none" stroke="#fff" strokeWidth="3" />
+            </mask>
+          </defs>
+
+          <path
+            className="arc-bloom"
+            d="M -40 320 Q 600 40 1240 320"
+            fill="none"
+            stroke="url(#arcStroke)"
+            strokeWidth="6"
+            filter="url(#arcBloom)"
+          />
+          <path
+            className="arc-line"
+            d="M -40 320 Q 600 40 1240 320"
+            fill="none"
+            stroke="url(#arcStroke)"
+            strokeWidth="2"
+          />
+          {/* A slow light travelling the curve. Only its transform moves. */}
+          <g mask="url(#arcMask)">
+            <rect
+              className="arc-sweep"
+              x="-420"
+              y="0"
+              width="420"
+              height="320"
+              fill="url(#arcSweep)"
+            />
+          </g>
+        </svg>
+
+        <canvas className="hero-field" ref={canvasRef} aria-hidden="true" />
+      </div>
+
       {children}
     </div>
   );

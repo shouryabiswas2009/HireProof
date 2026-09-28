@@ -51,10 +51,27 @@ export function AccountMenu({
           <p className="account-email" title={email}>
             {email}
           </p>
-          <Link href="/history" className="account-item" role="menuitem">
+          {/* The nav collapses into here rather than vanishing. Under
+              960px the pill strip is hidden, and without this there is
+              no way to reach any other page from a phone. */}
+          <div className="account-nav">
+            {[
+              ["/check", "Check a posting"],
+              ["/compare", "Compare"],
+              ["/history", "History"],
+              ["/model", "The model"],
+              ["/how", "How it works"],
+            ].map(([href, label]) => (
+              <Link key={href} href={href} className="account-item" role="menuitem">
+                {label}
+              </Link>
+            ))}
+            <div className="account-sep" />
+          </div>
+          <Link href="/history" className="account-item account-desktop-only" role="menuitem">
             Your history
           </Link>
-          <div className="account-sep" />
+          <div className="account-sep account-desktop-only" />
           {children}
         </div>
       )}

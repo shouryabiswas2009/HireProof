@@ -15,7 +15,7 @@ export default async function LandingPage() {
         <h1>
           Is this job posting
           <br />
-          <em>actually real?</em>
+          <em data-text="actually real?">actually real?</em>
         </h1>
         <p className="tagline">
           Paste a job posting and HireProof scores how closely its wording

@@ -42,6 +42,16 @@ const GHOST_EYES = [[9.1, 9.9, 1.35], [14.9, 9.9, 1.35]];
 // separate points of light close up.
 const COUNT = 340;
 
+/* Phones get a lighter version of the same thing: fewer points, no
+   pointer work, and a slower shimmer. It is the same shape and the same
+   palette - not a different design - just less of it, because a mid-range
+   phone painting 340 glowing sprites a frame is where this would start to
+   cost scroll performance. */
+const COUNT_LIGHT = 150;
+function isCoarsePointer() {
+  return !window.matchMedia("(pointer: fine)").matches;
+}
+
 /**
  * Sample points from inside the ghost outline.
  *
@@ -97,7 +107,8 @@ function createHeroField(canvas, options) {
   const ctx = canvas.getContext("2d", { alpha: true });
   if (!ctx) return null;
 
-  const shape = ghostPoints(COUNT);
+  const light = isCoarsePointer();
+  const shape = ghostPoints(light ? COUNT_LIGHT : COUNT);
   if (shape.length === 0) return null;
 
   let width = 0;
@@ -190,12 +201,19 @@ function createHeroField(canvas, options) {
 
     // The whole mark drifts up and down slowly, because it is a ghost.
     const bob = animate ? Math.sin(now * 0.0008) * 4 : 0;
+    /* A slow breath: the whole cloud loosens away from the silhouette and
+       gathers back, so it reads as held together rather than painted on.
+       Scaled about the centre, which keeps the shape recognisable at the
+       loose end of the cycle instead of smearing it. */
+    const breathe = animate ? 1 + Math.sin(now * 0.00035) * 0.035 : 1;
+    const cx = width / 2;
+    const cy = height * 0.5;
 
     for (const p of particles) {
-      let targetX = p.homeX;
-      let targetY = p.homeY + bob;
-      let alpha = 0.85;
-      let size = 1.25;
+      let targetX = cx + (p.homeX - cx) * breathe;
+      let targetY = cy + (p.homeY - cy) * breathe + bob;
+      let alpha = 0.95;
+      let size = light ? 1.5 : 1.45;
 
       if (animate) {
         /* THE CURSOR PUSHES THE GHOST AROUND.
@@ -205,6 +223,11 @@ function createHeroField(canvas, options) {
            time, so letting go of the shape is what makes it re-form by
            itself rather than needing a second animation to put it back. */
         if (pointer) {
+          // Whole-cloud lean, scaled by depth so the front of the shape
+          // moves further than the back.
+          targetX += (pointer.x - cx) * 0.02 * (0.5 + p.rate * 0.5);
+          targetY += (pointer.y - cy) * 0.02 * (0.5 + p.rate * 0.5);
+
           const dx = p.homeX - pointer.x;
           const dy = p.homeY - pointer.y;
           const dist = Math.hypot(dx, dy) || 0.0001;
@@ -311,7 +334,7 @@ function createHeroField(canvas, options) {
      which is why the stylesheet no longer sets pointer-events:none on it.
      Nothing else on the page sits underneath it, so it intercepts
      nothing a reader needs. */
-  canvas.addEventListener("pointermove", (event) => {
+  if (!light) canvas.addEventListener("pointermove", (event) => {
     const rect = canvas.getBoundingClientRect();
     pointer = { x: event.clientX - rect.left, y: event.clientY - rect.top };
     maybeRun();
