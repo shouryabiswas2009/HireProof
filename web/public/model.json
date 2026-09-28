@@ -1,0 +1,276 @@
+{
+  "_readme": "Written by train.py. Do not edit by hand. The website reads this file and scores postings in the visitor's browser.",
+  "trained_on": "real",
+  "trained_date": "2026-09-27",
+  "n_examples": 30,
+  "n_ghost": 15,
+  "n_legit": 15,
+  "feature_names": [
+    "has_salary_range",
+    "vague_pay_phrase",
+    "log_word_count",
+    "buzzword_density",
+    "concrete_duty_density",
+    "names_reporting_line",
+    "has_contact_email",
+    "evergreen_language",
+    "multiple_openings_language",
+    "has_deadline_or_start_date",
+    "experience_mismatch"
+  ],
+  "feature_labels": {
+    "has_salary_range": "Pay figure given",
+    "vague_pay_phrase": "Vague pay wording ('competitive salary')",
+    "log_word_count": "Word count of the posting",
+    "buzzword_density": "Buzzwords and filler phrases",
+    "concrete_duty_density": "Specific, concrete duties",
+    "names_reporting_line": "Names a team or manager",
+    "has_contact_email": "Contact email included",
+    "evergreen_language": "'Talent pool' / future-openings wording",
+    "multiple_openings_language": "Vague 'multiple openings' wording",
+    "has_deadline_or_start_date": "Deadline or start date given",
+    "experience_mismatch": "Junior title, senior experience demanded"
+  },
+  "feature_state_labels": {
+    "has_salary_range": {
+      "on": "Pay figure given",
+      "off": "No pay figure given"
+    },
+    "vague_pay_phrase": {
+      "on": "Vague pay wording ('competitive salary')",
+      "off": "No vague pay wording"
+    },
+    "log_word_count": {
+      "on": "More words than the average posting",
+      "off": "Fewer words than the average posting"
+    },
+    "buzzword_density": {
+      "on": "More buzzwords than average",
+      "off": "Fewer buzzwords than average"
+    },
+    "concrete_duty_density": {
+      "on": "More concrete, specific duties than average",
+      "off": "Fewer concrete, specific duties than average"
+    },
+    "names_reporting_line": {
+      "on": "Names a team or manager",
+      "off": "No team or manager named"
+    },
+    "has_contact_email": {
+      "on": "Contact email included",
+      "off": "No contact email"
+    },
+    "evergreen_language": {
+      "on": "'Talent pool' or future-openings wording",
+      "off": "No 'talent pool' wording"
+    },
+    "multiple_openings_language": {
+      "on": "Vague 'multiple openings' wording",
+      "off": "No 'multiple openings' wording"
+    },
+    "has_deadline_or_start_date": {
+      "on": "Deadline or start date given",
+      "off": "No deadline or start date"
+    },
+    "experience_mismatch": {
+      "on": "Junior title but senior experience demanded",
+      "off": "No junior/senior experience mismatch"
+    }
+  },
+  "feature_hypothesis": {
+    "has_salary_range": "legit",
+    "vague_pay_phrase": "ghost",
+    "log_word_count": "unsure",
+    "buzzword_density": "ghost",
+    "concrete_duty_density": "legit",
+    "names_reporting_line": "legit",
+    "has_contact_email": "legit",
+    "evergreen_language": "ghost",
+    "multiple_openings_language": "ghost",
+    "has_deadline_or_start_date": "legit",
+    "experience_mismatch": "ghost"
+  },
+  "weights": [
+    0.12494204524929424,
+    -0.08841743727969724,
+    -1.1066786578717664,
+    -0.23882291610513154,
+    -0.33329046647260563,
+    0.3486547500767329,
+    -0.47792442981925987,
+    1.4692544212391898,
+    -0.2358032329838126,
+    0.595847767491586,
+    -0.2683911129172917
+  ],
+  "bias": 0.10630969155682356,
+  "means": [
+    0.23333333333333334,
+    0.5666666666666667,
+    6.466140868439837,
+    0.1819893179328134,
+    0.10470570944247735,
+    0.5,
+    0.1,
+    0.3,
+    0.16666666666666666,
+    0.13333333333333333,
+    0.03333333333333333
+  ],
+  "stds": [
+    0.42295258468165065,
+    0.49553562491061687,
+    0.5369789343107894,
+    0.2435505745772601,
+    0.14416902242139384,
+    0.5,
+    0.30000000000000004,
+    0.45825756949558394,
+    0.37267799624996495,
+    0.33993463423951903,
+    0.17950549357115014
+  ],
+  "standardize_clamp": 4.0,
+  "metrics": {
+    "cv_folds": 5,
+    "cv_accuracy": 0.7,
+    "cv_precision": 0.7333333333333333,
+    "cv_recall": 0.7833333333333333,
+    "cv_f1": 0.6895238095238094,
+    "baseline_accuracy": 0.5
+  },
+  "thresholds": {
+    "low": 0.4,
+    "high": 0.7
+  },
+  "out_of_fold": [
+    {
+      "p": 0.0388,
+      "ghost": 1
+    },
+    {
+      "p": 0.6915,
+      "ghost": 1
+    },
+    {
+      "p": 0.6466,
+      "ghost": 1
+    },
+    {
+      "p": 0.1289,
+      "ghost": 1
+    },
+    {
+      "p": 0.0149,
+      "ghost": 0
+    },
+    {
+      "p": 0.2899,
+      "ghost": 0
+    },
+    {
+      "p": 0.2113,
+      "ghost": 0
+    },
+    {
+      "p": 0.5745,
+      "ghost": 0
+    },
+    {
+      "p": 0.5756,
+      "ghost": 0
+    },
+    {
+      "p": 0.0231,
+      "ghost": 0
+    },
+    {
+      "p": 0.2104,
+      "ghost": 0
+    },
+    {
+      "p": 0.8375,
+      "ghost": 0
+    },
+    {
+      "p": 0.241,
+      "ghost": 1
+    },
+    {
+      "p": 0.3779,
+      "ghost": 0
+    },
+    {
+      "p": 0.2211,
+      "ghost": 0
+    },
+    {
+      "p": 0.3756,
+      "ghost": 0
+    },
+    {
+      "p": 0.1238,
+      "ghost": 0
+    },
+    {
+      "p": 0.3418,
+      "ghost": 0
+    },
+    {
+      "p": 0.6062,
+      "ghost": 0
+    },
+    {
+      "p": 0.5405,
+      "ghost": 0
+    },
+    {
+      "p": 0.0769,
+      "ghost": 1
+    },
+    {
+      "p": 0.9139,
+      "ghost": 1
+    },
+    {
+      "p": 0.8474,
+      "ghost": 1
+    },
+    {
+      "p": 0.9118,
+      "ghost": 1
+    },
+    {
+      "p": 0.6569,
+      "ghost": 1
+    },
+    {
+      "p": 0.9127,
+      "ghost": 1
+    },
+    {
+      "p": 0.5279,
+      "ghost": 1
+    },
+    {
+      "p": 0.8523,
+      "ghost": 1
+    },
+    {
+      "p": 0.9603,
+      "ghost": 1
+    },
+    {
+      "p": 0.9778,
+      "ghost": 1
+    }
+  ],
+  "warnings": [
+    "Only 30 labeled postings. Below about 60 the accuracy estimate swings wildly depending on which examples land in which fold, so do not read much into it. Aim for 200."
+  ],
+  "hyperparameters": {
+    "learning_rate": 0.1,
+    "epochs": 3000,
+    "l2": 1.0
+  }
+}

@@ -1,0 +1,13 @@
+"use client";
+
+import * as React from "react";
+import { ThemeProvider as NextThemesProvider } from "next-themes";
+
+// Wraps next-themes so the rest of the app can toggle light/dark mode
+// via the `class` attribute on <html>, which our Tailwind CSS variables key off of.
+export function ThemeProvider({
+  children,
+  ...props
+}: React.ComponentProps<typeof NextThemesProvider>) {
+  return <NextThemesProvider {...props}>{children}</NextThemesProvider>;
+}
