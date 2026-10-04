@@ -193,4 +193,74 @@ function annotate(text, config, direction, rawValues = null) {
   return { html, matches };
 }
 
-export { normalizeWithMap, findMatches, annotate, LIST_TO_FEATURE };
+/**
+ * The same matches, tagged with what each one did to the score.
+ *
+ * WHY THIS LIVES HERE AND NOT IN features.js. The obvious place to return
+ * match positions is the function that does the matching - but
+ * extractFeatures has a twin in features.py, and two test suites exist
+ * only to prove the two produce identical numbers
+ * (tests/test_parity_predictions.py, and 164 checks in
+ * tests/js/test_features.mjs). Touching it to carry positions would put
+ * that parity at risk for a presentational feature. Nothing below can
+ * change a feature value, because nothing below is read by the scorer.
+ *
+ * Returns spans in ORIGINAL text coordinates, each carrying the feature
+ * it fed, that feature's signed contribution, and the direction word the
+ * UI colours by.
+ */
+function matchesWithContributions(text, config, contributions) {
+  const byName = new Map(contributions.map((c) => [c.name, c]));
+  return findMatches(text, config)
+    .map((m) => {
+      const c = byName.get(m.feature);
+      if (!c) return null;
+      return {
+        ...m,
+        label: c.neutralLabel || c.label,
+        contribution: c.contribution,
+        points: c.points,
+        // Direction comes from the contribution's sign, not from the word
+        // list the phrase came from. A buzzword is only "toward ghost" if
+        // the model actually learned it that way - and on this dataset
+        // several features trained against their own hypothesis.
+        direction: c.contribution > 0 ? "toward-ghost" : "toward-real",
+      };
+    })
+    .filter(Boolean);
+}
+
+/**
+ * Render the posting with those matches marked up.
+ *
+ * Escaping happens per slice, so a posting containing <script> is shown
+ * as text rather than run. The title attribute is a native tooltip: no
+ * layer to position, it works on keyboard focus, and assistive technology
+ * reads it.
+ */
+function annotateWithContributions(text, config, contributions) {
+  const spans = matchesWithContributions(text, config, contributions);
+  let html = "";
+  let cursor = 0;
+  for (const span of spans) {
+    if (span.start < cursor) continue;
+    html += escapeHtml(text.slice(cursor, span.start));
+    const points = span.points >= 0 ? `+${span.points.toFixed(1)}` : span.points.toFixed(1);
+    html +=
+      `<mark class="${span.direction}" tabindex="0" ` +
+      `title="${escapeHtml(span.label)} — ${points} points">` +
+      `${escapeHtml(text.slice(span.start, span.end))}</mark>`;
+    cursor = span.end;
+  }
+  html += escapeHtml(text.slice(cursor));
+  return { html, count: spans.length };
+}
+
+export {
+  normalizeWithMap,
+  findMatches,
+  annotate,
+  matchesWithContributions,
+  annotateWithContributions,
+  LIST_TO_FEATURE,
+};

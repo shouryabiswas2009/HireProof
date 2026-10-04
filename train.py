@@ -56,7 +56,8 @@ def load_real_data():
     labels = [1 if r["label"] == "ghost" else 0 for r in rows]
     # Kept so we can warn about circular labels (see report_warnings).
     evidence = [r.get("evidence", "").split(";") for r in rows]
-    return texts, labels, evidence, "real"
+    confidences = [r.get("confidence", "") for r in rows]
+    return texts, labels, evidence, confidences, "real"
 
 
 def load_demo_data():
@@ -66,7 +67,8 @@ def load_demo_data():
     texts = [p["text"] for p in postings]
     labels = [1 if p["label"] == "ghost" else 0 for p in postings]
     evidence = [[] for _ in postings]
-    return texts, labels, evidence, "demo"
+    confidences = ["" for _ in postings]
+    return texts, labels, evidence, confidences, "demo"
 
 
 def refuse_if_untrainable(labels):
@@ -227,6 +229,34 @@ def collect_warnings(labels, evidence, kind, cv_accuracy=None):
     return warnings
 
 
+def summarize_evidence(evidence, confidences):
+    """What the labels were actually based on, as plain counts.
+
+    WHY THIS IS IN THE MODEL FILE. The website's model card has to be able
+    to say how trustworthy the labels are, and the honest answer is not a
+    number the page can compute: it depends on whether each label came
+    from outside evidence or from reading the wording. train.py is the
+    only place that sees the raw rows, so it is the only place that can
+    answer, and writing it here means the card updates by itself on the
+    next retrain rather than drifting out of date.
+
+    text_only is the one that matters most. The features are drawn from
+    the wording, so a label that also came only from the wording teaches
+    the model to reproduce its author's instinct rather than to detect
+    anything.
+    """
+    counts = {key: 0 for key in dataset.EVIDENCE_OPTIONS}
+    for row in evidence:
+        for key in row:
+            if key in counts:
+                counts[key] += 1
+    counts["confidence"] = {
+        "sure": sum(1 for c in confidences if c == "sure"),
+        "unsure": sum(1 for c in confidences if c == "unsure"),
+    }
+    return counts
+
+
 def print_report(kind, labels, cv, baseline_accuracy, weights, means, stds, warnings):
     """Print the honest summary."""
     n = len(labels)
@@ -376,7 +406,9 @@ def main():
     )
     args = parser.parse_args()
 
-    texts, labels, evidence, kind = load_demo_data() if args.demo else load_real_data()
+    texts, labels, evidence, confidences, kind = (
+        load_demo_data() if args.demo else load_real_data()
+    )
 
     # Refuse before doing any work, so a hopeless dataset cannot overwrite
     # a working model with an empty one.
@@ -473,6 +505,9 @@ def main():
             for p, y in zip(cv.get("out_of_fold", []), labels)
             if p is not None
         ],
+        # What the labels rest on, so the model card can report label
+        # quality instead of only model accuracy.
+        "evidence": summarize_evidence(evidence, confidences),
         "warnings": warnings,
         "hyperparameters": {
             "learning_rate": args.learning_rate,

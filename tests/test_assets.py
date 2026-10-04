@@ -97,9 +97,18 @@ class StylesheetTests(unittest.TestCase):
         )
 
     def test_stylesheet_is_not_suspiciously_short(self):
-        # A truncating write would leave a valid but tiny file.
+        """A truncating write would leave a valid but tiny file.
+
+        The floor was 150 when the stylesheet carried an animated
+        background, a particle field and a tab strip - roughly 200 lines
+        of decoration that the redesign deleted. It is 90 now, which is
+        still far below the real count and still catches the failure this
+        exists for: a half-written file. Raising a floor to match
+        whatever the file currently is would make it a ratchet rather
+        than a guard.
+        """
         rules = self.css.count("{")
-        self.assertGreater(rules, 150, f"only {rules} rules; file may be truncated")
+        self.assertGreater(rules, 90, f"only {rules} rules; file may be truncated")
 
 
 class SourceCharacterTests(unittest.TestCase):
@@ -147,19 +156,37 @@ class MarkupTests(unittest.TestCase):
             with self.subTest(file=ref):
                 self.assertTrue((DOCS / ref).exists(), f"{ref} is referenced but missing")
 
-    def test_each_tab_has_a_matching_panel(self):
-        tabs = re.findall(r'id="tab-([\w-]+)"', self.html)
-        panels = re.findall(r'id="panel-([\w-]+)"', self.html)
-        self.assertTrue(tabs, "no tabs found")
-        self.assertEqual(sorted(tabs), sorted(panels))
+    def test_every_nav_anchor_points_at_a_real_section(self):
+        """The header links are in-page anchors now, not tabs.
 
-    def test_tab_controls_point_at_real_panels(self):
-        for controls in re.findall(r'aria-controls="([\w-]+)"', self.html):
-            with self.subTest(panel=controls):
-                self.assertIn(f'id="{controls}"', self.html)
+        The tab tests this replaced checked that every tab had a panel.
+        The redesign dropped tabs for one scrolling page, so the
+        equivalent failure is a nav link pointing at an id that does not
+        exist - which produces a link that silently does nothing.
+        """
+        for target in re.findall(r'href="#([\w-]+)"', self.html):
+            with self.subTest(anchor=target):
+                self.assertRegex(
+                    self.html,
+                    rf'id="{target}"',
+                    f"#{target} is linked but no element has that id",
+                )
 
-    def test_exactly_one_tab_starts_selected(self):
-        self.assertEqual(self.html.count('aria-selected="true"'), 1)
+    def test_no_metric_is_hardcoded_in_the_markup(self):
+        """Every number on the model card comes from model.json.
+
+        A percentage typed into the HTML is one that goes stale silently
+        the next time the model is retrained, and the single thing this
+        site cannot afford is overstating what the model can do. The
+        limitations prose is allowed its own figures (word counts, band
+        edges); a bare percentage is not.
+        """
+        body = re.sub(r"<!--.*?-->", "", self.html, flags=re.S)
+        for match in re.finditer(r"(\d+(?:\.\d+)?)%", body):
+            self.fail(
+                f"hardcoded percentage {match.group(0)!r} in index.html; "
+                f"read it from model.json instead"
+            )
 
 
 if __name__ == "__main__":

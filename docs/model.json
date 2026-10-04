@@ -1,7 +1,7 @@
 {
   "_readme": "Written by train.py. Do not edit by hand. The website reads this file and scores postings in the visitor's browser.",
   "trained_on": "real",
-  "trained_date": "2026-09-27",
+  "trained_date": "2026-10-04",
   "n_examples": 30,
   "n_ghost": 15,
   "n_legit": 15,
@@ -265,6 +265,18 @@
       "ghost": 1
     }
   ],
+  "evidence": {
+    "posted_long": 10,
+    "reposted": 1,
+    "no_reply": 0,
+    "layoffs": 0,
+    "got_reply": 0,
+    "text_only": 0,
+    "confidence": {
+      "sure": 22,
+      "unsure": 8
+    }
+  },
   "warnings": [
     "Only 30 labeled postings. Below about 60 the accuracy estimate swings wildly depending on which examples land in which fold, so do not read much into it. Aim for 200."
   ],

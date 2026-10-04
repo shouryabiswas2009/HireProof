@@ -1,1880 +1,451 @@
 /*
- * Wires the page together: load the model, react to the buttons, draw the
- * result. All the thinking lives in features.js and scorer.js; this file
- * only moves values onto the screen.
+ * Wires the page together: load the model, score as the visitor types,
+ * draw the result. All the thinking lives in features.js and scorer.js;
+ * this file only moves values onto the screen.
+ *
+ * EVERY NUMBER ON THIS PAGE COMES FROM model.json. There is not a single
+ * hardcoded percentage in the markup or in here - sample size, accuracy,
+ * baseline, precision, recall and the label-evidence breakdown are all
+ * read from the file train.py writes. Retraining updates the page. That
+ * is deliberate: a figure typed into HTML is a figure that goes stale
+ * silently, and the one thing this site cannot afford is to overstate
+ * what the model can do.
  */
 
-import { loadPhrases } from "./features.js?v=59";
-import { loadModel, score, band, sigmoid } from "./scorer.js?v=59";
-import { annotate } from "./highlight.js?v=59";
-import { setUpTabs } from "./tabs.js?v=59";
-import { checkInput, MIN_WORDS } from "./validate.js?v=59";
-import { createHeroField } from "./hero-field.js?v=59";
+import { loadPhrases } from "./features.js?v=60";
+import { loadModel, score, band, sigmoid, THRESHOLD_LOW, THRESHOLD_HIGH } from "./scorer.js?v=60";
+import { annotateWithContributions } from "./highlight.js?v=60";
+import { checkInput, MIN_WORDS } from "./validate.js?v=60";
+import { EXAMPLES } from "./examples.js?v=60";
 
-/* Declared up here, above the first call to applyMotionSetting(), rather
-   than beside the other module state further down. `let` is hoisted but
-   left uninitialised until its declaration runs, so reading it earlier is
-   a ReferenceError, not undefined - and applyMotionSetting() is called at
-   module top level, so that error killed the whole script. */
-let HERO_FIELD = null;
-
-// Change this if you fork the project.
-const REPO_URL = "https://github.com/shouryabiswas2009/hireproof";
+const REPO_URL = "https://github.com/shouryabiswas2009/HireProof";
 
 // Contributions smaller than this are rounding noise: the posting sits
-// essentially at the training average for that signal, so drawing a bar
-// for it would imply a factor that did not really apply.
-const MEANINGFUL = 0.01;
+// essentially at the training average for that signal, so showing a bar
+// would imply a factor that did not really apply.
+const MEANINGFUL = 0.005;
 
-// How many signals the chart shows. The rest stay in the table view below,
-// so nothing is hidden — but a chart of eleven near-identical bars buries
-// the two or three that actually decided the answer.
-const TOP_N = 5;
+// Typing is the input method, so scoring has to wait for a pause rather
+// than run on every keystroke. 220ms is long enough that a fast typist
+// does not trigger it mid-word and short enough to feel immediate.
+const DEBOUNCE_MS = 220;
 
-/*
- * Three examples, so a visitor can see the range without pasting anything.
- *
- * WRITTEN TO THE LENGTH OF REAL POSTINGS, which matters more than it looks.
- * The previous set ran to about 100 words each, because they were written
- * against the old demo model whose training postings were that short. Once
- * the model was retrained on real adverts averaging 640 words, those
- * examples fell outside its range on two features at once, and the
- * "genuine" one scored 91% ghost. A visitor clicking the first button on
- * the page would have been shown the tool confidently getting it backwards.
- *
- * So these are checked, not eyeballed. Each one is 440 to 740 words, every
- * feature sits inside the range the model was trained on (nothing is
- * clamped), and they score 84% / 23% / 48% - one in each band.
- *
- * tests/test_examples.py re-checks all of that against the CURRENT model on
- * every test run, because the bands move whenever the weights do. Editing
- * the wording here, or retraining, can break them; the test says so.
- *
- * All three are written for this page rather than copied from real adverts.
- */
-const EXAMPLES = {
-  ghost: `Join Our Talent Community - Software Engineering
+let MODEL = null;
+let PHRASES = null;
 
-About Us
+const el = (id) => document.getElementById(id);
+const pct = (x) => `${Math.round((x ?? 0) * 100)}%`;
 
-We are a fast-growing, industry-leading technology company on a mission to
-transform the way the world works. Our people are our greatest asset, and we
-are always looking for passionate, driven individuals who want to make an
-impact and grow with us.
+/* ===================================================== Theme and motion */
 
-Why This Opportunity
-
-This is an exciting opportunity to join a dynamic, fast-paced environment
-where no two days are the same. We believe in empowering our people to take
-ownership and wear many hats. If you are a self-starter who thrives on
-challenge and wants to be part of something bigger, we want to hear from you.
-
-We are not hiring for one specific opening at this time. Instead, we are
-building a pipeline of exceptional talent for future opportunities across the
-organisation. By joining our talent community, your profile will be kept on
-file and reviewed by our recruitment team as new positions become available
-across our offices worldwide.
-
-What We Look For
-
-The successful candidate will be a team player with excellent communication
-skills and a proven track record of delivering results in a collaborative
-environment. You will be comfortable working independently, managing
-competing priorities, and adapting quickly as priorities move.
-
-We welcome applications from engineers of any background, whether you are
-just starting out or have been doing this for years. If you are excited by
-technology and want to push boundaries, there may be a place for you here.
-
-Our Culture
-
-We are more than just a workplace. We are a family of talented, motivated
-individuals united by a shared passion for excellence. We work hard, we
-celebrate our wins, and we support each other through the challenges. Our
-culture is built on trust, transparency, and a relentless focus on the
-customer.
-
-We offer a comprehensive benefits package, a competitive salary commensurate
-with experience, and the opportunity to work alongside some of the brightest
-minds in the industry. Our people enjoy flexible working arrangements, a
-generous holiday allowance, and access to ongoing learning and development
-resources designed to help you reach your full potential.
-
-Diversity and Inclusion
-
-We are an equal opportunity employer and value diversity at our company. We
-do not discriminate on the basis of race, religion, colour, national origin,
-gender, sexual orientation, age, marital status, veteran status, or
-disability status. We are committed to building a team that represents a
-variety of backgrounds, perspectives, and skills, because we believe that
-diverse teams build better products.
-
-How To Apply
-
-Simply submit your resume through the link below and complete our short
-application form. Our talent acquisition team reviews every submission and
-will reach out should a suitable opportunity arise that matches your profile
-and career aspirations.
-
-Please note that due to the volume of applications we receive, we are unable
-to respond to every applicant individually. Rest assured that your details
-will remain on file and you will be among the first to hear about new
-openings.
-
-We look forward to connecting with you and exploring how you might become
-part of our continued growth story. Apply today and take the next step in
-your career journey with a company that truly values its people.`,
-
-  genuine: `Backend Engineer, Payments Team
-
-Salary: $98,000 - $118,000 per year, depending on experience. This range is
-the full band for the level; we do not negotiate outside it.
-
-Location: Toronto, hybrid. Two days a week in our King Street office, the
-rest remote. We cover the cost of a desk setup at home.
-
-About the team
-
-You would be the seventh engineer on the payments team, reporting to Priya
-Raman, who has led the team for three years. The team owns everything that
-moves money through the platform: card capture, refunds, payouts to
-merchants, and the reconciliation jobs that make sure the ledger matches the
-processor at the end of every day.
-
-We process about 40,000 transactions a day. That is small enough that one
-person can hold the whole system in their head, and large enough that
-mistakes are expensive, so we are careful about testing and rollout.
-
-What you will actually do
-
-In your first month you will ship a small change to the refunds service,
-pair with two other engineers on the reconciliation job, and take over the
-weekly release checklist. We will not put you on call until month two.
-
-After that, you will own the refunds service end to end. That means the code,
-the alerts, the runbook, and the conversations with the support team when a
-merchant disputes something. The current owner is moving to the ledger
-rewrite and will hand it over properly across four weeks.
-
-Concrete work on the roadmap for the next two quarters: splitting the payouts
-job so a single failing merchant cannot block the batch, adding idempotency
-keys to the public refunds API, and replacing our nightly reconciliation with
-an incremental one so finance stops waiting until 6am for numbers.
-
-You will write Go and SQL against Postgres, ship to Kubernetes, and take
-part in the on-call rotation one week in six. Roughly a fifth of your time
-goes to reviewing other people's changes, which we treat as real work rather
-than something squeezed in around it.
-
-What we need from you
-
-Three or more years writing backend services in a typed language. Go is
-ideal, but we have hired people from Java, C# and Rust backgrounds who picked
-it up in a few weeks. You should be comfortable reading a query plan and
-reasoning about a database transaction.
-
-You do not need payments experience. Two of the current team had none when
-they joined, and the domain is learnable in a couple of months.
-
-We do not run whiteboard puzzles. The process is a 45 minute conversation
-with Priya, a two hour paired session on a realistic problem using your own
-editor, and a final chat with two engineers from other teams.
-
-Timeline and contact
-
-Applications close on 14 March. We aim to give a decision within ten working
-days of the final conversation, and the anticipated start date is 5 May,
-though we can be flexible for notice periods.
-
-Questions about the role, the team, or the process? Email priya.raman@example.com
-and she will answer directly. You do not need to apply first, and asking
-questions is not held against anyone.
-
-How we work
-
-The team runs on a two-week cycle. We plan on a Monday, keep a short standup
-each morning, and demo whatever shipped on the Friday of the second week. We
-do not track story points and we do not measure individual output.
-
-Every change is reviewed before it merges, and we aim to respond within four
-hours during working time. Nobody merges to the payment paths alone, not
-because we distrust each other but because two sets of eyes on money-handling
-code has caught three genuine bugs this year.
-
-Benefits
-
-25 days of holiday plus public holidays, rising by one day per year of
-service to a maximum of 30. Private medical cover from day one, a pension
-with 6% employer contribution, and a learning budget of $2,000 a year that
-people actually spend.
-
-We are a hybrid team and we mean it: the two office days are fixed so that
-everyone is in on the same days, rather than each person coming in alone on a
-different day of the week.
-
-Equal opportunity
-
-We welcome applications from every background and are happy to adjust the
-interview process. If something about the format would put you at a
-disadvantage, tell us when you apply and we will change it.`,
-
-  borderline: `Operations Associate
-
-About the role
-
-We are looking for an Operations Associate to join our growing team. This is
-a chance to learn how a business works from the inside as it scales, and to
-work across a number of different areas at once.
-
-Reporting into the operations function, you will support the day-to-day
-running of our fulfilment and customer operations. This is a varied role and
-no two days will look the same, so we are looking for someone who is
-comfortable when priorities shift and happy to cover a range of work.
-
-Responsibilities
-
-Responsibilities include supporting various operational initiatives across
-the business, assisting with the coordination of internal projects, and helping
-to maintain our internal documentation.
-
-You will work closely with colleagues across customer support, logistics and
-finance to ensure that processes run smoothly. You will help identify areas
-where our current ways of working could be improved and support the rollout
-of changes once agreed.
-
-You will also assist with reporting, pulling together weekly numbers for the
-leadership team and flagging anything that looks unusual. Experience with
-spreadsheets is essential, and familiarity with a BI tool would be an
-advantage but is not required.
-
-About you
-
-The successful candidate will be a detail-oriented team player with strong
-organisational skills and the ability to manage competing priorities. You
-will be a self-starter who can work independently, take ownership of your
-own workload, and communicate clearly with stakeholders at all levels.
-
-We are looking for someone with a positive attitude who is eager to learn and
-grow with the business. Previous operations experience is helpful but we are
-open to candidates from a range of backgrounds who can demonstrate the right
-mindset and transferable skills.
-
-What we offer
-
-Salary: $52,000 - $58,000 per year, depending on experience.
-
-We offer 25 days of holiday plus public holidays, a company pension scheme,
-private medical cover after six months, and a personal development budget
-that you can spend on courses, books or conferences.
-
-We are a hybrid team, with most people in the office two or three days a
-week. Our office is a ten minute walk from the station and we have a proper
-coffee machine, which matters more than it should.
-
-Process
-
-Applications close on 30 April. The process is an initial screening call,
-followed by a competency-based interview and a short practical exercise. We
-aim to keep the whole process within three weeks.
-
-We are committed to building an inclusive workplace and welcome applications
-from all backgrounds. If you need any adjustments to the process, let us know
-when you apply and we will accommodate them.`,
-};
-
-// Icons for the score badge. A status colour must never carry meaning on
-// its own, so each band ships an icon and words alongside the colour.
-const BAND_ICONS = {
-  low: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`,
-  medium: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="13"/><line x1="12" y1="16.5" x2="12" y2="16.5"/></svg>`,
-  high: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><line x1="12" y1="9" x2="12" y2="13.5"/><line x1="12" y1="17" x2="12" y2="17"/></svg>`,
-};
-
-const BAND_COLORS = {
-  low: "var(--status-good)",
-  medium: "var(--status-warn)",
-  high: "var(--status-bad)",
-};
-
-// Tell the stylesheet JavaScript is running. Animations that start an
-// element invisible are scoped to .js, so with JS disabled (or if this
-// script fails to load) everything renders plainly and visibly instead of
-// staying blank forever.
-document.documentElement.classList.add("js");
-
-// ---------------------------------------------------------------- Motion
-// Whether animation runs depends on two things: what the operating system
-// asks for, and whether the visitor overrode it with the footer toggle.
-// The system preference is the default; the toggle only wins when someone
-// deliberately sets it.
-//
-// This matters more than it sounds. Plenty of people switch Windows
-// animations off for speed rather than because motion bothers them, and
-// browsers report that as prefers-reduced-motion, so they were getting a
-// completely static page with no way to ask for anything else.
-const MOTION_KEY = "hireproof:motion";
-const motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
-
-/** The visitor's saved choice: "on", "off", or null for "follow the OS". */
-function savedMotionChoice() {
-  try {
-    return localStorage.getItem(MOTION_KEY);
-  } catch {
-    // Private browsing and blocked storage both throw here. Falling back
-    // to the system preference is the right answer, not a crash.
-    return null;
-  }
-}
-
-function motionEnabled() {
-  const choice = savedMotionChoice();
-  if (choice === "on") return true;
-  if (choice === "off") return false;
-  return !motionQuery.matches;
-}
-
-/** Stamp the decision onto <html> so the stylesheet can act on it. */
-function applyMotionSetting() {
-  const on = motionEnabled();
-  document.documentElement.dataset.motion = on ? "on" : "off";
-  // The canvas is not styled by CSS, so the data-motion attribute above
-  // means nothing to it. Tell it directly, or switching motion off would
-  // stop every animation on the page except the conspicuous one.
-  if (HERO_FIELD) HERO_FIELD.refreshMotion();
-
-  const button = document.getElementById("motion-toggle");
-  if (button) {
-    button.setAttribute("aria-pressed", String(on));
-    document.getElementById("motion-label").textContent =
-      on ? "Animations on" : "Animations off";
-    button.title = on
-      ? "Turn the background animation off"
-      : "Turn the background animation on";
-  }
-}
-
-function setUpMotionToggle() {
-  const button = document.getElementById("motion-toggle");
-  if (!button) return;
-
-  button.addEventListener("click", () => {
-    const next = motionEnabled() ? "off" : "on";
-    try {
-      localStorage.setItem(MOTION_KEY, next);
-    } catch {
-      // Can't persist it; still honour the choice for this page view.
-    }
-    applyMotionSetting();
-  });
-
-  // If the visitor has made no explicit choice, follow the system when it
-  // changes rather than staying on a stale decision.
-  motionQuery.addEventListener("change", () => {
-    if (savedMotionChoice() === null) applyMotionSetting();
-  });
-}
-
-// ----------------------------------------------------------------- Theme
-// Three states, not two: light, dark, or follow the operating system.
-// "System" has to be a real option rather than just the starting value,
-// otherwise someone who tries the switch can never get back to having the
-// page track their OS when it flips at sunset.
-//
-// The stylesheet does the actual work through light-dark(), so all this
-// has to do is set `color-scheme` via a data-theme attribute.
 const THEME_KEY = "hireproof:theme";
-const THEMES = ["system", "light", "dark"];
 
-const THEME_ICONS = {
-  system: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="19" height="13" rx="2"/><line x1="8" y1="20.5" x2="16" y2="20.5"/></svg>`,
-  light: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>`,
-  dark: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z"/></svg>`,
-};
+function applyTheme(choice) {
+  const root = document.documentElement;
+  if (choice === "light" || choice === "dark") root.dataset.theme = choice;
+  else delete root.dataset.theme;
 
-function savedTheme() {
+  const dark =
+    choice === "dark" ||
+    (!choice && window.matchMedia("(prefers-color-scheme: dark)").matches);
+  el("theme-label").textContent = dark ? "Light" : "Dark";
+  el("theme-btn").setAttribute("aria-pressed", String(dark));
+}
+
+function setUpTheme() {
+  let saved = null;
   try {
-    const value = localStorage.getItem(THEME_KEY);
-    return THEMES.includes(value) ? value : "system";
+    saved = localStorage.getItem(THEME_KEY);
   } catch {
-    return "system";
+    // Private browsing throws on storage. Following the OS is the right
+    // fallback, not a crash.
   }
-}
+  applyTheme(saved);
 
-function applyTheme() {
-  // The canvas holds resolved rgb() strings, so it has to be told when
-  // the theme changes; CSS variables reach everything else on their own.
-  if (HERO_FIELD) HERO_FIELD.setColours(heroColours());
-  const theme = savedTheme();
-  // Removing the attribute (rather than setting "system") lets the
-  // stylesheet's `color-scheme: light dark` fall back to the OS.
-  if (theme === "system") {
-    delete document.documentElement.dataset.theme;
-  } else {
-    document.documentElement.dataset.theme = theme;
-  }
-  const icon = document.getElementById("theme-icon");
-  const label = document.getElementById("theme-label");
-  if (icon) icon.innerHTML = THEME_ICONS[theme];
-  if (label) label.textContent = `Theme: ${theme}`;
-}
-
-function setUpThemeToggle() {
-  const button = document.getElementById("theme-toggle");
-  if (!button) return;
-  button.addEventListener("click", () => {
-    const next = THEMES[(THEMES.indexOf(savedTheme()) + 1) % THEMES.length];
+  el("theme-btn").addEventListener("click", () => {
+    const dark = el("theme-btn").getAttribute("aria-pressed") === "true";
+    const next = dark ? "light" : "dark";
     try {
       localStorage.setItem(THEME_KEY, next);
     } catch {
-      // Can't persist; still honour it for this page view.
+      // Can't persist it; still honour the choice for this page view.
     }
-    applyTheme();
+    applyTheme(next);
   });
 }
 
-// Decide before anything renders, so there is no flash of animation for
-// someone who has asked not to see it.
-applyTheme();
-setUpThemeToggle();
-applyMotionSetting();
-setUpMotionToggle();
+/* ============================================================= The result */
 
-let PHRASE_CONFIG = null;
-let MODEL_READY = false;
-// The loaded model, kept so a result can be drawn against the postings it
-// was measured on. describeModel() is called before anything can score.
-let LOADED_MODEL = null;
-
-const elements = {
-  textarea: document.getElementById("posting"),
-  wordCount: document.getElementById("word-count"),
-  scoreButton: document.getElementById("score-button"),
-  clearButton: document.getElementById("clear-button"),
-  results: document.getElementById("results"),
-  needle: document.getElementById("gauge-needle"),
-  scoreValue: document.getElementById("score-value"),
-  verdict: document.querySelector(".verdict"),
-  verdictTitle: document.getElementById("verdict-title"),
-  verdictBlurb: document.getElementById("verdict-blurb"),
-  bandIcon: document.getElementById("band-icon"),
-  contributions: document.getElementById("contributions"),
-  rawTableBody: document.querySelector("#raw-table tbody"),
-  signalList: document.getElementById("signal-list"),
-  demoBanner: document.getElementById("demo-banner"),
-  demoBannerText: document.getElementById("demo-banner-text"),
-  modelFacts: document.getElementById("model-facts"),
-  repoLink: document.getElementById("repo-link"),
-  inputError: document.getElementById("input-error"),
-  inputHint: document.getElementById("input-hint"),
-  announcement: document.getElementById("score-announcement"),
-  annotatedText: document.getElementById("annotated-text"),
-  missingWrap: document.getElementById("missing-signals-wrap"),
-  missingChips: document.getElementById("missing-signals"),
-  oodNote: document.getElementById("ood-note"),
-};
-
-/** Show the honest facts about which model is loaded. */
-function describeModel(model) {
-  elements.repoLink.href = REPO_URL;
-  const repoLink2 = document.getElementById("repo-link-2");
-  if (repoLink2) repoLink2.href = REPO_URL;
-
-  if (model.trained_on === "demo") {
-    elements.demoBanner.hidden = false;
-    elements.demoBannerText.textContent =
-      "This model was trained on synthetic postings written by hand to test the " +
-      "system, not on real job adverts. Scores demonstrate how the tool works; " +
-      "they are not evidence about any real posting.";
-  }
-
-  const metrics = model.metrics || {};
-
-  // A one-line version of the model's record, sitting with the score
-  // rather than on another tab. Someone reading a result should not have
-  // to go looking for how much the number is worth.
-  const line = document.getElementById("model-line");
-  if (line) {
-    const folds = metrics.cv_folds || 5;
-    const kind = model.trained_on === "demo" ? "synthetic" : "hand-labelled";
-    line.textContent =
-      `This model scores ${(metrics.cv_accuracy * 100).toFixed(0)}% accuracy ` +
-      `against a ${(metrics.baseline_accuracy * 100).toFixed(0)}% baseline ` +
-      `(${folds}-fold cross-validation), trained on ${model.n_examples} ` +
-      `${kind} postings.`;
-  }
-
-  elements.modelFacts.textContent =
-    `Current model: trained ${model.trained_date} on ${model.n_examples} ` +
-    `postings (${model.n_ghost} ghost, ${model.n_legit} legit). ` +
-    `Cross-validated accuracy ${(metrics.cv_accuracy * 100).toFixed(0)}%, ` +
-    `against ${(metrics.baseline_accuracy * 100).toFixed(0)}% for always ` +
-    `guessing the commonest answer.`;
-
-  // List the signals the model reads, straight from the model file, so this
-  // section can never fall out of step with what was actually trained.
-  elements.signalList.replaceChildren();
-  for (const name of model.feature_names) {
-    const li = document.createElement("li");
-    li.textContent = model.feature_labels[name] || name;
-    elements.signalList.appendChild(li);
-  }
-}
-
-
-/* ------------------------------------------------------- The model tab
- * Everything here is read out of model.json rather than written by hand,
- * so the page always describes the model the site is actually running. If
- * someone retrains and pushes new weights, this updates itself.
- */
-
-/** One labelled number. */
-function statTile(label, value, note) {
-  const tile = document.createElement("div");
-  tile.className = "stat";
-  tile.innerHTML =
-    `<span class="stat-value"></span>` +
-    `<span class="stat-label"></span>` +
-    (note ? `<span class="stat-note"></span>` : "");
-  // textContent rather than template interpolation: these values come from
-  // a JSON file, and building HTML out of them would be an injection route
-  // the moment that file is ever generated from posting text.
-  tile.querySelector(".stat-value").textContent = value;
-  tile.querySelector(".stat-label").textContent = label;
-  if (note) tile.querySelector(".stat-note").textContent = note;
-  return tile;
-}
-
-function renderModelTab(model) {
-  const metrics = model.metrics || {};
-  const pct = (x) => `${Math.round((x || 0) * 100)}%`;
-
-  // --- Training data -------------------------------------------------
-  const stats = document.getElementById("model-stats");
-  if (stats) {
-    stats.replaceChildren(
-      statTile("Postings labelled", String(model.n_examples), `trained ${model.trained_date}`),
-      statTile("Ghost", String(model.n_ghost), share(model.n_ghost, model.n_examples)),
-      statTile("Genuine", String(model.n_legit), share(model.n_legit, model.n_examples)),
-      statTile("Signals used", String(model.feature_names.length), "per posting")
-    );
-  }
-
-  // --- Performance ----------------------------------------------------
-  const metricRow = document.getElementById("model-metrics");
-  if (metricRow) {
-    const lift = (metrics.cv_accuracy || 0) - (metrics.baseline_accuracy || 0);
-    metricRow.replaceChildren(
-      statTile("Accuracy", pct(metrics.cv_accuracy), "cross-validated"),
-      statTile("Baseline", pct(metrics.baseline_accuracy), "always guess the commonest"),
-      statTile("Beats baseline by", (lift >= 0 ? "+" : "−") + pct(Math.abs(lift)),
-               lift <= 0.01 ? "no real edge" : "the number that matters"),
-      statTile("Precision", pct(metrics.cv_precision), "of those called ghost, this share were"),
-      statTile("Recall", pct(metrics.cv_recall), "of real ghost postings, this share caught")
-    );
-  }
-
-  // --- Learned weights, as a diverging chart --------------------------
-  const list = document.getElementById("model-weights");
-  if (list) {
-    const rows = model.feature_names
-      .map((name, i) => ({
-        name,
-        label: model.feature_labels[name] || name,
-        weight: model.weights[i],
-      }))
-      .sort((a, b) => Math.abs(b.weight) - Math.abs(a.weight));
-
-    const largest = Math.abs(rows[0]?.weight || 0);
-    list.replaceChildren();
-    rows.forEach((row, index) => {
-      list.appendChild(
-        weightRow(row, largest, index)
-      );
-    });
-  }
-
-  renderDistribution(model);
-  renderSigmoid(model);
-  renderSurprises(model);
-
-  // --- Whatever the training run complained about ---------------------
-  const card = document.getElementById("model-warnings-card");
-  const warnings = document.getElementById("model-warnings");
-  if (card && warnings && (model.warnings || []).length) {
-    warnings.replaceChildren();
-    for (const text of model.warnings) {
-      const li = document.createElement("li");
-      li.textContent = text;
-      warnings.appendChild(li);
-    }
-    card.hidden = false;
-  }
-
-  const banner = document.getElementById("model-banner");
-  if (banner && model.trained_on === "demo") {
-    document.getElementById("model-banner-text").textContent =
-      "These numbers come from synthetic postings written by hand to test the " +
-      "system. They show the pipeline working; they are not a real result.";
-    banner.hidden = false;
-  }
-}
-
-/*
- * List the signals whose learned weight points the opposite way to the
- * hypothesis that justified building them.
- *
- * This exists because the alternative is worse. The score breakdown already
- * tells a visitor things like "Deadline or start date given, +31 points
- * toward ghost", while the How-it-works tab explains that a deadline is
- * evidence of a real, time-bound search. Both statements are on the same
- * site. Without this section the visitor just sees the tool contradict
- * itself and has no way to tell which part to believe.
- *
- * Saying it plainly is also the more useful answer: a feature that trained
- * backwards is information about the dataset, and on 30 postings it usually
- * means the signal appeared too rarely to learn anything from.
- */
-function renderSurprises(model) {
-  const card = document.getElementById("model-surprises-card");
-  const list = document.getElementById("model-surprises");
-  if (!card || !list) return;
-
-  const hypotheses = model.feature_hypothesis || {};
-  const surprises = model.feature_names
-    .map((name, index) => ({
-      name,
-      label: model.feature_labels[name] || name,
-      weight: model.weights[index],
-      expected: hypotheses[name],
-    }))
-    // "unsure" features had no prior, so they cannot contradict one. A
-    // weight of essentially zero is not a disagreement either: the model
-    // found nothing, which is a different statement from finding the
-    // opposite.
-    .filter((row) => row.expected === "ghost" || row.expected === "legit")
-    .filter((row) => Math.abs(row.weight) > 0.05)
-    .filter((row) => (row.weight > 0 ? "ghost" : "legit") !== row.expected)
-    .sort((a, b) => Math.abs(b.weight) - Math.abs(a.weight));
-
-  if (surprises.length === 0) {
-    card.hidden = true;
-    return;
-  }
-
-  list.replaceChildren();
-  for (const row of surprises) {
-    const li = document.createElement("li");
-    li.className = "surprise";
-
-    const label = document.createElement("span");
-    label.className = "surprise-label";
-    label.textContent = row.label;
-
-    const detail = document.createElement("span");
-    detail.className = "surprise-detail";
-    const learned = row.weight > 0 ? "ghost" : "genuine";
-    const guessed = row.expected === "ghost" ? "ghost" : "genuine";
-    detail.textContent =
-      `expected to point toward ${guessed}, actually points toward ${learned}`;
-
-    li.append(label, detail);
-    list.appendChild(li);
-  }
-  card.hidden = false;
-}
-
-/* ==================================================== The distribution plot
- *
- * One dot per labelled posting, at the score a model that never saw it gave
- * it. Those numbers come from model.json, where train.py stores the
- * out-of-fold prediction for every posting.
- *
- * WHY THIS CHART AND NOT A BAR OF ACCURACY. "70%" is a single number
- * standing in for thirty decisions, and it hides the only thing a reader
- * actually needs: how far the two groups overlap. Drawn out, the ghost
- * postings sit mostly right, the genuine ones mostly left, and there is a
- * crowd in the middle the model genuinely cannot separate. That middle is
- * the honest argument for having a "mixed signals" band at all, and no
- * summary statistic can make it visible.
- *
- * Every point is drawn rather than binned or averaged. With thirty of them
- * that is not a simplification, it is the whole dataset - so nobody has to
- * trust a smoothing choice made on their behalf.
- */
-function svgEl(tag, attrs, parent) {
-  const el = document.createElementNS("http://www.w3.org/2000/svg", tag);
-  for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
-  if (parent) parent.appendChild(el);
-  return el;
-}
-
-function renderDistribution(model) {
-  const figure = document.getElementById("oof-figure");
-  const host = document.getElementById("oof-chart");
-  const points = model.out_of_fold || [];
-  if (!figure || !host || points.length === 0) return;
-
-  const W = 720, H = 212;
-  const PAD = 18;
-  // A left gutter for the row labels, so they sit beside their row rather
-  // than above it. Labels floating over the plot are fine until a dot
-  // lands under one - which it will, because the leftmost ghost posting
-  // scored 4% and sits exactly there.
-  const LABEL_W = 112;
-  const plotX = PAD + LABEL_W;
-  const plotW = W - plotX - PAD;
-  const xOf = (p) => plotX + p * plotW;
-  const ROW = { ghost: 82, legit: 148 };
-  const R = 6;
-
-  host.replaceChildren();
-  const root = svgEl("svg", {
-    viewBox: `0 0 ${W} ${H}`,
-    class: "oof-svg",
-    role: "img",
-    "aria-labelledby": "oof-a11y",
-  }, host);
-
-  // The three bands, drawn first so every dot sits on top of them. Read
-  // from the model file rather than hardcoded, so the picture cannot drift
-  // away from the thresholds scorer.js actually applies.
-  const lo = (model.thresholds && model.thresholds.low) || 0.40;
-  const hi = (model.thresholds && model.thresholds.high) || 0.70;
-  const bands = [
-    { from: 0, to: lo, cls: "oof-band-low", label: "reads genuine" },
-    { from: lo, to: hi, cls: "oof-band-mid", label: "mixed signals" },
-    { from: hi, to: 1, cls: "oof-band-high", label: "reads ghost" },
-  ];
-  for (const b of bands) {
-    svgEl("rect", {
-      x: xOf(b.from), y: 40, width: xOf(b.to) - xOf(b.from), height: 140,
-      class: `oof-band ${b.cls}`,
-    }, root);
-    svgEl("text", {
-      x: (xOf(b.from) + xOf(b.to)) / 2, y: 26,
-      class: "oof-band-label", "text-anchor": "middle",
-    }, root).textContent = b.label;
-  }
-  for (const t of [lo, hi]) {
-    svgEl("line", {
-      x1: xOf(t), y1: 40, x2: xOf(t), y2: 180, class: "oof-rule",
-    }, root);
-    svgEl("text", {
-      x: xOf(t), y: 198, class: "oof-tick", "text-anchor": "middle",
-    }, root).textContent = `${Math.round(t * 100)}%`;
-  }
-
-  // Equal-sized dots overlap into an unreadable blob where scores cluster:
-  // three postings land within a point of each other at 91%. Stacking any
-  // dot that would collide with one already placed keeps every posting
-  // visible and turns density into height, which is the information the
-  // clustering is carrying.
-  for (const key of ["ghost", "legit"]) {
-    const wanted = key === "ghost" ? 1 : 0;
-    const placed = [];
-    const sorted = points
-      .filter((d) => d.ghost === wanted)
-      .sort((a, b) => a.p - b.p);
-
-    for (const d of sorted) {
-      const cx = xOf(d.p);
-      let level = 0;
-      while (placed.some((q) => Math.abs(q.cx - cx) < R * 2.15 && q.level === level)) {
-        level += 1;
-      }
-      placed.push({ cx, level });
-      const dir = key === "ghost" ? -1 : 1;
-      const dot = svgEl("circle", {
-        cx,
-        cy: ROW[key] + dir * level * (R * 2.15),
-        r: R,
-        class: `oof-dot oof-dot-${key}`,
-      }, root);
-      // A native per-mark tooltip: no JS, no layer to position, and it
-      // reaches assistive technology as well as the pointer.
-      svgEl("title", {}, dot).textContent =
-        `${key === "ghost" ? "Ghost" : "Genuine"} posting, scored ` +
-        `${Math.round(d.p * 100)}%`;
-    }
-
-    svgEl("text", {
-      x: PAD, y: ROW[key] + 4, class: "oof-row-label",
-    }, root).textContent =
-      key === "ghost" ? "Labelled ghost" : "Labelled genuine";
-  }
-
-  // The numbers behind the picture, in words. Identity is never carried by
-  // colour alone here - each row is labelled, and this says it again.
-  const pct = (arr) => arr.map((d) => Math.round(d.p * 100)).sort((a, b) => a - b);
-  const ghost = pct(points.filter((d) => d.ghost === 1));
-  const legit = pct(points.filter((d) => d.ghost === 0));
-  const median = (a) => a[Math.floor(a.length / 2)];
-  const falseAlarms = legit.filter((v) => v >= hi * 100).length;
-  const missed = ghost.filter((v) => v < lo * 100).length;
-
-  let a11y = document.getElementById("oof-a11y");
-  if (!a11y) {
-    a11y = document.createElement("p");
-    a11y.id = "oof-a11y";
-    a11y.className = "visually-hidden";
-    figure.appendChild(a11y);
-  }
-  a11y.textContent =
-    `Dot plot of every labelled posting by the score it was given by a model ` +
-    `that never saw it. Ghost postings scored ${ghost.join(", ")} percent. ` +
-    `Genuine postings scored ${legit.join(", ")} percent.`;
-
-  document.getElementById("oof-summary").textContent =
-    `Median ${median(ghost)}% for the ghost postings against ${median(legit)}% ` +
-    `for the genuine ones. ${falseAlarms} genuine posting` +
-    `${falseAlarms === 1 ? " was" : "s were"} pushed past ` +
-    `${Math.round(hi * 100)}%, and ${missed} ghost posting` +
-    `${missed === 1 ? "" : "s"} fell below ${Math.round(lo * 100)}% - which is ` +
-    `the trade the two thresholds were chosen to make, since wrongly ` +
-    `flagging a real job costs more than missing a fake one.`;
-
-  figure.hidden = false;
-}
-
-/* ===================================================== The sigmoid curve
- *
- * Plotted by running the real sigmoid from scorer.js, not by drawing a
- * nice-looking S in a vector editor. The curve, the band edges and the
- * scores the page reports therefore cannot disagree with one another,
- * which matters because this picture is the page's explanation of why the
- * per-signal points do not sum to the total.
- */
-function renderSigmoid(model) {
-  const figure = document.getElementById("sigmoid-figure");
-  const host = document.getElementById("sigmoid-chart");
-  if (!figure || !host) return;
-
-  const W = 720, H = 300;
-  const PAD_L = 54, PAD_R = 20, PAD_T = 18, PAD_B = 42;
-  const plotW = W - PAD_L - PAD_R;
-  const plotH = H - PAD_T - PAD_B;
-
-  // z from -6 to 6 covers the curve from 0.2% to 99.8%: far enough that
-  // both tails are visibly flat, close enough that the steep middle still
-  // has room to read as steep.
-  const Z = 6;
-  const xOf = (z) => PAD_L + ((z + Z) / (2 * Z)) * plotW;
-  const yOf = (p) => PAD_T + (1 - p) * plotH;
-
-  const lo = (model.thresholds && model.thresholds.low) || 0.40;
-  const hi = (model.thresholds && model.thresholds.high) || 0.70;
-
-  host.replaceChildren();
-  const root = svgEl("svg", {
-    viewBox: `0 0 ${W} ${H}`,
-    class: "sig-svg",
-    role: "img",
-    "aria-label":
-      "The sigmoid curve. It is nearly flat below minus three and above " +
-      "plus three, and steep in between, crossing 50 percent at zero.",
-  }, host);
-
-  // Horizontal band tints, matching the score bands elsewhere.
-  const bands = [
-    { from: 0, to: lo, cls: "oof-band-low" },
-    { from: lo, to: hi, cls: "oof-band-mid" },
-    { from: hi, to: 1, cls: "oof-band-high" },
-  ];
-  for (const b of bands) {
-    svgEl("rect", {
-      x: PAD_L, y: yOf(b.to),
-      width: plotW, height: yOf(b.from) - yOf(b.to),
-      class: `oof-band ${b.cls}`,
-    }, root);
-  }
-
-  // Axes: recessive, and only where they carry a reading.
-  for (const p of [0, 0.5, 1]) {
-    svgEl("line", {
-      x1: PAD_L, y1: yOf(p), x2: W - PAD_R, y2: yOf(p), class: "sig-grid",
-    }, root);
-    svgEl("text", {
-      x: PAD_L - 10, y: yOf(p) + 4, class: "sig-tick", "text-anchor": "end",
-    }, root).textContent = `${p * 100}%`;
-  }
-  for (const t of [lo, hi]) {
-    svgEl("text", {
-      x: PAD_L - 10, y: yOf(t) + 4, class: "sig-tick sig-tick-band",
-      "text-anchor": "end",
-    }, root).textContent = `${Math.round(t * 100)}%`;
-  }
-  svgEl("line", {
-    x1: xOf(0), y1: PAD_T, x2: xOf(0), y2: PAD_T + plotH, class: "sig-grid",
-  }, root);
-  for (const z of [-Z, -3, 0, 3, Z]) {
-    svgEl("text", {
-      x: xOf(z), y: H - 18, class: "sig-tick", "text-anchor": "middle",
-    }, root).textContent = z > 0 ? `+${z}` : String(z);
-  }
-  svgEl("text", {
-    x: PAD_L + plotW / 2, y: H - 2, class: "sig-axis-label",
-    "text-anchor": "middle",
-  }, root).textContent = "z  (the weighted sum, before squashing)";
-
-  // The curve itself, sampled from the shipped sigmoid.
-  const steps = 240;
-  let d = "";
-  for (let i = 0; i <= steps; i += 1) {
-    const z = -Z + (i / steps) * (2 * Z);
-    d += `${i === 0 ? "M" : "L"}${xOf(z).toFixed(2)} ${yOf(sigmoid(z)).toFixed(2)}`;
-  }
-  svgEl("path", { d, class: "sig-curve" }, root);
-
-  /* Two markers making the point the caption claims, rather than asking
-     the reader to take it on trust: the same one-unit step in z is worth
-     23 points in the middle of the curve and about 2 at the end. */
-  const marks = [
-    { from: 0, to: 1, label: "one step of z here" },
-    { from: 3.5, to: 4.5, label: "the same step here" },
-  ];
-  for (const m of marks) {
-    const gain = Math.round((sigmoid(m.to) - sigmoid(m.from)) * 100);
-    svgEl("line", {
-      x1: xOf(m.from), y1: yOf(sigmoid(m.from)),
-      x2: xOf(m.from), y2: yOf(sigmoid(m.to)),
-      class: "sig-mark",
-    }, root);
-    svgEl("line", {
-      x1: xOf(m.from), y1: yOf(sigmoid(m.to)),
-      x2: xOf(m.to), y2: yOf(sigmoid(m.to)),
-      class: "sig-mark",
-    }, root);
-    svgEl("circle", {
-      cx: xOf(m.from), cy: yOf(sigmoid(m.from)), r: 4, class: "sig-dot",
-    }, root);
-    svgEl("circle", {
-      cx: xOf(m.to), cy: yOf(sigmoid(m.to)), r: 4, class: "sig-dot",
-    }, root);
-    svgEl("text", {
-      x: xOf(m.to) + 10,
-      y: yOf(sigmoid(m.to)) + (m.from === 0 ? 16 : 4),
-      class: "sig-note",
-    }, root).textContent = `+${gain} points`;
-  }
-
-  figure.hidden = false;
-}
-
-/* ================================================ "Where that puts it"
- *
- * The score on its own is a number with no scale attached. 84% sounds
- * high, but high compared to what? This puts the posting in front of you
- * next to the thirty whose real answer is known, so the reader can see
- * whether 84% is a crowd of ghost postings or a spot where both kinds
- * turn up.
- *
- * It is the same data as the plot on the model tab, drawn small and with
- * one extra mark - and it is the honest way to present a score from a
- * model that is right about seven times in ten: not "this is a ghost
- * job", but "postings that scored here were mostly ghost jobs".
- */
-function renderWhereItLands(result, model) {
-  const figure = document.getElementById("lands-figure");
-  const host = document.getElementById("lands-chart");
-  const points = (model && model.out_of_fold) || [];
-  if (!figure || !host || points.length === 0) return;
-
-  const W = 720, H = 132;
-  const PAD = 18;
-  const plotW = W - PAD * 2;
-  const xOf = (p) => PAD + p * plotW;
-  const AXIS = 86;
-  const R = 4.5;
-
-  host.replaceChildren();
-  const root = svgEl("svg", {
-    viewBox: `0 0 ${W} ${H}`, class: "lands-svg", role: "img",
-    "aria-label":
-      `Your posting scored ${Math.round(result.probability * 100)} percent, ` +
-      `shown against the thirty labelled postings.`,
-  }, host);
-
-  const lo = (model.thresholds && model.thresholds.low) || 0.40;
-  const hi = (model.thresholds && model.thresholds.high) || 0.70;
-  for (const b of [
-    { from: 0, to: lo, cls: "oof-band-low" },
-    { from: lo, to: hi, cls: "oof-band-mid" },
-    { from: hi, to: 1, cls: "oof-band-high" },
-  ]) {
-    svgEl("rect", {
-      x: xOf(b.from), y: 40, width: xOf(b.to) - xOf(b.from), height: 62,
-      class: `oof-band ${b.cls}`,
-    }, root);
-  }
-
-  // The known postings, ghost above the line and genuine below it, so the
-  // two groups can be compared without reading a legend.
-  for (const key of ["ghost", "legit"]) {
-    const wanted = key === "ghost" ? 1 : 0;
-    const placed = [];
-    for (const d of points.filter((x) => x.ghost === wanted).sort((a, b) => a.p - b.p)) {
-      const cx = xOf(d.p);
-      let level = 0;
-      while (placed.some((q) => Math.abs(q.cx - cx) < R * 2.1 && q.level === level)) {
-        level += 1;
-      }
-      placed.push({ cx, level });
-      const dir = key === "ghost" ? -1 : 1;
-      svgEl("circle", {
-        cx, cy: AXIS + dir * (10 + level * (R * 2.1)), r: R,
-        class: `oof-dot oof-dot-${key}`,
-      }, root);
-    }
-  }
-
-  svgEl("line", {
-    x1: PAD, y1: AXIS, x2: W - PAD, y2: AXIS, class: "lands-axis",
-  }, root);
-
-  // This posting: a full-height rule plus a labelled marker, so it reads
-  // as a different kind of thing from the thirty dots rather than a dot
-  // that happens to be a different colour.
-  const x = xOf(result.probability);
-  svgEl("line", { x1: x, y1: 24, x2: x, y2: 112, class: "lands-marker" }, root);
-  svgEl("circle", { cx: x, cy: AXIS, r: 6, class: "lands-you" }, root);
-  const label = svgEl("text", {
-    x: Math.min(Math.max(x, PAD + 46), W - PAD - 46), y: 18,
-    class: "lands-label", "text-anchor": "middle",
-  }, root);
-  label.textContent = `this posting, ${Math.round(result.probability * 100)}%`;
-
-  svgEl("text", {
-    x: PAD, y: 126, class: "oof-tick",
-  }, root).textContent = "0%";
-  svgEl("text", {
-    x: W - PAD, y: 126, class: "oof-tick", "text-anchor": "end",
-  }, root).textContent = "100%";
-
-  // How many of each kind actually landed near this score. A window rather
-  // than an exact match, because with thirty postings an exact match is
-  // usually nobody.
-  const WINDOW = 0.12;
-  const near = points.filter((d) => Math.abs(d.p - result.probability) <= WINDOW);
-  const nearGhost = near.filter((d) => d.ghost === 1).length;
-  const nearLegit = near.length - nearGhost;
-
-  const summary = document.getElementById("lands-summary");
-  if (near.length === 0) {
-    summary.textContent =
-      `No labelled posting scored anywhere near this, so there is nothing ` +
-      `to compare it against. Treat the number with extra caution.`;
-  } else {
-    summary.textContent =
-      `Of the ${near.length} labelled posting${near.length === 1 ? "" : "s"} ` +
-      `that scored within ${Math.round(WINDOW * 100)} points of this one, ` +
-      `${nearGhost} ${nearGhost === 1 ? "was" : "were"} ghost and ` +
-      `${nearLegit} ${nearLegit === 1 ? "was" : "were"} genuine. ` +
-      `Dots above the line are ghost postings, below it genuine ones.`;
-  }
-
-  figure.hidden = false;
-}
-
-function share(part, whole) {
-  if (!whole) return "";
-  return `${Math.round((part / whole) * 100)}% of the set`;
-}
-
-/** A row of the learned-weights chart; same shape as the score breakdown. */
-function weightRow(row, largest, index) {
-  const towardGhost = row.weight > 0;
-  const width = largest > 0 ? (Math.abs(row.weight) / largest) * 100 : 0;
-
-  const li = document.createElement("li");
-  li.className = "crow";
-  li.style.setProperty("--i", index);
-  li.title = `${row.label}: ${towardGhost ? "+" : ""}${row.weight.toFixed(3)}`;
-
-  const name = document.createElement("span");
-  name.className = "crow-name";
-  name.textContent = row.label;
-
-  const chart = document.createElement("span");
-  chart.className = "crow-chart";
-  const left = document.createElement("span");
-  left.className = "crow-half crow-left";
-  const axis = document.createElement("span");
-  axis.className = "crow-axis";
-  const right = document.createElement("span");
-  right.className = "crow-half crow-right";
-
-  const bar = document.createElement("span");
-  bar.className = towardGhost ? "bar bar-raise" : "bar bar-lower";
-  bar.style.width = `${width}%`;
-  (towardGhost ? right : left).appendChild(bar);
-
-  const amount = document.createElement("span");
-  amount.className = "crow-amount";
-  const points = document.createElement("span");
-  points.className = "points";
-  points.textContent = (row.weight >= 0 ? "+" : "−") + Math.abs(row.weight).toFixed(2);
-  amount.appendChild(points);
-
-  chart.append(left, axis, right);
-  li.append(name, chart, amount);
-  return li;
-}
-
-/**
- * Re-check the input and reflect it in the UI.
- *
- * The button is disabled until the text is scoreable, and the reason sits
- * right underneath it. A greyed-out button with no explanation is a dead
- * end: the reader can see something is wrong but not what.
- */
-function refreshInputState() {
-  const verdict = checkInput(elements.textarea.value);
-
-  elements.wordCount.textContent =
-    verdict.words === 1 ? "1 word" : `${verdict.words} words`;
-
-  elements.scoreButton.disabled = !verdict.ok || !MODEL_READY;
-
-  if (!MODEL_READY) {
-    elements.inputHint.textContent = "Loading the model…";
-  } else {
-    // An empty box is the normal starting state, not a mistake, so it
-    // gets the neutral prompt rather than a complaint.
-    elements.inputHint.textContent = verdict.ok ? "" : verdict.message;
-  }
-  elements.inputHint.hidden = elements.inputHint.textContent === "";
-  elements.inputHint.classList.toggle(
-    "input-hint-warn", !verdict.ok && verdict.code !== "empty"
-  );
-
-  return verdict;
-}
-
-/**
- * Build one row of the diverging chart.
- *
- * Both arms are scaled against the SAME largest value, so bar lengths are
- * comparable across rows. Scaling each row to its own maximum would make
- * every row look equally important.
- */
-function contributionRow(item, largest, index) {
-  const towardGhost = item.contribution > 0;
-  const width = largest > 0 ? (Math.abs(item.contribution) / largest) * 100 : 0;
-
-  const li = document.createElement("li");
-  li.className = "crow";
-  li.dataset.signal = item.name;
-  // The stylesheet turns this into an animation-delay, so the bars appear
-  // one after another down the list rather than all at once.
-  li.style.setProperty("--i", index);
-  // Native tooltip with the exact number. The table view below carries the
-  // same values, so nothing is only reachable by hovering.
-  li.title = `${item.label}: ${towardGhost ? "+" : ""}${item.contribution.toFixed(3)}`;
-
-  const name = document.createElement("span");
-  name.className = "crow-name";
-  name.textContent = item.label;
-
-  const chart = document.createElement("span");
-  chart.className = "crow-chart";
-
-  const left = document.createElement("span");
-  left.className = "crow-half crow-left";
-  const axis = document.createElement("span");
-  axis.className = "crow-axis";
-  const right = document.createElement("span");
-  right.className = "crow-half crow-right";
-
-  const bar = document.createElement("span");
-  bar.className = towardGhost ? "bar bar-raise" : "bar bar-lower";
-  bar.style.width = `${width}%`;
-  (towardGhost ? right : left).appendChild(bar);
-
-  /*
-   * A + or MINUS at the data end of the bar.
-   *
-   * Direction is already carried by which side of the zero line the bar
-   * sits on, but that is a spatial cue, and the two colours are the
-   * obvious thing a reader looks at. A glyph means the direction survives
-   * colour blindness, a greyscale print and a screenshot pasted into a
-   * document, none of which keep hue reliable.
-   */
-  const signGlyph = document.createElement("span");
-  signGlyph.className = "bar-sign";
-  signGlyph.setAttribute("aria-hidden", "true");   // the row text says it too
-  signGlyph.textContent = towardGhost ? "+" : "−";
-  (towardGhost ? right : left).appendChild(signGlyph);
-
-  // The amount, in the reader's units. Strength ranks signals against one
-  // another; points say what it cost on the actual score.
-  const amount = document.createElement("span");
-  amount.className = "crow-amount";
-  const sign = item.points >= 0 ? "+" : "−";   // real minus sign
-  amount.innerHTML =
-    `<span class="strength strength-${item.strength}">${item.strength}</span>` +
-    `<span class="points">${sign}${Math.abs(item.points).toFixed(1)} pts</span>`;
-
-  chart.append(left, axis, right);
-  li.append(name, chart, amount);
-  return li;
-}
-
-/**
- * Count the score up from zero.
- *
- * Worth the few lines: a number that climbs makes the reader watch it and
- * gives the meter beside it something to move with. It is capped at a
- * short duration so it never delays reading the actual answer, and it is
- * skipped entirely under reduced motion.
- */
-function animateScore(target) {
-  if (!motionEnabled()) {
-    elements.scoreValue.textContent = `${target}%`;
-    return;
-  }
-  const duration = 1200;
-  const start = performance.now();
-
-  // Cancel any run still in flight, or two overlapping loops fight over
-  // the same element and the number visibly jitters.
-  if (animateScore.frame) cancelAnimationFrame(animateScore.frame);
-
-  function step(now) {
-    const t = Math.min((now - start) / duration, 1);
-    // Ease-out cubic: fast at first, settling at the end.
-    const eased = 1 - Math.pow(1 - t, 3);
-    elements.scoreValue.textContent = `${Math.round(eased * target)}%`;
-    if (t < 1) animateScore.frame = requestAnimationFrame(step);
-  }
-  animateScore.frame = requestAnimationFrame(step);
-}
-
-/*
- * Warn when the posting is outside the range the model was trained on.
- *
- * This is here because of the bug it catches. The demo model learned from
- * hand-written postings of about 60 words; a real job advert runs to ~900,
- * which is 25 standard deviations off that average. The score for every
- * real posting collapsed to "0% ghost" and the page showed that number with
- * a full breakdown and no hint anything was wrong.
- *
- * scorer.js now clamps such a feature, which stops it swamping the total,
- * but clamping is not a fix for the underlying situation: the model has
- * never seen a posting like this one and has no fitted answer for it. The
- * only honest thing to do is say so next to the number, rather than let a
- * confident percentage imply a measurement that was not made.
- */
-function renderOutOfDistribution(result) {
-  const note = elements.oodNote;
-  if (!note) return;
-
-  if (!result.outOfDistribution) {
-    note.hidden = true;
-    note.textContent = "";
-    return;
-  }
-
-  const names = result.contributions
-    .filter((item) => item.clamped)
-    .map((item) => item.neutralLabel.toLowerCase());
-  const list =
-    names.length === 1
-      ? names[0]
-      : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
-
-  note.textContent =
-    `Treat this score with extra caution: ${list} ` +
-    `${names.length === 1 ? "is" : "are"} outside the range of the postings ` +
-    `this model was trained on, so the number is an extrapolation rather ` +
-    `than a reading. Retraining on postings more like this one is the fix.`;
-  note.hidden = false;
-}
-
-function render(result) {
-  const percent = Math.round(result.probability * 100);
-  const verdict = band(result.probability);
-
-  animateScore(percent);
-
-  // Point the needle. The gauge is a semicircle, so a probability of p maps
-  // to p * 180 degrees of rotation: 0% points hard left, 100% hard right.
-  // The needle is drawn pointing left at rest, so the rotation IS the
-  // score with no offset to remember.
-  elements.needle.setAttribute(
-    "transform",
-    `rotate(${result.probability * 180} 100 96)`
-  );
-
-  // Drives the badge icon colour. The gauge zones are always all three
-  // colours, so only the badge follows the band.
-  elements.verdict.style.setProperty("--meter-color", BAND_COLORS[verdict.key]);
-  elements.bandIcon.innerHTML = BAND_ICONS[verdict.key];
-  elements.verdictTitle.textContent = verdict.title;
-  elements.verdictBlurb.textContent = verdict.blurb;
-
-  renderOutOfDistribution(result);
-  renderWhereItLands(result, LOADED_MODEL);
-
-  const meaningful = result.contributions.filter(
-    (item) => Math.abs(item.contribution) > MEANINGFUL
-  );
-  const largest = meaningful.length ? Math.abs(meaningful[0].contribution) : 0;
-
-  elements.contributions.replaceChildren();
-  if (meaningful.length === 0) {
-    const li = document.createElement("li");
-    li.className = "crow-empty";
-    li.textContent =
-      "No signal stood out: this posting sits close to the training average on every one.";
-    elements.contributions.appendChild(li);
-  } else {
-    const shown = meaningful.slice(0, TOP_N);
-    shown.forEach((item, index) => {
-      elements.contributions.appendChild(contributionRow(item, largest, index));
-    });
-
-    // Say what was left out, rather than quietly truncating.
-    const hidden = meaningful.length - shown.length;
-    if (hidden > 0) {
-      const li = document.createElement("li");
-      li.className = "crow-more";
-      li.textContent =
-        `${hidden} more signal${hidden === 1 ? "" : "s"} moved the score by less. ` +
-        `All eleven are in the table below.`;
-      elements.contributions.appendChild(li);
-    }
-  }
-
-  // The table view: every feature, including the ones that did nothing.
-  elements.rawTableBody.replaceChildren();
-  for (const item of result.contributions) {
-    const tr = document.createElement("tr");
-    const value = Number.isInteger(item.rawValue)
-      ? String(item.rawValue)
-      : item.rawValue.toFixed(2);
-    const effect = `${item.contribution >= 0 ? "+" : ""}${item.contribution.toFixed(3)}`;
-    // The table uses the neutral signal name, since the raw value sits
-    // beside it; the chart above uses the state-aware wording.
-    for (const text of [item.neutralLabel, value, effect]) {
-      const td = document.createElement("td");
-      td.textContent = text;
-      tr.appendChild(td);
-    }
-    elements.rawTableBody.appendChild(tr);
-  }
-
-  renderAnnotatedText(result);
-
-  /*
-   * Announce the outcome, briefly.
-   *
-   * The two facts worth hearing are the number and what it means, plus
-   * the single biggest driver. Putting aria-live on the result card
-   * instead would read out the gauge, all five bars, the table and the
-   * whole annotated posting, which is unusable.
-   */
-  const topFactor = meaningful[0];
-  elements.announcement.textContent =
-    `${percent} percent. ${verdict.title}.` +
-    (topFactor ? ` Biggest factor: ${topFactor.label}.` : "");
-
-  elements.results.hidden = false;
-  elements.results.scrollIntoView({
-    behavior: motionEnabled() ? "smooth" : "auto",
-    block: "start",
-  });
-}
-
-/**
- * Mark up the posting with the phrases that fired, and list the signals
- * that fired by being ABSENT.
- *
- * The absent ones need their own treatment rather than a highlight,
- * because there is nothing in the text to point at — and they are often
- * the strongest drivers. "No pay figure given" was the second biggest
- * factor on the example posting, and highlighting can say nothing about
- * it. Listing them as chips is the honest way to show a missing thing.
- */
-function renderAnnotatedText(result) {
-  if (!PHRASE_CONFIG) return;
-
-  // Colour each highlight by what its feature did to THIS posting, rather
-  // than by a fixed opinion about the phrase.
-  const direction = {};
-  for (const item of result.contributions) {
-    direction[item.name] = item.contribution >= 0 ? 1 : -1;
-  }
-
-  // rawFeatures gates the highlights: a pattern can match words for a
-  // feature that never actually fired (see annotate()).
-  const { html } = annotate(
-    elements.textarea.value, PHRASE_CONFIG, direction, result.rawFeatures
-  );
-  elements.annotatedText.innerHTML = html;
-
-  /*
-   * An "absent" signal is one whose raw value is 0 (the thing simply is
-   * not there) and which pushed the score UP by being missing. Density
-   * features are excluded: "fewer buzzwords than average" is not a
-   * missing thing, it is a low count.
-   */
-  const missing = result.contributions.filter(
-    (item) =>
-      item.rawValue === 0 &&
-      item.contribution > 0.01 &&
-      !item.name.endsWith("_density") &&
-      item.name !== "log_word_count"
-  );
-
-  elements.missingChips.replaceChildren();
-  for (const item of missing) {
-    const chip = document.createElement("span");
-    chip.className = "chip";
-    chip.dataset.signal = item.name;
-    chip.textContent = item.label;
-    elements.missingChips.appendChild(chip);
-  }
-  elements.missingWrap.hidden = missing.length === 0;
-}
-
-/**
- * Hovering a bar dims every highlight except that signal's, so you can see
- * exactly which words produced it. Done with one listener on the list
- * rather than one per row: fewer listeners, and it keeps working when the
- * rows are replaced on the next score.
- */
-function setUpSignalFocus() {
-  const block = document.querySelector(".annotated-block");
-  if (!block) return;
-
-  const focus = (signal) => {
-    if (signal) block.dataset.focus = signal;
-    else delete block.dataset.focus;
-  };
-
-  elements.contributions.addEventListener("pointerover", (event) => {
-    const row = event.target.closest(".crow");
-    focus(row ? row.dataset.signal : null);
-  });
-  elements.contributions.addEventListener("pointerleave", () => focus(null));
-
-  // Keyboard users get the same thing by tabbing, since the rows are
-  // focusable via the table view; this covers the pointer case only.
-  elements.contributions.addEventListener("focusin", (event) => {
-    const row = event.target.closest(".crow");
-    if (row) focus(row.dataset.signal);
-  });
-  elements.contributions.addEventListener("focusout", () => focus(null));
-}
-
-function handleScore() {
-  // One source of truth for whether the text is scoreable: the same check
-  // that drives the button's disabled state.
-  const verdict = refreshInputState();
-  if (!verdict.ok) {
-    elements.inputError.textContent = verdict.message;
-    elements.inputError.hidden = false;
-    elements.results.hidden = true;
-    elements.textarea.focus();
-    return;
-  }
-  const text = elements.textarea.value.trim();
-  elements.inputError.hidden = true;
-
-  // If rendering throws, say so plainly instead of leaving a half-drawn
-  // result on screen. The realistic cause is a stale cached script running
-  // against newer HTML after a deploy, which a reload fixes, so the message
-  // says that rather than showing a raw error.
-  try {
-    render(score(text));
-  } catch (error) {
-    elements.results.hidden = true;
-    elements.inputError.textContent =
-      "Something went wrong displaying the result. Please reload the page " +
-      `(your browser may be holding an old copy of this site). Details: ${error.message}`;
-    elements.inputError.hidden = false;
-  }
-}
-
-/**
- * Fade sections in as they scroll into view.
- *
- * IntersectionObserver rather than a scroll listener: the browser reports
- * visibility itself instead of us recalculating positions on every scroll
- * frame, which is both simpler and much cheaper.
- *
- * Each element is unobserved once shown, so the effect plays once and
- * content never fades back out while scrolling up.
- */
-function setUpScrollReveal() {
-  // #results is excluded: it is hidden until a posting is scored and has
-  // its own entrance animation. Giving it opacity:0 from .reveal as well
-  // would race with that and could leave it blank.
-  const targets = document.querySelectorAll("main > .card:not(#results)");
-  if (!("IntersectionObserver" in window)) return;
-
-  targets.forEach((el) => el.classList.add("reveal"));
-
-  const observer = new IntersectionObserver(
-    (entries) => {
-      for (const entry of entries) {
-        if (!entry.isIntersecting) continue;
-        entry.target.classList.add("in-view");
-        observer.unobserve(entry.target);
-      }
-    },
-    // Trigger slightly before the element's top edge reaches the viewport
-    // bottom, so it has finished appearing by the time it is read.
-    { rootMargin: "0px 0px -40px 0px", threshold: 0.05 }
-  );
-
-  targets.forEach((el) => observer.observe(el));
-}
-
-/* The cursor-following glow that used to live here is gone, along with its
-   requestAnimationFrame easing loop and pointermove listener. The page has
-   one light now and it does not chase anyone around. */
-
-
-/* ==================================================== Compare two postings
- *
- * This reuses score() from scorer.js rather than reimplementing anything:
- * both sides go through the exact same model, features and standardisation
- * as the single-posting view. If the scoring changes, this changes with it.
- *
- * The interesting output is not the two numbers side by side — it is which
- * signals DIFFER. Two postings can reach a similar score for completely
- * different reasons, and the gap per signal is what tells you where they
- * actually part company.
- */
-
-const compare = {
-  a: document.getElementById("compare-a"),
-  b: document.getElementById("compare-b"),
-  aWords: document.getElementById("compare-a-words"),
-  bWords: document.getElementById("compare-b-words"),
-  aResult: document.getElementById("compare-a-result"),
-  bResult: document.getElementById("compare-b-result"),
-  button: document.getElementById("compare-button"),
-  hint: document.getElementById("compare-hint"),
-  verdict: document.getElementById("compare-verdict"),
-  headline: document.getElementById("compare-headline"),
-  summary: document.getElementById("compare-summary"),
-  diff: document.getElementById("compare-diff"),
-  announcement: document.getElementById("compare-announcement"),
-};
-
-function refreshCompareState() {
-  if (!compare.a || !compare.b) return { ok: false };
-  const first = checkInput(compare.a.value);
-  const second = checkInput(compare.b.value);
-
-  compare.aWords.textContent =
-    first.words === 1 ? "1 word" : `${first.words} words`;
-  compare.bWords.textContent =
-    second.words === 1 ? "1 word" : `${second.words} words`;
-
-  const ok = first.ok && second.ok && MODEL_READY;
-  compare.button.disabled = !ok;
-
-  // Name which side is the problem. "Paste at least 30 words" is unhelpful
-  // when one of the two boxes is already full.
-  let message = "";
-  if (!MODEL_READY) message = "Loading the model…";
-  else if (!first.ok && !second.ok) message = `Both postings: ${first.message}`;
-  else if (!first.ok) message = `Posting A: ${first.message}`;
-  else if (!second.ok) message = `Posting B: ${second.message}`;
-
-  compare.hint.textContent = message;
-  compare.hint.hidden = message === "";
-  compare.hint.classList.toggle("input-hint-warn", message !== "" && MODEL_READY);
-  return { ok, first, second };
-}
-
-/** A compact score readout under each textarea. */
-function renderCompareSide(container, result, letter) {
+function renderResult(text, result) {
   const verdict = band(result.probability);
   const percent = Math.round(result.probability * 100);
-  container.replaceChildren();
-  container.className = `compare-result compare-${verdict.key}`;
 
-  const value = document.createElement("span");
-  value.className = "compare-score";
-  value.textContent = `${percent}%`;
+  el("empty-state").hidden = true;
+  el("result").hidden = false;
 
-  const label = document.createElement("span");
-  label.className = "compare-band";
-  label.textContent =
-    verdict.key === "high" ? "reads ghost-like"
-      : verdict.key === "medium" ? "mixed signals"
-        : "reads genuine";
+  el("score-value").textContent = `${percent}%`;
+  el("verdict-title").textContent = verdict.title;
+  el("verdict-note").textContent = verdict.blurb;
 
-  container.append(value, label);
+  // scaleX rather than width: a transform composites, a width change
+  // relayouts the bar on every frame of the ease.
+  el("bar-fill").style.transform = `scaleX(${result.probability})`;
 
-  // Compare is a side-by-side of two scores, so an untrustworthy one matters
-  // twice over: the DIFFERENCE between an extrapolated score and a real one
-  // says nothing at all. Flag it here too rather than only on the main tab.
+  // Mark the two band edges, so a reader can see where 40 and 70 fall
+  // rather than only learning which band they landed in.
+  el("bar-ticks").innerHTML = [THRESHOLD_LOW, THRESHOLD_HIGH]
+    .map(
+      (t) =>
+        `<span class="bar-tick" style="left:${t * 100}%">${Math.round(t * 100)}</span>`
+    )
+    .join("");
+
+  const ood = el("ood-note");
   if (result.outOfDistribution) {
-    const flag = document.createElement("span");
-    flag.className = "compare-ood";
-    flag.textContent = "outside training range";
-    container.append(flag);
+    const names = result.contributions
+      .filter((c) => c.clamped)
+      .map((c) => c.neutralLabel.toLowerCase());
+    ood.textContent =
+      `Treat this with extra caution: ${names.join(" and ")} ` +
+      `${names.length === 1 ? "is" : "are"} outside the range of the postings ` +
+      `this model was trained on, so the number is an extrapolation rather ` +
+      `than a reading.`;
+    ood.hidden = false;
+  } else {
+    ood.hidden = true;
   }
 
-  container.hidden = false;
-  container.setAttribute(
-    "aria-label",
-    `Posting ${letter}: ${percent} percent, ${label.textContent}`
+  const m = MODEL.metrics;
+  el("model-line").textContent =
+    `${pct(m.cv_accuracy)} accuracy against a ${pct(m.baseline_accuracy)} ` +
+    `baseline (${m.cv_folds}-fold cross-validation) on ${MODEL.n_examples} ` +
+    `hand-labelled postings.`;
+
+  // The number and what it means. Putting aria-live on the whole panel
+  // would read the entire breakdown and the annotated posting out again
+  // on every keystroke.
+  el("announce").textContent = `${percent} percent. ${verdict.title}.`;
+
+  renderBreakdown(result);
+  renderAnnotated(text, result);
+}
+
+function renderBreakdown(result) {
+  const rows = result.contributions.filter(
+    (c) => Math.abs(c.contribution) > MEANINGFUL
   );
-}
+  const largest = rows.length ? Math.abs(rows[0].contribution) : 1;
 
-/** One row of the difference chart. */
-function diffRow(item, largest, index) {
-  const favoursA = item.gap > 0;   // this signal pushed A's score higher
-  const width = largest > 0 ? (Math.abs(item.gap) / largest) * 100 : 0;
-
-  const li = document.createElement("li");
-  li.className = "crow";
-  li.style.setProperty("--i", index);
-  li.title =
-    `${item.label}: A ${item.a >= 0 ? "+" : ""}${item.a.toFixed(2)}, ` +
-    `B ${item.b >= 0 ? "+" : ""}${item.b.toFixed(2)}`;
-
-  const name = document.createElement("span");
-  name.className = "crow-name";
-  name.textContent = item.label;
-
-  const chart = document.createElement("span");
-  chart.className = "crow-chart";
-  const left = document.createElement("span");
-  left.className = "crow-half crow-left";
-  const axis = document.createElement("span");
-  axis.className = "crow-axis";
-  const right = document.createElement("span");
-  right.className = "crow-half crow-right";
-
-  const bar = document.createElement("span");
-  bar.className = favoursA ? "bar bar-raise" : "bar bar-lower";
-  bar.style.width = `${width}%`;
-  (favoursA ? right : left).appendChild(bar);
-
-  // A letter rather than a plus sign here: the two directions mean
-  // "worse for A" and "worse for B", which a sign cannot express.
-  const glyph = document.createElement("span");
-  glyph.className = "bar-sign";
-  glyph.setAttribute("aria-hidden", "true");
-  glyph.textContent = favoursA ? "A" : "B";
-  (favoursA ? right : left).appendChild(glyph);
-
-  const amount = document.createElement("span");
-  amount.className = "crow-amount";
-  const points = document.createElement("span");
-  points.className = "points";
-  points.textContent = `worse for ${favoursA ? "A" : "B"}`;
-  amount.appendChild(points);
-
-  chart.append(left, axis, right);
-  li.append(name, chart, amount);
-  return li;
-}
-
-function handleCompare() {
-  const state = refreshCompareState();
-  if (!state.ok) return;
-
-  // The same scoring path as the single-posting view.
-  const a = score(compare.a.value);
-  const b = score(compare.b.value);
-
-  renderCompareSide(compare.aResult, a, "A");
-  renderCompareSide(compare.bResult, b, "B");
-
-  const aPct = Math.round(a.probability * 100);
-  const bPct = Math.round(b.probability * 100);
-  const spread = Math.abs(aPct - bPct);
-
-  /*
-   * Refuse to name a winner on a small gap.
-   *
-   * These probabilities are not calibrated, so a few points between two
-   * postings is well inside the noise. Declaring one better on that
-   * basis would be the kind of false confidence the rest of the site works to
-   * avoid.
-   */
-  let headline;
-  if (spread < 5) {
-    headline = "Too close to call";
-    compare.summary.textContent =
-      `A scores ${aPct}% and B scores ${bPct}%. That gap is small enough to ` +
-      `be noise on a model this size, so treat them as equivalent.`;
-  } else {
-    const higher = aPct > bPct ? "A" : "B";
-    const lower = aPct > bPct ? "B" : "A";
-    headline = `Posting ${lower} reads more genuine`;
-    compare.summary.textContent =
-      `A scores ${aPct}% and B scores ${bPct}%, a ${spread}-point gap. ` +
-      `Posting ${higher} carries more of the signals this model associates ` +
-      `with ghost postings — a reason to ask questions about it, not a ` +
-      `reason to rule it out.`;
-  }
-  compare.headline.textContent = headline;
-
-  /*
-   * The per-signal gap. Both sides already carry a contribution for every
-   * feature, so lining them up by name gives the difference directly —
-   * no re-scoring and no second code path to keep in step.
-   */
-  const byName = new Map(b.contributions.map((item) => [item.name, item]));
-  const diffs = a.contributions
-    .map((item) => {
-      const other = byName.get(item.name);
-      const otherValue = other ? other.contribution : 0;
-      return {
-        label: item.neutralLabel,
-        a: item.contribution,
-        b: otherValue,
-        gap: item.contribution - otherValue,
-      };
+  el("breakdown").innerHTML = result.contributions
+    .map((c) => {
+      const ghost = c.contribution > 0;
+      const width = (Math.abs(c.contribution) / largest) * 50; // half-axis
+      const dir = ghost ? "toward-ghost" : "toward-real";
+      const points = c.points >= 0 ? `+${c.points.toFixed(1)}` : c.points.toFixed(1);
+      return `
+        <li class="brow">
+          <div>
+            <div class="brow-name">${c.label}</div>
+            <div class="brow-axis">
+              <span class="brow-bar ${dir}" style="width:${width}%"></span>
+            </div>
+          </div>
+          <div class="brow-meta">
+            <span class="brow-sign ${dir}-ink">${ghost ? "+" : "−"}</span>
+            ${points} pts
+          </div>
+        </li>`;
     })
-    .filter((item) => Math.abs(item.gap) > MEANINGFUL)
-    .sort((x, y) => Math.abs(y.gap) - Math.abs(x.gap));
+    .join("");
 
-  compare.diff.replaceChildren();
-  if (diffs.length === 0) {
-    const li = document.createElement("li");
-    li.className = "crow-empty";
-    li.textContent = "These two score the same on every signal the model reads.";
-    compare.diff.appendChild(li);
-  } else {
-    const largest = Math.abs(diffs[0].gap);
-    diffs.slice(0, TOP_N).forEach((item, index) => {
-      compare.diff.appendChild(diffRow(item, largest, index));
-    });
+  el("breakdown-panel").hidden = false;
+}
+
+function renderAnnotated(text, result) {
+  const { html, count } = annotateWithContributions(
+    text,
+    PHRASES,
+    result.contributions
+  );
+  el("annotated").innerHTML = html;
+  el("match-count").textContent =
+    `${count} phrase${count === 1 ? "" : "s"} matched`;
+
+  // Signals that fired by being ABSENT need their own treatment: there is
+  // nothing in the text to point at, and they are often the strongest
+  // drivers. "No pay figure given" cannot be highlighted.
+  const missing = result.contributions
+    .filter((c) => c.rawValue === 0 && Math.abs(c.contribution) > MEANINGFUL)
+    .map((c) => `<li>${c.label}</li>`)
+    .join("");
+  el("missing").innerHTML = missing;
+
+  el("annotated-panel").hidden = false;
+}
+
+function clearResult() {
+  el("result").hidden = true;
+  el("breakdown-panel").hidden = true;
+  el("annotated-panel").hidden = true;
+  el("empty-state").hidden = false;
+  el("announce").textContent = "";
+}
+
+/* ======================================================== Live scoring */
+
+let timer = 0;
+
+function onInput() {
+  const text = el("posting").value;
+  const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+  el("word-count").textContent = `${words} word${words === 1 ? "" : "s"}`;
+
+  clearTimeout(timer);
+  timer = setTimeout(() => {
+    if (!MODEL) return;
+    const check = checkInput(text);
+    if (!check.ok) {
+      el("input-hint").textContent = text.trim()
+        ? check.message || `Paste at least ${MIN_WORDS} words.`
+        : "";
+      el("result-state").textContent = "";
+      clearResult();
+      return;
+    }
+    el("input-hint").textContent = "";
+    el("result-state").textContent = "live";
+    // Wrapped, because a render bug must not take the whole page down -
+    // see ARCHITECTURE section 3.3.
+    try {
+      renderResult(text, score(text));
+    } catch (error) {
+      el("result-state").textContent = "error";
+      el("empty-state").innerHTML =
+        `<p>Something went wrong scoring that posting. ` +
+        `<a href="${REPO_URL}/issues">Report it</a> and it gets fixed.</p>`;
+      clearResult();
+      console.error(error);
+    }
+  }, DEBOUNCE_MS);
+}
+
+/* ================================================== How it works, live */
+
+function renderHow() {
+  const text = el("how-input").value;
+  const steps = el("how-steps");
+  if (!MODEL || !text.trim()) {
+    steps.innerHTML = "";
+    return;
   }
 
-  compare.announcement.textContent =
-    `Posting A ${aPct} percent, posting B ${bPct} percent. ${headline}.`;
-  compare.verdict.hidden = false;
+  let result;
+  try {
+    result = score(text);
+  } catch {
+    steps.innerHTML = "";
+    return;
+  }
+
+  const top = result.contributions[0];
+  const bias = MODEL.bias;
+
+  // The same five stages scorer.js runs, with this text's real numbers.
+  const stages = [
+    [
+      "Normalise",
+      "Lowercase the text and collapse all whitespace, so a phrase split across a line break is still found.",
+      `"${text.trim().toLowerCase().replace(/\s+/g, " ").slice(0, 72)}…"`,
+    ],
+    [
+      "Extract 11 signals",
+      "Each becomes one number. Nothing else about the posting is used.",
+      MODEL.feature_names
+        .slice(0, 4)
+        .map((n) => `${n} = ${result.rawFeatures[n].toFixed(2)}`)
+        .join("   "),
+    ],
+    [
+      "Standardise",
+      "Rescale each signal using the mean and spread from training, so one learning rate suits them all and the weights stay comparable.",
+      `${top.neutralLabel}: ${top.rawValue.toFixed(2)} -> ${(
+        (top.rawValue - MODEL.means[MODEL.feature_names.indexOf(top.name)]) /
+        MODEL.stds[MODEL.feature_names.indexOf(top.name)]
+      ).toFixed(2)} standard deviations`,
+    ],
+    [
+      "Add them up",
+      "Each standardised signal times its learned weight, summed, starting from a constant called the bias.",
+      `z = ${bias.toFixed(3)} + … = ${result.z.toFixed(3)}`,
+    ],
+    [
+      "Squash it",
+      "That sum can be any number at all, so the sigmoid folds it into the 0–100% range.",
+      `1 ÷ (1 + e^−${result.z.toFixed(3)}) = ${(result.probability * 100).toFixed(1)}%`,
+    ],
+  ];
+
+  steps.innerHTML = stages
+    .map(
+      ([title, body, figure]) => `
+      <li class="step">
+        <div>
+          <h3>${title}</h3>
+          <p>${body}</p>
+          <div class="step-figure">${figure}</div>
+        </div>
+      </li>`
+    )
+    .join("");
 }
 
-function setUpCompare() {
-  if (!compare.a || !compare.b) return;
-  compare.a.addEventListener("input", refreshCompareState);
-  compare.b.addEventListener("input", refreshCompareState);
-  compare.button.addEventListener("click", handleCompare);
+/* ============================================================ Model card */
 
-  document.getElementById("compare-example")?.addEventListener("click", () => {
-    compare.a.value = EXAMPLES.ghost;
-    compare.b.value = EXAMPLES.genuine;
-    refreshCompareState();
-    handleCompare();
-  });
-  document.getElementById("compare-clear")?.addEventListener("click", () => {
-    compare.a.value = "";
-    compare.b.value = "";
-    compare.verdict.hidden = true;
-    compare.aResult.hidden = true;
-    compare.bResult.hidden = true;
-    refreshCompareState();
-    compare.a.focus();
-  });
+function renderModelCard() {
+  const m = MODEL.metrics;
+  const ev = MODEL.evidence || {};
 
-  refreshCompareState();
+  const stats = [
+    [MODEL.n_examples, "Labelled postings", `${MODEL.n_ghost} ghost, ${MODEL.n_legit} genuine`],
+    [pct(m.cv_accuracy), "Accuracy", `${m.cv_folds}-fold cross-validation`],
+    [pct(m.baseline_accuracy), "Baseline", "always guess the commonest label"],
+    [pct(m.cv_precision), "Precision", "of those called ghost, this share were"],
+    [pct(m.cv_recall), "Recall", "of real ghost postings, this share caught"],
+  ];
+  el("model-stats").innerHTML = stats
+    .map(
+      ([value, label, note]) => `
+      <li class="stat">
+        <div class="stat-value mono">${value}</div>
+        <div class="stat-label">${label}</div>
+        <div class="stat-note">${note}</div>
+      </li>`
+    )
+    .join("");
+
+  /* THE CAUTIONS, all computed rather than written.
+     A demo model, a small sample and an implausibly high score each get
+     said out loud, because each one means the headline figure above is
+     worth less than it looks. */
+  const cautions = [];
+
+  if (MODEL.trained_on === "demo") {
+    cautions.push(
+      "This model was trained on synthetic postings written by hand to test " +
+        "the pipeline, not on real adverts. The scores demonstrate that the " +
+        "plumbing works; they are not evidence about any real posting."
+    );
+  }
+
+  if (MODEL.n_examples < 100) {
+    cautions.push(
+      `Trained on ${MODEL.n_examples} postings. Below about 100 the accuracy ` +
+        `estimate swings widely depending on which examples land in which ` +
+        `fold, so treat ${pct(m.cv_accuracy)} as a rough hint rather than a ` +
+        `measurement.`
+    );
+  }
+
+  if (m.cv_accuracy > 0.98) {
+    cautions.push(
+      `${pct(m.cv_accuracy)} cross-validated accuracy is implausibly high for ` +
+        `this problem. That usually means the two groups are far more cleanly ` +
+        `separated than real postings ever are - a warning sign, not an ` +
+        `achievement.`
+    );
+  }
+
+  const textOnly = ev.text_only ?? 0;
+  if (textOnly > 0) {
+    cautions.push(
+      `${textOnly} of ${MODEL.n_examples} labels were judged from the wording ` +
+        `alone. The features are drawn from the wording too, so those labels ` +
+        `teach the model to reproduce a reader's instinct rather than to ` +
+        `detect anything.`
+    );
+  }
+
+  // Whatever the training run itself flagged, verbatim.
+  for (const w of MODEL.warnings || []) cautions.push(w);
+
+  el("model-cautions").innerHTML = cautions
+    .map((c) => `<p class="caution">${c}</p>`)
+    .join("");
+
+  // The evidence breakdown: what the labels rest on.
+  const evidenceRows = Object.entries(ev)
+    .filter(([k, v]) => k !== "confidence" && v > 0)
+    .map(([k, v]) => `${v} ${k.replace(/_/g, " ")}`)
+    .join(", ");
+  if (evidenceRows) {
+    el("model-cautions").insertAdjacentHTML(
+      "beforeend",
+      `<p class="section-lede" style="font-size:0.86rem">
+         <strong>What the labels rest on:</strong> ${evidenceRows}.
+         ${ev.confidence
+           ? `${ev.confidence.sure} marked sure, ${ev.confidence.unsure} unsure.`
+           : ""}
+       </p>`
+    );
+  }
+
+  el("feature-rows").innerHTML = MODEL.feature_names
+    .map((name, i) => {
+      const w = MODEL.weights[i];
+      const ghost = w > 0;
+      return `
+        <tr>
+          <td>${MODEL.feature_labels[name] || name}</td>
+          <td class="num">${ghost ? "+" : "−"}${Math.abs(w).toFixed(3)}</td>
+          <td class="${ghost ? "toward-ghost-ink" : "toward-real-ink"}">
+            ${ghost ? "toward ghost" : "toward real"}
+          </td>
+        </tr>`;
+    })
+    .join("");
 }
 
-/* The field is created before anything is fetched, so the ghost is
-   already gathering while model.json is in flight. It is handed a
-   placeholder set of thirty, then the real scores when they land - which
-   is what makes the resolve read as the model arriving rather than as an
-   animation that was going to play anyway. */
-/* Read a custom property as a COLOUR the canvas can actually use.
-   Reading --raise straight off the root gives back the literal text
-   "light-dark(#b23b33, #d87264)", because light-dark() is resolved when a
-   property is used as a colour, not when the variable is read. Canvas
-   silently ignores a fillStyle it cannot parse and keeps the previous
-   one, so every particle was being painted in the default black - dots
-   that were there, on the right path, and invisible against a dark page.
-
-   Letting the browser resolve it on a throwaway element gives an rgb()
-   string, and costs one layout read per theme change. */
-function resolvedColour(token, fallback) {
-  const probe = document.createElement("span");
-  probe.style.cssText = "position:absolute;left:-9999px;visibility:hidden";
-  probe.style.color = `var(${token})`;
-  document.body.appendChild(probe);
-  const value = getComputedStyle(probe).color;
-  probe.remove();
-  return value || fallback;
-}
-
-function heroColours() {
-  return {
-    body: resolvedColour("--accent", "#eda059"),
-    core: resolvedColour("--glow-rim-solid", "#ffd8ae"),
-  };
-}
-
-function startHeroField() {
-  const canvas = document.getElementById("hero-field");
-  if (!canvas) return null;
-  const field = createHeroField(canvas, {
-    motionOn: motionEnabled,
-    colours: heroColours(),
-  });
-  /* Only hide the drawn ghost once the canvas one is definitely there.
-     createHeroField returns null if the 2D context or the offscreen
-     sampling fails, and a hero with no ghost at all would be a worse
-     outcome than one that never sparkles. */
-  if (field) document.documentElement.classList.add("has-field");
-  return field;
-}
+/* ================================================================ Start */
 
 async function start() {
+  setUpTheme();
+
+  el("posting").addEventListener("input", onInput);
+  el("clear-btn").addEventListener("click", () => {
+    el("posting").value = "";
+    onInput();
+    el("posting").focus();
+  });
+
+  for (const chip of document.querySelectorAll("[data-example]")) {
+    chip.addEventListener("click", () => {
+      el("posting").value = EXAMPLES[chip.dataset.example];
+      onInput();
+      el("posting").focus();
+      // Setting .value then focusing leaves the caret at the end, which
+      // scrolls the box to the last line - so the example appears to
+      // start in the middle of nowhere. Put it back at the top.
+      el("posting").setSelectionRange(0, 0);
+      el("posting").scrollTop = 0;
+    });
+  }
+
+  el("how-input").addEventListener("input", renderHow);
+
   try {
-    // Both files are needed before anything can be scored: the phrase lists
-    // to build features, and the model to weigh them.
-    const [phraseConfig, model] = await Promise.all([loadPhrases(), loadModel()]);
-    PHRASE_CONFIG = phraseConfig;
-    LOADED_MODEL = model;
-    describeModel(model);
-    renderModelTab(model);
-    MODEL_READY = true;
-    refreshInputState();
-    refreshCompareState();
-    setUpScrollReveal();
-    setUpSignalFocus();
+    const [phrases, model] = await Promise.all([loadPhrases(), loadModel()]);
+    PHRASES = phrases;
+    MODEL = model;
+    renderModelCard();
+    el("how-input").value = EXAMPLES.ambiguous.split("\n")[0];
+    renderHow();
+    onInput();
   } catch (error) {
-    // Fail loudly and honestly rather than showing a broken page.
-    elements.scoreButton.disabled = true;
-    elements.demoBanner.hidden = false;
-    elements.demoBanner.className = "banner banner-error";
-    elements.demoBannerText.textContent =
-      `Could not load the model (${error.message}). The scorer is unavailable.`;
+    el("empty-state").innerHTML =
+      `<p>Could not load the model. The page cannot score anything without ` +
+      `it. <a href="${REPO_URL}">Source on GitHub</a>.</p>`;
+    console.error(error);
   }
 }
-
-elements.scoreButton.addEventListener("click", handleScore);
-elements.textarea.addEventListener("input", refreshInputState);
-// One listener on the row rather than three, so adding a fourth example
-// needs only the markup and an entry in EXAMPLES.
-document.querySelector(".examples")?.addEventListener("click", (event) => {
-  const chip = event.target.closest("[data-example]");
-  if (!chip) return;
-  elements.textarea.value = EXAMPLES[chip.dataset.example] || "";
-  refreshInputState();
-  handleScore();
-});
-elements.clearButton.addEventListener("click", () => {
-  elements.textarea.value = "";
-  refreshInputState();
-  elements.results.hidden = true;
-  elements.inputError.hidden = true;
-  elements.textarea.focus();
-});
-
-refreshInputState();   // starts disabled: no text yet, and no model yet
-setUpTabs();
-setUpCompare();
-HERO_FIELD = startHeroField();
 
 start();

@@ -8,7 +8,7 @@
  * IS a link.
  */
 
-import { checkInput, looksLikeLink, MIN_WORDS, MAX_CHARS } from "../../docs/validate.js?v=59";
+import { checkInput, looksLikeLink, MIN_WORDS, MAX_CHARS } from "../../docs/validate.js?v=60";
 
 let checks = 0, failures = 0;
 function check(condition, message) {

@@ -23,7 +23,7 @@ from pathlib import Path
 from ghostjob import features, logreg
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-APP_JS = REPO_ROOT / "docs" / "app.js"
+EXAMPLES_JS = REPO_ROOT / "docs" / "examples.js"
 MODEL_PATH = REPO_ROOT / "docs" / "model.json"
 
 # Must match THRESHOLD_LOW / THRESHOLD_HIGH in docs/scorer.js.
@@ -33,18 +33,18 @@ THRESHOLD_HIGH = 0.70
 # What each example is there to demonstrate.
 EXPECTED_BAND = {
     "ghost": "high",
-    "genuine": "low",
-    "borderline": "medium",
+    "real": "low",
+    "ambiguous": "medium",
 }
 
 
 def parse_examples():
-    """Pull the EXAMPLES object out of app.js.
+    """Pull the EXAMPLES object out of examples.js.
 
     Read rather than duplicated, so the test cannot pass against a copy of
     the text while the page ships something else.
     """
-    source = APP_JS.read_text(encoding="utf-8")
+    source = EXAMPLES_JS.read_text(encoding="utf-8")
     block = source[source.index("const EXAMPLES = {"):]
     block = block[: block.index("\n};")]
     found = {}

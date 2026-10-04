@@ -10,9 +10,10 @@ import unittest
 from pathlib import Path
 
 import train
-from ghostjob import features
+from ghostjob import dataset, features
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+MODEL_PATH = REPO_ROOT / "docs" / "model.json"
 
 
 class WarningTests(unittest.TestCase):
@@ -100,6 +101,52 @@ class UntrainableGuardTests(unittest.TestCase):
         train.refuse_if_untrainable([1] * 60 + [0] * 55)
 
 
+class EvidenceSummaryTests(unittest.TestCase):
+    """The model card reads label quality from the model file.
+
+    It exists so the page can say what the labels rest on without
+    recomputing anything, and so that answer updates by itself on the
+    next retrain instead of being a sentence somebody has to remember to
+    edit.
+    """
+
+    def test_counts_every_evidence_key(self):
+        summary = train.summarize_evidence(
+            [["posted_long", "reposted"], ["text_only"], []],
+            ["sure", "unsure", "sure"],
+        )
+        self.assertEqual(summary["posted_long"], 1)
+        self.assertEqual(summary["reposted"], 1)
+        self.assertEqual(summary["text_only"], 1)
+        self.assertEqual(summary["confidence"], {"sure": 2, "unsure": 1})
+
+    def test_keys_match_the_labeller(self):
+        # If the labelling tool gains an option, the card must learn about
+        # it here rather than silently dropping it.
+        summary = train.summarize_evidence([], [])
+        for key in dataset.EVIDENCE_OPTIONS:
+            self.assertIn(key, summary)
+
+    def test_unknown_keys_are_ignored_not_crashed(self):
+        # A row written by an older version of the labeller must not take
+        # the training run down.
+        summary = train.summarize_evidence([["retired_option", ""]], [""])
+        self.assertNotIn("retired_option", summary)
+
+    def test_the_shipped_model_carries_one(self):
+        model = json.loads(MODEL_PATH.read_text(encoding="utf-8"))
+        self.assertIn("evidence", model)
+        counted = sum(
+            v for k, v in model["evidence"].items() if k != "confidence"
+        )
+        # Every label can carry several reasons, or none, so the total is
+        # not the sample size - but it cannot exceed one per reason per
+        # posting either.
+        self.assertLessEqual(
+            counted, model["n_examples"] * len(dataset.EVIDENCE_OPTIONS)
+        )
+
+
 class BeatsGuessingGuardTests(unittest.TestCase):
     """A model that loses to guessing must not overwrite the deployed one.
 
@@ -135,7 +182,7 @@ class BeatsGuessingGuardTests(unittest.TestCase):
 
 class DemoDataTests(unittest.TestCase):
     def test_demo_data_loads_and_is_balanced(self):
-        texts, labels, evidence, kind = train.load_demo_data()
+        texts, labels, evidence, _confidences, kind = train.load_demo_data()
         self.assertEqual(kind, "demo")
         self.assertEqual(len(texts), len(labels))
         self.assertGreaterEqual(len(texts), 20)
@@ -145,7 +192,7 @@ class DemoDataTests(unittest.TestCase):
         self.assertLess(share_ghost, 0.65)
 
     def test_demo_postings_are_distinct(self):
-        texts, _, _, _ = train.load_demo_data()
+        texts, _, _, _, _ = train.load_demo_data()
         self.assertEqual(len(set(texts)), len(texts))
 
 

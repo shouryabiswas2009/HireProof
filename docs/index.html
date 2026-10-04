@@ -3,793 +3,273 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>HireProof &mdash; Ghost Job Checker</title>
-<meta name="description" content="Paste a job posting and see how closely its wording matches postings labelled as ghost jobs. Runs entirely in your browser.">
+<title>HireProof &mdash; score a job posting against hand-labelled ghost jobs</title>
+<meta name="description" content="Paste a job posting and see how closely its wording matches postings labelled as ghost jobs. Logistic regression written from scratch, running entirely in your browser.">
 <meta name="color-scheme" content="light dark">
 
-<!-- How the link looks when shared. og:image must be an absolute URL:
-     scrapers do not resolve relative paths, and a relative one silently
-     yields no preview at all. -->
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="HireProof">
-<meta property="og:title" content="HireProof — is this job posting actually real?">
-<meta property="og:description" content="Paste a job posting and see how closely its wording matches postings labelled as ghost jobs. Logistic regression written from scratch, running entirely in your browser.">
+<meta property="og:title" content="HireProof">
+<meta property="og:description" content="Paste a job posting and see how closely its wording matches postings labelled as ghost jobs. Runs entirely in your browser.">
 <meta property="og:url" content="https://shouryabiswas2009.github.io/HireProof/">
 <meta property="og:image" content="https://shouryabiswas2009.github.io/HireProof/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="HireProof — a ghost-job checker that runs in your browser">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="HireProof — is this job posting actually real?">
-<meta name="twitter:description" content="Paste a job posting and see how closely its wording matches postings labelled as ghost jobs. Runs entirely in your browser.">
 <meta name="twitter:image" content="https://shouryabiswas2009.github.io/HireProof/og.png">
+
 <!-- The ?v= number busts the browser cache. GitHub Pages lets browsers keep
      these files for about ten minutes, so without it a returning visitor can
      end up running an old script against new HTML, which half-renders the
      page. BUMP THIS NUMBER whenever index.html, style.css or app.js change
-     shape. (The proper fix is content-hashed filenames from a build step;
-     this project has no build step on purpose, so the number is manual.) -->
-<link rel="stylesheet" href="style.css?v=59">
+     shape, with: .venv\Scripts\python.exe bump_version.py N
+     (The proper fix is content-hashed filenames from a build step; this
+     project has no build step on purpose, so the number is manual.) -->
+<link rel="stylesheet" href="style.css?v=60">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>&#128123;</text></svg>">
 </head>
 <body>
 
-
-<!-- Scoring happens in the browser, so with JavaScript off there is
-     nothing to run. Rather than show a dead form, state that plainly and
-     give the model's headline numbers. train.py stamps the values in
-     between the markers below, so this cannot drift from the deployed
-     model the way hardcoded figures would. -->
+<!-- Scoring happens in the browser, so with JavaScript off there is nothing
+     to run. Rather than show a dead form, say so plainly and give the
+     model's headline numbers. train.py stamps the values between the markers
+     below, so this cannot drift from the deployed model. -->
 <noscript>
-  <div class="noscript-card">
+  <div class="wrap noscript-wrap">
     <h1>HireProof needs JavaScript</h1>
     <p>
       The whole point of this tool is that your posting is never uploaded:
-      the model runs inside your browser, which means it needs JavaScript
-      to run at all. There is no server-side version to fall back to.
+      the model runs inside your browser, which means it needs JavaScript to
+      run at all. There is no server-side version to fall back to.
     </p>
-    <p>Here is what the current model looks like:</p>
     <!-- MODEL-SUMMARY:START -->
-        <ul class="noscript-facts">
-          <li><strong>Trained on</strong> &mdash; 30 job postings labelled by hand (15 ghost, 15 genuine)</li>
-          <li><strong>Accuracy</strong> &mdash; 70% (5-fold cross-validation)</li>
-          <li><strong>Baseline</strong> &mdash; 50% (always guessing the commonest label)</li>
-          <li><strong>Precision</strong> &mdash; 73% of postings called ghost really were</li>
-          <li><strong>Recall</strong> &mdash; 78% of ghost postings were caught</li>
-          <li><strong>Signals</strong> &mdash; 11, weighted and summed</li>
-          <li><strong>Last trained</strong> &mdash; 2026-09-27</li>
-        </ul>
-        <!-- MODEL-SUMMARY:END -->
+    <!-- MODEL-SUMMARY:END -->
     <p>
       The code, the training script and the full write-up are on
-      <a href="https://github.com/shouryabiswas2009/hireproof">GitHub</a>.
+      <a href="https://github.com/shouryabiswas2009/HireProof">GitHub</a>.
     </p>
   </div>
 </noscript>
 
-<div class="shell">
-
-  <header class="topbar">
-    <a class="brand" href="#check">
-      <!-- Drawn rather than an emoji. A colour emoji renders differently on
-           every platform, cannot take the theme colour, and sits on its own
-           baseline, which is why it looked stuck on rather than designed. -->
-      <span class="brand-mark" aria-hidden="true">
-        <svg viewBox="0 0 24 24" width="17" height="17" focusable="false">
-          <path fill="currentColor" d="M12 1.8A8.2 8.2 0 0 0 3.8 10v10.3c0 1 1.1 1.5 1.9 1l1.9-1.4c.35-.26.83-.26 1.18 0l1.55 1.15c.35.26.83.26 1.18 0l1.55-1.15c.35-.26.83-.26 1.18 0l1.9 1.4c.8.58 1.86.03 1.86-1V10A8.2 8.2 0 0 0 12 1.8Z"/>
-          <circle cx="9.1" cy="9.9" r="1.35" class="brand-eye"/>
-          <circle cx="14.9" cy="9.9" r="1.35" class="brand-eye"/>
-        </svg>
-      </span>
-      <span class="brand-name">HireProof</span>
-    </a>
-
-    <!-- A real ARIA tab pattern, not just styled links: the browser and a
-         screen reader both need to know these buttons control the panels
-         below. Each tab owns a panel by id, arrow keys move between them,
-         and only the active tab sits in the page's tab order (a roving
-         tabindex) so Tab jumps from the tablist straight into the panel
-         rather than walking through every tab first. -->
-    <nav class="tabs" role="tablist" aria-label="Sections">
-      <button class="tab" role="tab" id="tab-check" aria-controls="panel-check" aria-selected="true"  tabindex="0">Check a posting</button>
-      <button class="tab" role="tab" id="tab-model" aria-controls="panel-model" aria-selected="false" tabindex="-1">The model</button>
-      <button class="tab" role="tab" id="tab-how"   aria-controls="panel-how"   aria-selected="false" tabindex="-1">How it works</button>
-      <button class="tab" role="tab" id="tab-compare" aria-controls="panel-compare" aria-selected="false" tabindex="-1">Compare</button>
-      <button class="tab" role="tab" id="tab-about" aria-controls="panel-about" aria-selected="false" tabindex="-1">About</button>
-      <!-- The moving pill behind the active tab. Decorative: the state is
-           carried by aria-selected on the buttons, so a screen reader
-           never needs this and it stays hidden from the tree. -->
-      <span class="tab-indicator" aria-hidden="true"></span>
+<header class="site-header">
+  <div class="wrap">
+    <a class="wordmark" href="#top">Hire<b>Proof</b></a>
+    <nav class="site-nav" aria-label="Sections">
+      <a href="#how">How it works</a>
+      <a href="#model">Model</a>
+      <a href="https://github.com/shouryabiswas2009/HireProof" rel="noopener">GitHub</a>
+      <button type="button" class="theme-btn" id="theme-btn" aria-pressed="false">
+        <span id="theme-label">Dark</span>
+      </button>
     </nav>
-  </header>
+  </div>
+</header>
 
-  <main>
+<main id="top">
 
-    <!-- ============================= CHECK ============================= -->
-    <section class="panel-view" id="panel-check" role="tabpanel" aria-labelledby="tab-check" tabindex="-1">
-
-      <div class="hero">
-        <!-- The particle field. Decorative in the sense that the page is
-             complete without it, but what it draws is real: thirty dots,
-             one per labelled posting. Hidden from the accessibility tree
-             because the same data is on the model tab as a chart with a
-             text description. -->
-        <canvas class="hero-field" id="hero-field" aria-hidden="true"></canvas>
-
-        <!-- Drawn for this page rather than dropped in from an icon set.
-             The idea is the whole product in one image: a posting that
-             looks like every other posting, with nothing behind it. The
-             real sheet is ruled and solid, the one behind it is the same
-             sheet with its lines dissolving and a ghost where the job
-             should be. Decorative, so it is hidden from the tree - the
-             headline underneath says the same thing in words. -->
-        <svg class="hero-art" viewBox="0 0 200 150" aria-hidden="true" focusable="false">
-          <g class="art-ghost-sheet">
-            <path d="M118 22 h58 a4 4 0 0 1 4 4 v92 a4 4 0 0 1-4 4 h-58 a4 4 0 0 1-4-4 v-92 a4 4 0 0 1 4-4z"/>
-            <path class="art-rule" d="M126 40 h42 M126 52 h42 M126 64 h30"/>
-            <path class="art-rule art-fade" d="M126 78 h42 M126 90 h24 M126 102 h34"/>
-          </g>
-          <!-- The ghost itself, the same silhouette as the wordmark. It is
-               translated up and right so it rises OUT of the dashed sheet
-               rather than sitting in the gap between the two, and it is
-               painted after that sheet so it covers the ruled lines where
-               the job description should have been. -->
-          <g class="art-ghost" transform="translate(47 -30)">
-            <path d="M100 44a22 22 0 0 0-22 22v26.5c0 2.6 2.9 4 5 2.6l4.9-3.6a2 2 0 0 1 2.4 0l4 3a2 2 0 0 0 2.4 0l4-3a2 2 0 0 1 2.4 0l4.9 3.6c2.1 1.5 5 0 5-2.6V66a22 22 0 0 0-22-22z"/>
-            <circle class="art-eye" cx="92" cy="65" r="3.4"/>
-            <circle class="art-eye" cx="108" cy="65" r="3.4"/>
-          </g>
-          <g class="art-sheet">
-            <path d="M24 30 h58 a4 4 0 0 1 4 4 v92 a4 4 0 0 1-4 4 h-58 a4 4 0 0 1-4-4 v-92 a4 4 0 0 1 4-4z"/>
-            <path class="art-rule" d="M32 48 h42 M32 60 h42 M32 72 h30 M32 84 h42 M32 96 h36 M32 108 h22"/>
-          </g>
-        </svg>
-
-        <p class="eyebrow">
-          <span class="eyebrow-dot" aria-hidden="true"></span>
-          Runs entirely in your browser
-        </p>
-        <h1>Is this job posting<br><em>actually real?</em></h1>
-        <p class="tagline">
-          Paste a job posting and HireProof scores how closely its wording
-          matches postings labelled as <strong>ghost jobs</strong> &mdash;
-          listings put up with no real intent to hire.
+  <!-- ===================================================== WORKSPACE ===
+       The tool is the first thing on the page. There is no landing
+       section in front of it: someone arriving here has a posting to
+       check, and asking them to press "Get started" first adds a step
+       that buys nothing. -->
+  <section class="workspace">
+    <div class="wrap">
+      <div class="workspace-head">
+        <h1>Is this job posting worth your time?</h1>
+        <p class="section-lede">
+          Paste a posting. HireProof scores how closely its wording matches
+          postings labelled as ghost jobs &mdash; listings put up with no real
+          intent to hire. Everything runs in this browser; nothing is uploaded.
         </p>
       </div>
 
-      <!-- Shown only when the loaded model was trained on synthetic data.
-           app.js sets this from model.json, so it can never be forgotten. -->
-      <div id="demo-banner" class="banner banner-demo" hidden>
-        <span class="banner-badge">Demo model</span>
-        <span id="demo-banner-text"></span>
-      </div>
+      <div class="workspace-grid">
 
-    <section class="card card-input">
-          <div class="card-head">
-            <label for="posting" class="field-label">Job posting text</label>
-            <span id="word-count" class="word-count">0 words</span>
+        <!-- ---------------- Input ---------------- -->
+        <div class="panel">
+          <div class="panel-head">
+            <h2><label for="posting">Job posting text</label></h2>
+            <span class="mono" id="word-count">0 words</span>
           </div>
+          <div class="panel-body">
+            <textarea id="posting" spellcheck="false"
+              placeholder="Paste the full text of a job posting.&#10;&#10;Select everything from the job title down to the end of the description."></textarea>
 
-          <textarea id="posting" rows="12" spellcheck="false"
-            placeholder="Paste the full text of a job posting here&#10;&#10;Tip: select everything from the job title down to the end of the description."></textarea>
-
-          <p id="input-error" class="input-error" hidden role="alert"></p>
-
-          <!-- What a screen reader hears when a score arrives. Kept to one
-               short sentence and placed here rather than putting aria-live
-               on the whole result card: that would announce the gauge,
-               every bar and the entire annotated posting, which is worse
-               than announcing nothing. Visually hidden, not display:none —
-               a hidden element is not announced at all. -->
-          <p id="score-announcement" class="visually-hidden" role="status" aria-live="polite"></p>
-
-          <div class="controls">
-            <button id="score-button" type="button" class="btn btn-primary" aria-describedby="input-hint">
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.7" y2="16.7"/></svg>
-              Score this posting
-            </button>
-            <button id="clear-button" type="button" class="btn btn-ghost">Clear</button>
-          </div>
-
-          <!-- Why the button is disabled. aria-describedby ties it to the
-               button, so a screen reader reads the reason along with it
-               rather than leaving "dimmed button, no explanation". -->
-          <p id="input-hint" class="input-hint"></p>
-
-          <!-- Three examples rather than one, so the range of scores is
-               visible without anyone having to paste their own posting.
-               The borderline case matters most: a demo that only ever
-               shows confident answers misrepresents how the tool behaves
-               on real postings, most of which sit in the middle. -->
-          <div class="examples">
-            <span class="examples-label">Or try an example:</span>
-            <button class="chip-btn" type="button" data-example="ghost">Ghost-like</button>
-            <button class="chip-btn" type="button" data-example="genuine">Genuine</button>
-            <button class="chip-btn" type="button" data-example="borderline">Borderline</button>
-          </div>
-
-          <p class="privacy">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/></svg>
-            Your text never leaves this page. There is no server &mdash; the model
-            runs inside your browser, so nothing is uploaded, logged or stored.
-          </p>
-        </section>
-
-    <section id="results" class="card card-result" hidden>
-
-          <!-- The headline number stays in normal ink. Colour lives on the meter,
-               and the badge pairs that colour with an icon and words, so meaning
-               is never carried by colour alone. -->
-          <div class="verdict">
-            <p class="score-label">Resemblance to ghost postings</p>
-
-            <!-- The gauge. The three zones are drawn as fixed arcs so the
-                 THRESHOLDS are visible: you can see where 40% and 70% fall,
-                 rather than only learning which bucket you landed in. Only the
-                 marker and the number change per result.
-                 Geometry: semicircle, centre (100,96), radius 78. A score of
-                 f maps to the angle 180 - f*180 degrees, so 0% is hard left
-                 and 100% is hard right. -->
-            <svg class="gauge" viewBox="0 0 200 112" role="img"
-                 aria-labelledby="gauge-title" focusable="false">
-              <title id="gauge-title">Score gauge</title>
-
-              <!-- Zone arcs, separated by a small gap in the surface colour
-                   rather than a stroke, so nothing adds non-data ink. -->
-              <path class="zone zone-low"  d="M 22.00 96.00 A 78 78 0 0 1 73.35 22.69"/>
-              <path class="zone zone-mid"  d="M 78.47 21.03 A 78 78 0 0 1 143.64 31.35"/>
-              <path class="zone zone-high" d="M 148.00 34.52 A 78 78 0 0 1 178.00 96.00"/>
-
-              <!-- Threshold markers, inside the band so they never clip. -->
-              <line class="tick" x1="79.6" y1="33.2" x2="81.5" y2="38.9"/>
-              <text class="tick-label" x="84.9" y="49.4">40</text>
-              <line class="tick" x1="138.8" y1="42.6" x2="135.3" y2="47.5"/>
-              <text class="tick-label" x="128.8" y="56.4">70</text>
-
-              <!-- The needle and its hub. app.js rotates this group; at 0
-                   degrees it points hard left, which is 0%. -->
-              <g id="gauge-needle" class="needle" transform="rotate(0 100 96)">
-                <path d="M 100 96 L 26 93.4 L 26 98.6 Z"/>
-              </g>
-              <circle class="hub" cx="100" cy="96" r="6"/>
-            </svg>
-
-            <p class="score-number"><span id="score-value">0%</span></p>
-            <p class="band">
-              <span id="band-icon" class="band-icon" aria-hidden="true"></span>
-              <span id="verdict-title" class="band-title"></span>
-            </p>
-            <p id="verdict-blurb" class="verdict-blurb"></p>
-          </div>
-
-          <!-- Shown only when a signal fell outside the range the model was
-               trained on, which makes the score above an extrapolation
-               rather than a reading. app.js fills and unhides it. -->
-          <p id="ood-note" class="ood-note" hidden></p>
-
-          <!-- The model's record in one line, sitting with the score
-               rather than on another tab: someone reading a result should
-               not have to go looking for how much the number is worth.
-               Filled from model.json, so it cannot drift. -->
-          <p id="model-line" class="model-line"></p>
-
-          <!-- Where this posting's score falls among the thirty whose real
-               answer is known. Drawn by app.js; hidden if the model file
-               has no held-out scores to compare against. -->
-          <figure class="figure figure-inline" id="lands-figure" hidden>
-            <figcaption class="figure-title">Where that puts it</figcaption>
-            <div id="lands-chart" class="figure-plot"></div>
-            <p class="hint" id="lands-summary"></p>
-          </figure>
-
-          <div class="divider" aria-hidden="true"></div>
-
-          <div class="breakdown-head">
-            <h2>What drove this score</h2>
-            <p class="legend">
-              <span class="legend-item"><span class="swatch swatch-lower"></span>Lowers risk</span>
-              <span class="legend-item"><span class="swatch swatch-raise"></span>Raises risk</span>
-            </p>
-          </div>
-          <p class="hint">
-            The signals that moved this posting&rsquo;s score the most. Bars to the
-            right pushed it up, bars to the left pulled it down.
-            <strong>Strength</strong> ranks the signals against each other;
-            <strong>points</strong> is how far the score would move if this posting
-            were merely average on that one signal. Points don&rsquo;t sum to the
-            total &mdash; the scale is compressed near 0% and 100%, so when a score
-            is already extreme no single signal can shift it much.
-          </p>
-
-          <ul id="contributions" class="contributions"></ul>
-
-          <!-- The posting itself, with the matched phrases marked. Absent
-               signals get a separate list, because there is no phrase to
-               point at and they are often the strongest drivers. -->
-          <div class="annotated-block">
-            <h2>Where these signals appear</h2>
-            <p class="hint">
-              Phrases the model matched are marked below.
-              <strong>Hover a bar above</strong> to pick out just that signal.
-            </p>
-
-            <p id="missing-signals-wrap" class="missing-wrap" hidden>
-              <span class="missing-label">Not found in the posting:</span>
-              <span id="missing-signals" class="missing-chips"></span>
-            </p>
-
-            <div id="annotated-text" class="annotated-text"></div>
-          </div>
-
-          <details class="drawer">
-            <summary>Table view &mdash; every signal and its exact value</summary>
-            <div class="drawer-body">
-              <table id="raw-table" class="raw-table">
-                <thead>
-                  <tr><th scope="col">Signal</th><th scope="col">Value</th><th scope="col">Effect</th></tr>
-                </thead>
-                <tbody></tbody>
-              </table>
-              <p class="hint">
-                &ldquo;Effect&rdquo; is how much that signal moved the score:
-                positive pushes toward ghost, negative toward genuine.
-              </p>
+            <div class="input-foot">
+              <button type="button" class="btn" id="clear-btn">Clear</button>
+              <span class="mono hint-inline" id="input-hint"></span>
             </div>
-          </details>
-        </section>
 
-      <section class="card card-limits">
-        <h2 class="limits-title">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><line x1="12" y1="7.5" x2="12" y2="13"/><line x1="12" y1="16.5" x2="12" y2="16.5"/></svg>
-          Where this gets things wrong
-        </h2>
-        <ul class="limits-list">
-          <li><strong>Short postings.</strong> Under about 80 words there is
-          too little text for the signals to mean anything, and the score
-          drifts toward whatever the training average was.</li>
-          <li><strong>Tech-sector wording.</strong> Most of the labelled
-          postings are software and office roles. Trades, healthcare,
-          hospitality and academia phrase things differently, and the model
-          has barely seen them.</li>
-          <li><strong>A well-written ghost posting.</strong> Anything with a
-          salary, a named manager and a deadline will score low, whether or
-          not the job exists. A company that writes carefully is invisible
-          to this.</li>
-          <li><strong>A badly-written real job.</strong> Plenty of genuine
-          postings are full of buzzwords and missing a salary, especially
-          from small employers without a recruiter. Those score high and
-          should not.</li>
-          <li><strong>A small, one-person training set.</strong> Every label
-          reflects one person's judgement, so the model inherits that
-          person's blind spots along with their reasoning.</li>
-          <li><strong>Non-English postings.</strong> The phrase lists are
-          English only. Anything else scores as though the wording were
-          simply absent.</li>
-        </ul>
-      </section>
+            <p class="examples">
+              <span class="examples-label">Try an example:</span>
+              <button type="button" class="chip" data-example="ghost">Ghost-like</button>
+              <button type="button" class="chip" data-example="real">Real</button>
+              <button type="button" class="chip" data-example="ambiguous">Ambiguous</button>
+            </p>
+          </div>
+        </div>
 
-      <p class="panel-footnote">
-        This is a heuristic, not a detector, and it can be wrong in both
-        directions.
-        <button class="linklike" data-goto="about" type="button">Read the limits</button>
-        before acting on a score.
+        <!-- ---------------- Live result ---------------- -->
+        <div class="panel">
+          <div class="panel-head">
+            <h2>Result</h2>
+            <span class="mono hint-inline" id="result-state"></span>
+          </div>
+
+          <!-- Before any input. Replaced, not hidden behind, the result. -->
+          <div class="panel-body empty-state" id="empty-state">
+            <p>Paste a posting on the left and the score appears here as you type.</p>
+          </div>
+
+          <div class="panel-body" id="result" hidden>
+            <p class="eyebrow-rule">Resemblance to labelled ghost postings</p>
+            <div class="score-row">
+              <span class="score mono" id="score-value"></span>
+            </div>
+
+            <p class="verdict" id="verdict-title"></p>
+            <p class="verdict-note" id="verdict-note"></p>
+
+            <div class="bar-track" aria-hidden="true">
+              <div class="bar-fill" id="bar-fill"></div>
+            </div>
+            <div class="bar-ticks" aria-hidden="true" id="bar-ticks"></div>
+
+            <!-- Shown only when scorer.js reports a clamped feature. -->
+            <p class="caution" id="ood-note" hidden></p>
+
+            <p class="model-line" id="model-line"></p>
+
+            <!-- The number and the verdict, and nothing else. Putting
+                 aria-live on the whole panel would read out every bar and
+                 the entire annotated posting on each keystroke. -->
+            <p class="visually-hidden" aria-live="polite" id="announce"></p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ---------------- Breakdown ---------------- -->
+      <div class="panel panel-stacked" id="breakdown-panel" hidden>
+        <div class="panel-head">
+          <h2>What moved the score</h2>
+          <p class="legend legend-inline">
+            <span><i class="swatch swatch-real"></i>toward real</span>
+            <span><i class="swatch swatch-ghost"></i>toward ghost</span>
+          </p>
+        </div>
+        <div class="panel-body">
+          <p class="section-lede small">
+            All eleven signals, ordered by how far each one moved this posting.
+            <strong>Points</strong> is how much the score would change if this
+            posting were merely average on that one signal; they do not sum to
+            the total, because the curve is steeper in the middle than at the
+            ends.
+          </p>
+          <ul class="breakdown" id="breakdown"></ul>
+        </div>
+      </div>
+
+      <!-- ---------------- Annotated text ---------------- -->
+      <div class="panel panel-stacked" id="annotated-panel" hidden>
+        <div class="panel-head">
+          <h2>Phrases the model matched</h2>
+          <span class="mono hint-inline" id="match-count"></span>
+        </div>
+        <div class="panel-body">
+          <p class="section-lede small">
+            Underlined phrases are the ones the word lists matched. Hover or tap
+            one to see which signal it fed and how far that signal moved the
+            score.
+          </p>
+          <div class="annotated" id="annotated"></div>
+          <ul class="missing" id="missing"></ul>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ==================================================== HOW IT WORKS === -->
+  <section class="section" id="how">
+    <div class="wrap">
+      <p class="eyebrow-rule">How it works</p>
+      <h2>Five steps, on text you can edit</h2>
+      <p class="section-lede">
+        The same five stages the scorer runs, applied to a line you can change.
+        Edit it and every number below updates.
       </p>
-    </section>
 
-    <!-- ============================ COMPARE ============================ -->
-    <section class="panel-view" id="panel-compare" role="tabpanel" aria-labelledby="tab-compare" tabindex="-1" hidden>
-      <div class="view-head">
-        <h1>Compare two postings</h1>
-        <p class="tagline">
-          Paste two and see which reads more like a ghost posting, and
-          which signals actually separate them. Useful when deciding where
-          to spend an application.
-        </p>
-      </div>
+      <label for="how-input" class="visually-hidden">Example text</label>
+      <textarea id="how-input" class="how-input" rows="3" spellcheck="false"></textarea>
 
-      <div class="compare-grid">
-        <section class="card compare-side">
-          <div class="card-head">
-            <label for="compare-a" class="field-label">Posting A</label>
-            <span id="compare-a-words" class="word-count">0 words</span>
-          </div>
-          <textarea id="compare-a" rows="9" spellcheck="false"
-            placeholder="Paste the first posting here"></textarea>
-          <div id="compare-a-result" class="compare-result" hidden></div>
-        </section>
+      <ol class="steps" id="how-steps"></ol>
+    </div>
+  </section>
 
-        <section class="card compare-side">
-          <div class="card-head">
-            <label for="compare-b" class="field-label">Posting B</label>
-            <span id="compare-b-words" class="word-count">0 words</span>
-          </div>
-          <textarea id="compare-b" rows="9" spellcheck="false"
-            placeholder="Paste the second posting here"></textarea>
-          <div id="compare-b-result" class="compare-result" hidden></div>
-        </section>
-      </div>
+  <!-- ====================================================== MODEL CARD === -->
+  <section class="section" id="model">
+    <div class="wrap">
+      <p class="eyebrow-rule">Model card</p>
+      <h2>What this model is, and what it is not</h2>
+      <p class="section-lede">
+        Every number here is read from <code>model.json</code>, which
+        <code>train.py</code> writes. Retraining updates this page; nothing on
+        it is typed by hand.
+      </p>
 
-      <div class="controls compare-controls">
-        <button id="compare-button" type="button" class="btn btn-primary" aria-describedby="compare-hint">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 7h12M8 7 11 4M8 7l3 3"/><path d="M16 17H4m12 0-3-3m3 3-3 3"/></svg>
-          Compare
-        </button>
-        <button id="compare-example" type="button" class="btn btn-ghost">Fill with examples</button>
-        <button id="compare-clear" type="button" class="btn btn-ghost">Clear both</button>
-      </div>
-      <p id="compare-hint" class="input-hint"></p>
+      <ul class="stat-grid" id="model-stats"></ul>
+      <div id="model-cautions"></div>
 
-      <p id="compare-announcement" class="visually-hidden" role="status" aria-live="polite"></p>
+      <h3 class="h3-spaced">What it reads</h3>
+      <p class="section-lede small">
+        Wording only. It cannot see how long a posting has been up, whether it
+        has been reposted, or anything about the company &mdash; which are the
+        strongest ghost-job signals there are. It is reading the advert, not
+        checking the job.
+      </p>
+      <table class="feature-table">
+        <thead>
+          <tr><th>Signal</th><th>Weight</th><th>Direction</th></tr>
+        </thead>
+        <tbody id="feature-rows"></tbody>
+      </table>
 
-      <section id="compare-verdict" class="card card-result" hidden>
-        <h2 class="card-title" id="compare-headline"></h2>
-        <p class="hint" id="compare-summary"></p>
+      <h3 class="h3-spaced">Where it gets things wrong</h3>
+      <ul class="plain-list">
+        <li><strong>A well-written ghost posting.</strong> Anything with a
+        salary, a named manager and a deadline scores low, whether or not the
+        job exists.</li>
+        <li><strong>A badly-written real job.</strong> Plenty of genuine
+        postings are full of buzzwords and missing a salary, especially from
+        small employers without a recruiter. Those score high and should not.</li>
+        <li><strong>Short postings.</strong> Under about 80 words there is too
+        little text for the signals to mean anything.</li>
+        <li><strong>Tech-sector wording.</strong> Most labelled postings are
+        software and office roles. Trades, healthcare, hospitality and academia
+        phrase things differently.</li>
+        <li><strong>One person's judgement.</strong> Every label reflects one
+        reader's call, so the model inherits their blind spots along with their
+        reasoning.</li>
+        <li><strong>English only.</strong> The phrase lists are English;
+        anything else scores as though the wording were missing.</li>
+      </ul>
+    </div>
+  </section>
+</main>
 
-        <h3>Where they differ most</h3>
-        <p class="hint">
-          The signals with the biggest gap between the two. A bar to the
-          right means that signal pushed <strong>A</strong> higher; to the
-          left means it pushed <strong>B</strong> higher.
-        </p>
-        <p class="legend">
-          <span class="legend-item"><span class="swatch swatch-lower"></span>Worse for B</span>
-          <span class="legend-item"><span class="swatch swatch-raise"></span>Worse for A</span>
-        </p>
-        <ul id="compare-diff" class="contributions"></ul>
-      </section>
-    </section>
-
-    <!-- ============================= MODEL ============================= -->
-    <section class="panel-view" id="panel-model" role="tabpanel" aria-labelledby="tab-model" tabindex="-1" hidden>
-      <div class="view-head">
-        <h1>The model</h1>
-        <p class="tagline">
-          Every number on this page is read from the trained model file, so it
-          describes what the site is actually running rather than what it is
-          supposed to be running.
-        </p>
-      </div>
-
-      <div id="model-banner" class="banner banner-demo" hidden>
-        <span class="banner-badge">Demo model</span>
-        <span id="model-banner-text"></span>
-      </div>
-
-      <section class="card">
-        <h2 class="card-title">Training data</h2>
-        <div id="model-stats" class="stat-row"></div>
-      </section>
-
-      <section class="card">
-        <h2 class="card-title">How well it does</h2>
-        <p class="hint">
-          Measured by cross-validation, so the model is always scored on
-          postings it did not train on. The baseline is what you would get by
-          ignoring the text entirely and always guessing the commonest label
-          &mdash; a model that cannot beat it has learned nothing.
-        </p>
-        <div id="model-metrics" class="stat-row"></div>
-
-        <!-- Every labelled posting, plotted at the score a model that had
-             never seen it gave it. Drawn by app.js from out_of_fold in
-             model.json, so it cannot disagree with the numbers above. -->
-        <figure class="figure" id="oof-figure" hidden>
-          <figcaption class="figure-title">Every posting, scored blind</figcaption>
-          <p class="hint">
-            One dot per labelled posting, placed at the score it was given by a
-            model trained without it. This is the same 70% accuracy as the tiles
-            above, drawn out &mdash; and the overlap in the middle is the part a
-            single percentage hides.
-          </p>
-          <div id="oof-chart" class="figure-plot"></div>
-          <p class="hint" id="oof-summary"></p>
-        </figure>
-      </section>
-
-      <section class="card">
-        <h2 class="card-title">What it learned</h2>
-        <p class="hint">
-          One weight per signal. These apply to standardised features, so they
-          are directly comparable: a longer bar really does mean a more
-          influential signal. A bar near zero means the data gave no evidence
-          either way, which is a finding rather than a failure.
-        </p>
-        <p class="legend">
-          <span class="legend-item"><span class="swatch swatch-lower"></span>Pushes toward genuine</span>
-          <span class="legend-item"><span class="swatch swatch-raise"></span>Pushes toward ghost</span>
-        </p>
-        <ul id="model-weights" class="contributions"></ul>
-      </section>
-
-      <!-- Where the fitted weights contradict the reasoning that justified
-           building each feature. Filled from model.json, so it cannot be
-           quietly left stale after a retrain. Hidden when they all agree. -->
-      <section class="card" id="model-surprises-card" hidden>
-        <h2>Where the data disagreed with me</h2>
-        <p class="hint">
-          Each signal was added because of a guess about which way it ought to
-          point. Training ignores those guesses entirely &mdash; it only fits the
-          labelled postings. These are the signals where the answer came back
-          the <strong>opposite</strong> way round.
-        </p>
-        <ul id="model-surprises" class="surprises"></ul>
-        <p class="hint">
-          This is not a bug being confessed to, but it is not a result to lean
-          on either. On a dataset this small the most likely explanation is
-          simply too few examples: a signal present in only three or four
-          postings can train to a confident weight on nothing but coincidence.
-          The other possibilities are worth keeping in mind &mdash; that the guess
-          was wrong, or that the signal measures something other than what its
-          name suggests.
-        </p>
-      </section>
-
-      <section class="card card-warn" id="model-warnings-card" hidden>
-        <h2 class="warn-title">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><line x1="12" y1="7.5" x2="12" y2="13"/><line x1="12" y1="16.5" x2="12" y2="16.5"/></svg>
-          What the training run flagged
-        </h2>
-        <p class="hint">
-          Written by the training script itself, not by hand, and shown here
-          instead of being left in a terminal where nobody would see them.
-        </p>
-        <ul id="model-warnings" class="warn-list"></ul>
-      </section>
-    </section>
-
-    <!-- =========================== HOW IT WORKS ========================= -->
-    <section class="panel-view" id="panel-how" role="tabpanel" aria-labelledby="tab-how" tabindex="-1" hidden>
-      <div class="view-head">
-        <h1>How it works</h1>
-        <p class="tagline">
-          Five steps turn pasted text into a number. No machine-learning
-          library is involved: the model is a weighted sum written from
-          scratch.
-        </p>
-      </div>
-
-      <section class="card">
-        <ol class="steps">
-          <li>
-            <h3>Normalise the text</h3>
-            <p>Lowercase it and collapse every run of whitespace into a single
-            space, so a phrase split across a line break is still found.</p>
-            <pre class="code">"WE ARE A FAST-PACED,
-   DYNAMIC team"  &rarr;  "we are a fast-paced, dynamic team"</pre>
-          </li>
-          <li>
-            <h3>Count eleven signals</h3>
-            <p>Phrase lists and a few patterns turn that text into eleven
-            numbers &mdash; the only thing the model ever sees. It has no
-            access to the company, the role, or whether anyone was hired.</p>
-          </li>
-          <li>
-            <h3>Put them on one scale</h3>
-            <p>A word count in the hundreds and a yes/no signal of 0 or 1
-            cannot be compared directly, so each is rescaled using the average
-            and spread measured during training.</p>
-            <pre class="code">standardised = (value &minus; average) &divide; spread</pre>
-          </li>
-          <li>
-            <h3>Add them up</h3>
-            <p>Each standardised signal is multiplied by its learned weight
-            and summed, starting from a constant called the bias.</p>
-            <pre class="code">z = bias + (w&#8321; &times; x&#8321;) + (w&#8322; &times; x&#8322;) + &hellip; + (w&#8321;&#8321; &times; x&#8321;&#8321;)</pre>
-          </li>
-          <li>
-            <h3>Squash it into a probability</h3>
-            <p>That sum can be any number at all, so the sigmoid function
-            folds it into the 0&ndash;100% range.</p>
-            <pre class="code">probability = 1 &divide; (1 + e^&minus;z)</pre>
-          </li>
-        </ol>
-
-        <!-- The curve, plotted from the same sigmoid the scorer runs.
-             app.js draws it so the shape and the band edges cannot drift
-             from the code they are explaining. -->
-        <figure class="figure" id="sigmoid-figure" hidden>
-          <figcaption class="figure-title">What the squashing does</figcaption>
-          <p class="hint">
-            The S is the whole reason a score of 95% and a score of 99% are
-            barely different evidence, while 45% and 55% are worlds apart. Near
-            the middle the curve is steep, so a small change in the sum swings
-            the answer; out at the ends it flattens, and even a large change
-            barely moves it.
-          </p>
-          <div id="sigmoid-chart" class="figure-plot"></div>
-          <p class="hint">
-            It is also why the per-signal figures on a result are given in
-            percentage points and do not add up to the total: the same step in
-            <em>z</em> is worth a different number of points depending on where
-            on this curve the posting already sits.
-          </p>
-        </figure>
-      </section>
-
-      <section class="card">
-        <h2 class="card-title">The eleven signals</h2>
-        <p class="hint">
-          Read straight from the model file, so this list cannot drift from
-          what was actually trained.
-        </p>
-        <ul id="signal-list" class="signal-list"></ul>
-      </section>
-
-      <section class="card">
-        <h2 class="card-title">Why logistic regression, and not something bigger?</h2>
-        <ul class="warn-list">
-          <li><strong>The explanation is the model.</strong> Each signal's push
-          is literally a term in that sum, so the breakdown you see on a result
-          is the arithmetic itself, not a guess about it made afterwards.</li>
-          <li><strong>The dataset is small.</strong> A more flexible model would
-          memorise a couple of hundred postings rather than learn from them.</li>
-          <li><strong>It is small enough to ship.</strong> Eleven weights and a
-          bias is a few kilobytes, which is why the whole thing can run in your
-          browser and your text never has to leave your device.</li>
-          <li><strong>The trade-off:</strong> it cannot learn that two signals
-          only matter in combination. A tree-based model could. With this much
-          data, that is worth giving up.</li>
-        </ul>
-      </section>
-    </section>
-
-    <!-- ============================= ABOUT ============================== -->
-    <section class="panel-view" id="panel-about" role="tabpanel" aria-labelledby="tab-about" tabindex="-1" hidden>
-      <div class="view-head">
-        <h1>About &amp; limits</h1>
-        <p class="tagline">
-          What this tool can and cannot tell you, and why it is built the way
-          it is.
-        </p>
-      </div>
-
-    <section class="card card-warn">
-          <h2 class="warn-title">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><line x1="12" y1="7.5" x2="12" y2="13"/><line x1="12" y1="16.5" x2="12" y2="16.5"/></svg>
-            Please read this before trusting the score
-          </h2>
-          <ul class="warn-list">
-            <li>
-              <strong>This is a heuristic, not a detector.</strong> It compares
-              wording against a small set of postings labelled by hand, by one
-              person. It has no access to the company, the role, or whether anyone
-              was ever hired.
-            </li>
-            <li>
-              <strong>Nobody can know a posting is a ghost job from its text.</strong>
-              The training labels are educated guesses. A model trained on guesses
-              reproduces those guesses.
-            </li>
-            <li>
-              <strong>Do not let this talk you out of applying.</strong> Plenty of
-              real jobs are written badly, and plenty of ghost postings are written
-              well. A high score is a prompt to ask about timelines and the team,
-              not a reason to walk away.
-            </li>
-            <li>
-              <strong>It is biased toward what it was trained on.</strong> Postings
-              from other countries, industries or languages may score oddly.
-            </li>
-          </ul>
-          <p id="model-facts" class="model-facts"></p>
-        </section>
-
-      <section class="card">
-        <h2 class="card-title">Your text stays on your device</h2>
-        <p class="body-text">
-          There is no server. The trained model is a small file of numbers
-          your browser downloads once, and the scoring happens locally in
-          JavaScript. Nothing you paste is uploaded, logged or stored. You can
-          disconnect from the internet after the page loads and it will still
-          work.
-        </p>
-      </section>
-
-      <section class="card">
-        <h2 class="card-title">How the training data was built</h2>
-        <p class="body-text">
-          Every posting in the training set was labelled by hand, one at a
-          time. The hard part is that nobody can <em>know</em> a posting is a
-          ghost job by reading it, so each label also records the evidence
-          behind it: the posting had been up over a month, the same role kept
-          being reposted, an application went unanswered.
-        </p>
-        <p class="body-text">
-          Labels based only on how a posting <em>reads</em> are tracked
-          separately, because the model's signals come from the wording too.
-          Training on those alone would teach it to agree with one person's
-          hunch, so the training script warns when too many labels are of that
-          kind.
-        </p>
-      </section>
-
-      <section class="card">
-        <h2 class="card-title">About the author</h2>
-        <p class="body-text">
-          I&rsquo;m Shourya, a first-year computer science student. I built
-          HireProof after noticing how many postings stay open for months
-          without anyone seeming to get hired, and wanting to find out
-          whether that shows up in how they are written.
-        </p>
-        <p class="body-text">
-          The interesting part turned out not to be the model but the
-          honesty problem around it: nobody can know a posting is a ghost
-          job from its text, so most of the work went into making the tool
-          say clearly what it does and does not know.
-        </p>
-        <p class="author-links">
-          <!-- rel="noopener" on anything opening elsewhere: without it the
-               new page gets a handle on this one through window.opener. -->
-          <a class="btn btn-ghost btn-inline" rel="noopener"
-             href="https://github.com/shouryabiswas2009">
-            <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
-            GitHub
-          </a>
-          <a class="btn btn-ghost btn-inline" rel="noopener"
-             href="https://www.linkedin.com/in/shourya-biswas-07a41a303/">
-            <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M13.63 13.63h-2.37V9.92c0-.89-.02-2.03-1.24-2.03-1.24 0-1.43.97-1.43 1.97v3.77H6.22V6h2.27v1.04h.03c.32-.6 1.09-1.23 2.24-1.23 2.4 0 2.85 1.58 2.85 3.63v4.19ZM3.55 4.96a1.38 1.38 0 1 1 0-2.75 1.38 1.38 0 0 1 0 2.75Zm1.19 8.67H2.36V6h2.38v7.63ZM14.82 0H1.18C.53 0 0 .52 0 1.16v13.68C0 15.48.53 16 1.18 16h13.64c.65 0 1.18-.52 1.18-1.16V1.16C16 .52 15.47 0 14.82 0Z"/></svg>
-            LinkedIn
-          </a>
-        </p>
-      </section>
-
-      <section class="card">
-        <h2 class="card-title">Built as a learning project</h2>
-        <p class="body-text">
-          The logistic regression is written from scratch in plain Python
-          &mdash; the sigmoid, the log-loss, and the gradient descent that
-          fits the weights. No scikit-learn, no numpy, no external AI service.
-          The full write-up, including the design decisions and the known
-          weaknesses, is in the repository.
-        </p>
-        <p>
-          <a id="repo-link-2" href="#" class="btn btn-ghost btn-inline">
-            Source code and write-up on GitHub
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8"/></svg>
-          </a>
-        </p>
-      </section>
-    </section>
-
-  </main>
-
-  <footer class="site-footer">
-    <p>
-      <!-- Pin the theme, or let it follow the operating system. -->
-      <button id="theme-toggle" type="button" class="pill-btn">
-        <span id="theme-icon" class="pill-icon" aria-hidden="true"></span>
-        <span id="theme-label">Theme: system</span>
-      </button>
-      <!-- Turn animation on even though the system asks for reduced motion,
-           or off even though it doesn't. Defaults to the system setting. -->
-      <button id="motion-toggle" type="button" class="pill-btn" aria-pressed="false">
-        <span class="motion-dot" aria-hidden="true"></span>
-        <span id="motion-label">Animations off</span>
-      </button>
+<footer class="site-footer">
+  <div class="wrap">
+    <p class="footer-line">
+      A heuristic, not a detector. It compares wording against a small set of
+      hand-labelled postings and cannot know whether a job exists.
     </p>
-    <p>
-      A learning project: logistic regression written from scratch &mdash; no
-      machine-learning libraries, no external services, no tracking.
+    <p class="footer-line footer-line-last">
+      <a href="https://github.com/shouryabiswas2009/HireProof" rel="noopener">Source on GitHub</a>
+      &middot; last updated <time id="last-updated" datetime="2026-10-04">2026-10-04</time>
     </p>
-    <p class="footer-meta">
-      <!-- bump_version.py rewrites both the attribute and the text on every
-           deploy, so this cannot drift from what is actually published. -->
-      Last updated <time id="last-updated" datetime="2026-09-27">2026-09-27</time>
-      &middot;
-      <a href="https://github.com/shouryabiswas2009/hireproof/commits/main">
-        See what changed
-      </a>
-    </p>
-    <p>
-      <a id="repo-link" href="#">
-        Source code and write-up on GitHub
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8"/></svg>
-      </a>
-    </p>
-  </footer>
+  </div>
+</footer>
 
-</div>
-
-<script type="module" src="app.js?v=59"></script>
+<script type="module" src="app.js?v=60"></script>
 </body>
 </html>
