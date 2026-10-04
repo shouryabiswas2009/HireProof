@@ -207,6 +207,11 @@ lookbehind, no named groups, which differ between Python and JavaScript.
 
 ### 3.3 Cache busting, and a bug it caused
 
+> **Updated by the redesign.** `tabs.js` and `hero-field.js` were deleted
+> and `examples.js` added, so `bump_version.py`'s target list changed with
+> them. `tests/test_versions.py` fails if any asset URL disagrees, which is
+> what caught the half-bumped state during the rebuild.
+
 GitHub Pages serves every file with `Cache-Control: max-age=600`, so a
 browser may keep its copy of the HTML *and* the scripts for ten minutes.
 
@@ -329,6 +334,63 @@ inform the *labels*; the model works from wording only. The site says so.
   excellent. The current demo model scores 100% and is flagged accordingly.
 
 ---
+
+### 3.9 The redesign, and why the match positions did not go in features.js
+
+The site was rebuilt around the tool rather than around a landing page.
+Someone arriving here has a posting to check; putting a "Get started"
+button between them and the textarea adds a step that buys nothing. The
+workspace is the first screen, scoring runs as you type, and the result
+appears beside the input rather than below the fold.
+
+**Every number on the page is read from `model.json`.** Not the sample
+count, not the accuracy, not the baseline, not a single weight. This is
+enforced rather than intended: `tests/test_assets.py` fails the build if a
+bare percentage appears anywhere in `index.html`. The reason is the
+failure it prevents. A figure typed into HTML is correct on the day it is
+typed and silently wrong after the next retrain, and the one thing this
+project cannot afford is a page that overstates what the model can do. The
+same rule is why the model card's cautions - demo data, a sample under
+100, an implausibly high score - are computed from the file rather than
+written out, so they appear and disappear on their own.
+
+`train.py` gained one field to make that possible: an `evidence` block
+recording what the labels rest on, per reason, plus the sure/unsure split.
+It is the only thing the page could not work out for itself, because only
+`train.py` ever sees the raw rows.
+
+**Why `features.js` was left alone.** Phrase highlighting needs to know
+where each matched phrase sits in the text, and the obvious place to
+return that is the function doing the matching. It was not done there.
+
+`extractFeatures` has a twin in `features.py`, and two test suites exist
+for no other purpose than proving the two produce identical numbers: 164
+checks in `tests/js/test_features.mjs`, and the end-to-end comparison in
+`tests/test_parity_predictions.py`. That parity is the thing holding the
+whole design together - the model is trained in Python and run in
+JavaScript, and if the two extractors ever disagree the scores become
+quietly wrong rather than obviously broken. Reaching into that function to
+carry positions, for a presentational feature, is a bad trade.
+
+So `highlight.js` gained `matchesWithContributions` instead. It calls the
+matcher a second time, maps the offsets back through `normalizeWithMap`,
+and tags each span with the feature it fed and that feature's signed
+contribution. Nothing it does is read by the scorer, so a feature value
+provably cannot move, and `features.py` needed no change at all.
+
+One detail worth keeping: the highlight colour comes from the
+**contribution's sign**, not from which word list the phrase came from. On
+this dataset several features trained against their own hypothesis, so a
+buzzword is only "toward ghost" if the model actually learned it that way.
+Colouring by the word list would have been the page asserting something
+the model disagrees with.
+
+**Deleted:** the particle field, the animated arc, the floating cards, the
+glass and the glow, along with `tabs.js` and `hero-field.js`. Nothing on
+the page moves now except a bar easing to its value and a highlight fading
+in - both of which are showing a number changing. `bump_version.py` lost
+those two files from its target list, which `tests/test_versions.py`
+guards.
 
 ## 4. The 11 features, and why each was chosen
 

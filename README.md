@@ -11,6 +11,9 @@ it, because a number on its own is not much use.
 **Live site: https://shouryabiswas2009.github.io/HireProof/**
 (the capital H and P matter &mdash; GitHub Pages URLs are case-sensitive)
 
+![The HireProof workspace: a job posting pasted on the left, its score and
+verdict on the right](docs/media/screenshot.jpg)
+
 ## How it works, in one paragraph
 
 Training runs on a laptop in Python and produces a small file of numbers
@@ -116,20 +119,22 @@ extraction exists in both languages, and the tests check they agree.
 
 ## Current status
 
-The public model is trained on **synthetic placeholder postings** written by
-hand (`data/demo_postings.json`), because the real labelled dataset is still
-being collected. It scores 100% in cross-validation, which is a warning sign
-rather than an achievement: those examples are far more cleanly separated
-than real postings ever are. Both the training report and the website say so.
+The public model is trained on **30 hand-labelled postings**
+(15 ghost, 15 genuine), last on 2026-10-04.
+It scores **70% cross-validated accuracy against
+a 50% baseline** &mdash; so it beats
+guessing, but not by enough to lean on.
 
-The first attempt at training on real labels (20 postings, 5 of them ghost)
-produced 70% cross-validated accuracy against a 75% baseline, and learned
-relationships that are backwards from the hypotheses in `features.py`:
-naming a manager and giving a deadline both pushed a posting *toward* ghost.
-That is what fitting five examples looks like. The guard above refused to
-deploy it, which is the tooling working rather than a setback. The dataset
-needs to grow, especially the ghost side.
+30 is too few. Below about 100 the accuracy estimate swings
+widely depending on which examples land in which fold, and several features
+have trained *against* the hypotheses in `features.py`. The site says so
+itself: every figure on the model card is read from `docs/model.json`, and
+the cautions about sample size are computed rather than written, so they
+appear and disappear on their own as the dataset grows.
 
+An earlier attempt on 20 postings (5 of them ghost) produced 70% against a
+75% baseline &mdash; worse than guessing. The guard in `train.py` refused to
+deploy it, which is the tooling working rather than a setback.
 
 ## Why this isn't production-ready
 
