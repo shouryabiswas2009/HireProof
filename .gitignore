@@ -15,3 +15,7 @@ data/*.tmp
 .vscode/
 .idea/
 Thumbs.db
+
+# The Next.js + Supabase experiment. Kept on the redesign-experiment
+# branch, not on main: main has one site and it is docs/.
+web/
