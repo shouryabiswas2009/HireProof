@@ -12,11 +12,11 @@
  * what the model can do.
  */
 
-import { loadPhrases } from "./features.js?v=60";
-import { loadModel, score, band, sigmoid, THRESHOLD_LOW, THRESHOLD_HIGH } from "./scorer.js?v=60";
-import { annotateWithContributions } from "./highlight.js?v=60";
-import { checkInput, MIN_WORDS } from "./validate.js?v=60";
-import { EXAMPLES } from "./examples.js?v=60";
+import { loadPhrases } from "./features.js?v=62";
+import { loadModel, score, band, sigmoid, THRESHOLD_LOW, THRESHOLD_HIGH } from "./scorer.js?v=62";
+import { annotateWithContributions } from "./highlight.js?v=62";
+import { checkInput, MIN_WORDS } from "./validate.js?v=62";
+import { EXAMPLES } from "./examples.js?v=62";
 
 const REPO_URL = "https://github.com/shouryabiswas2009/HireProof";
 
@@ -40,14 +40,24 @@ const pct = (x) => `${Math.round((x ?? 0) * 100)}%`;
 
 const THEME_KEY = "hireproof:theme";
 
+/*
+ * DARK IS THE DEFAULT, deliberately, and not "whatever the OS says".
+ *
+ * The page is drawn for the dark palette: the warm charcoal surfaces and
+ * the cream ink are the design, and the paper theme is the alternative.
+ * Following prefers-color-scheme would mean most visitors never see the
+ * intended version, so an unset preference resolves to dark here and the
+ * stylesheet's `color-scheme: dark` agrees with it.
+ *
+ * The attribute is always written, never deleted, so the CSS and this
+ * function can never disagree about which theme is showing.
+ */
 function applyTheme(choice) {
-  const root = document.documentElement;
-  if (choice === "light" || choice === "dark") root.dataset.theme = choice;
-  else delete root.dataset.theme;
+  const theme = choice === "light" ? "light" : "dark";
+  document.documentElement.dataset.theme = theme;
 
-  const dark =
-    choice === "dark" ||
-    (!choice && window.matchMedia("(prefers-color-scheme: dark)").matches);
+  // The button says what it will DO, not what is currently showing.
+  const dark = theme === "dark";
   el("theme-label").textContent = dark ? "Light" : "Dark";
   el("theme-btn").setAttribute("aria-pressed", String(dark));
 }
@@ -57,8 +67,8 @@ function setUpTheme() {
   try {
     saved = localStorage.getItem(THEME_KEY);
   } catch {
-    // Private browsing throws on storage. Following the OS is the right
-    // fallback, not a crash.
+    // Private browsing throws on storage. Falling back to the default
+    // theme is the right answer, not a crash.
   }
   applyTheme(saved);
 
@@ -74,7 +84,69 @@ function setUpTheme() {
   });
 }
 
+/* ======================================================= The two views */
+
+/*
+ * Edit and Highlights are the same text, rendered twice.
+ *
+ * Not a textarea with marks drawn over it: that needs a mirrored element
+ * kept in perfect sync with the textarea's scroll position and metrics,
+ * and it breaks the moment a font loads late or a line wraps differently.
+ * Two plain views and a toggle are duller and always correct.
+ */
+function showView(which) {
+  const marks = which === "marks";
+  el("view-edit").hidden = marks;
+  el("view-marks").hidden = !marks;
+  el("view-edit-btn").setAttribute("aria-selected", String(!marks));
+  el("view-marks-btn").setAttribute("aria-selected", String(marks));
+}
+
+function setUpViews() {
+  el("view-edit-btn").addEventListener("click", () => showView("edit"));
+  el("view-marks-btn").addEventListener("click", () => showView("marks"));
+}
+
 /* ============================================================= The result */
+
+/*
+ * Count the score up to its value instead of snapping to it.
+ *
+ * WHY BOTHER: the number changes on every keystroke once a posting is
+ * long enough to score, and a figure that teleports between values is
+ * genuinely harder to read than one that travels - you lose track of
+ * whether it went up or down. The count gives the change a direction.
+ *
+ * The easing is computed per MILLISECOND, not per frame. A per-frame
+ * factor silently runs at a different speed on a 120Hz screen than on a
+ * throttled background tab, which is a bug this project has already hit
+ * once; elapsed time is the only thing that behaves the same everywhere.
+ *
+ * Anyone who has asked for less motion gets the final value immediately.
+ */
+const COUNT_MS = 420;
+let countFrame = null;
+
+function countTo(node, target) {
+  if (countFrame) cancelAnimationFrame(countFrame);
+
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const from = parseInt(node.textContent, 10);
+  if (reduced || !Number.isFinite(from)) {
+    node.textContent = `${target}%`;
+    return;
+  }
+
+  const started = performance.now();
+  const step = (now) => {
+    const t = Math.min(1, (now - started) / COUNT_MS);
+    // easeOutCubic: quick off the mark, settles gently on the value.
+    const eased = 1 - Math.pow(1 - t, 3);
+    node.textContent = `${Math.round(from + (target - from) * eased)}%`;
+    countFrame = t < 1 ? requestAnimationFrame(step) : null;
+  };
+  countFrame = requestAnimationFrame(step);
+}
 
 function renderResult(text, result) {
   const verdict = band(result.probability);
@@ -83,7 +155,7 @@ function renderResult(text, result) {
   el("empty-state").hidden = true;
   el("result").hidden = false;
 
-  el("score-value").textContent = `${percent}%`;
+  countTo(el("score-value"), percent);
   el("verdict-title").textContent = verdict.title;
   el("verdict-note").textContent = verdict.blurb;
 
@@ -91,12 +163,24 @@ function renderResult(text, result) {
   // relayouts the bar on every frame of the ease.
   el("bar-fill").style.transform = `scaleX(${result.probability})`;
 
-  // Mark the two band edges, so a reader can see where 40 and 70 fall
-  // rather than only learning which band they landed in.
-  el("bar-ticks").innerHTML = [THRESHOLD_LOW, THRESHOLD_HIGH]
+  /*
+   * Mark the two band edges, and SAY WHAT THEY ARE.
+   *
+   * These previously rendered as a bare "40" and "70" sitting under the
+   * bar with nothing identifying them - a reader had no way to tell a
+   * threshold from a scale marking from an axis label. Each tick now
+   * carries its own name, so the bar explains itself without the
+   * surrounding prose having to.
+   */
+  el("bar-ticks").innerHTML = [
+    [THRESHOLD_LOW, "genuine below"],
+    [THRESHOLD_HIGH, "ghost above"],
+  ]
     .map(
-      (t) =>
-        `<span class="bar-tick" style="left:${t * 100}%">${Math.round(t * 100)}</span>`
+      ([t, name]) =>
+        `<span class="bar-tick" style="left:${t * 100}%">${Math.round(
+          t * 100
+        )}%<b>${name}</b></span>`
     )
     .join("");
 
@@ -180,13 +264,18 @@ function renderAnnotated(text, result) {
     .join("");
   el("missing").innerHTML = missing;
 
-  el("annotated-panel").hidden = false;
+  // The toggle only exists once there is something to highlight.
+  el("view-toggle").hidden = false;
 }
 
 function clearResult() {
   el("result").hidden = true;
   el("breakdown-panel").hidden = true;
-  el("annotated-panel").hidden = true;
+  // Nothing to highlight any more, so the toggle goes and the panel
+  // returns to the editor - otherwise clearing the box would leave the
+  // reader stranded on an empty Highlights view with no way back.
+  el("view-toggle").hidden = true;
+  showView("edit");
   el("empty-state").hidden = false;
   el("announce").textContent = "";
 }
@@ -234,8 +323,11 @@ function onInput() {
 function renderHow() {
   const text = el("how-input").value;
   const steps = el("how-steps");
+  // Clearing the steps must clear the caution with them, or an emptied
+  // box leaves a warning on screen about text that is no longer there.
   if (!MODEL || !text.trim()) {
     steps.innerHTML = "";
+    el("how-ood").hidden = true;
     return;
   }
 
@@ -244,11 +336,33 @@ function renderHow() {
     result = score(text);
   } catch {
     steps.innerHTML = "";
+    el("how-ood").hidden = true;
     return;
   }
 
   const top = result.contributions[0];
   const bias = MODEL.bias;
+
+  /*
+   * The demo runs the real scorer, so it can land outside the training
+   * range just as easily as the main tool - a two-word line sits about
+   * ten standard deviations below the mean word count. Showing that
+   * arithmetic without the caution the main panel gives would present an
+   * extrapolation as if it were a reading.
+   */
+  const howOod = el("how-ood");
+  if (result.outOfDistribution) {
+    const names = result.contributions
+      .filter((c) => c.clamped)
+      .map((c) => c.neutralLabel.toLowerCase());
+    howOod.textContent =
+      `This text is outside the training range on ${names.join(" and ")}, ` +
+      `so the numbers below are clamped at the edge of what the model has ` +
+      `seen. The arithmetic is real; the answer is an extrapolation.`;
+    howOod.hidden = false;
+  } else {
+    howOod.hidden = true;
+  }
 
   // The same five stages scorer.js runs, with this text's real numbers.
   const stages = [
@@ -337,14 +451,12 @@ function renderModelCard() {
     );
   }
 
-  if (MODEL.n_examples < 100) {
-    cautions.push(
-      `Trained on ${MODEL.n_examples} postings. Below about 100 the accuracy ` +
-        `estimate swings widely depending on which examples land in which ` +
-        `fold, so treat ${pct(m.cv_accuracy)} as a rough hint rather than a ` +
-        `measurement.`
-    );
-  }
+  /* There is deliberately NO small-sample caution computed here.
+     train.py already owns that judgement - MIN_USABLE and TARGET live in
+     one place there, and the warning it writes into model.json is
+     replayed verbatim further down. This function used to carry a second
+     threshold of its own ("below about 100"), which meant the card could
+     show two cautions quoting two different numbers for the same idea. */
 
   if (m.cv_accuracy > 0.98) {
     cautions.push(
@@ -362,6 +474,39 @@ function renderModelCard() {
         `alone. The features are drawn from the wording too, so those labels ` +
         `teach the model to reproduce a reader's instinct rather than to ` +
         `detect anything.`
+    );
+  }
+
+  /*
+   * HOW MANY SIGNALS LEARNED THE OPPOSITE OF WHAT WAS EXPECTED.
+   *
+   * features.py records a hypothesis per signal - whether the author
+   * expected it to point toward ghost or toward legit. On a small sample
+   * the fitted weights frequently come out the other way, and the feature
+   * table below shows those directions as plain fact without saying so.
+   *
+   * This counts the disagreements from model.json rather than stating a
+   * number, so it corrects itself on every retrain and disappears on its
+   * own once the weights settle. It is not a claim that the model is
+   * broken: it is the reason not to read the table as findings.
+   */
+  const hypotheses = MODEL.feature_hypothesis || {};
+  let agreed = 0;
+  let against = 0;
+  MODEL.feature_names.forEach((name, i) => {
+    const expected = hypotheses[name];
+    if (expected !== "ghost" && expected !== "legit") return;
+    const learned = MODEL.weights[i] > 0 ? "ghost" : "legit";
+    if (learned === expected) agreed += 1;
+    else against += 1;
+  });
+  if (against > agreed) {
+    cautions.push(
+      `${against} of ${agreed + against} signals learned the OPPOSITE ` +
+        `direction from the one expected when they were written. With this ` +
+        `little data that is close to a coin flip, so read the weights below ` +
+        `as what this particular sample produced, not as findings about job ` +
+        `postings.`
     );
   }
 
@@ -407,8 +552,26 @@ function renderModelCard() {
 
 /* ================================================================ Start */
 
+/*
+ * The header's hairline appears only once something is scrolled under it.
+ *
+ * A permanent border is furniture; a border that arrives when it starts
+ * doing a job reads as intentional. passive:true because this listener
+ * never calls preventDefault, and saying so lets the browser scroll
+ * without waiting to find out.
+ */
+function setUpStickyHeader() {
+  const header = document.querySelector(".site-header");
+  const update = () =>
+    header.classList.toggle("is-stuck", window.scrollY > 4);
+  window.addEventListener("scroll", update, { passive: true });
+  update();
+}
+
 async function start() {
   setUpTheme();
+  setUpStickyHeader();
+  setUpViews();
 
   el("posting").addEventListener("input", onInput);
   el("clear-btn").addEventListener("click", () => {

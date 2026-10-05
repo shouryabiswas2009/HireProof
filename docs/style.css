@@ -25,10 +25,16 @@
 /* --------------------------------------------------------------- Fonts */
 
 @font-face {
+  font-family: "Fraunces";
+  src: url("fonts/Fraunces.woff2") format("woff2");
+  font-weight: 400 700;
+  font-display: swap;   /* show fallback text immediately, swap when ready */
+}
+@font-face {
   font-family: "Instrument Sans";
   src: url("fonts/InstrumentSans.woff2") format("woff2");
   font-weight: 400 700;
-  font-display: swap;   /* show fallback text immediately, swap when ready */
+  font-display: swap;
 }
 @font-face {
   font-family: "IBM Plex Mono";
@@ -46,55 +52,83 @@
 /* --------------------------------------------------------------- Tokens */
 
 :root {
-  /* `color-scheme: light dark` means "follow the operating system"; the
-     two rules below let the header switch pin it either way. Every colour
-     is written once as light-dark(), so there is no second copy of the
-     palette to drift. */
-  color-scheme: light dark;
+  /* DARK IS THE DEFAULT, and it is stated here rather than inherited from
+     the operating system. `color-scheme: dark` means light-dark() resolves
+     to its second value unless the markup pins otherwise, so a visitor who
+     has never touched the switch gets the dark design the page was drawn
+     for. The two rules below let the header switch override it either way. */
+  color-scheme: dark;
 
-  /* Warm paper and warm ink. Not pure white on pure black, which is
-     harsh, and not the blue-grey every dark UI defaults to. */
-  --paper:     light-dark(#f6f4ef, #141311);
-  --surface:   light-dark(#fffefb, #1c1a17);
-  --ink:       light-dark(#191714, #efeae2);
-  --ink-soft:  light-dark(#55504a, #a8a199);
-  --ink-faint: light-dark(#6d6760, #8b847c);
-  --rule:      light-dark(#e2ded5, #2e2b27);
-  --rule-soft: light-dark(#eeeae2, #242220);
+  /* Warm charcoal and warm cream. Every colour is written once as
+     light-dark(), so there is no second copy of the palette to drift.
+     Nothing here is pure black or pure white: the darkest surface is a
+     warm brown-grey and the lightest ink is a cream, which is what keeps
+     the page from reading as a generic dark UI. Every pair below was
+     measured rather than eyeballed - all fourteen clear WCAG AA for body
+     text, the lowest being the faint label at 5.02:1. */
+  --paper:     light-dark(#f7f4ed, #15130f);
+  --surface:   light-dark(#fffdf8, #1c1915);
+  --raised:    light-dark(#ffffff, #232019);
+  --ink:       light-dark(#1a1713, #ece4d6);
+  --ink-soft:  light-dark(#4e483f, #b3aa9a);
+  --ink-faint: light-dark(#6c655c, #8c8476);
+  --rule:      light-dark(#e3ded3, #302b23);
+  --rule-soft: light-dark(#efebe2, #241f18);
 
-  /* THE ONE ACCENT. Slate ink: near-black with just enough blue to read
-     as deliberate. Deliberately not a mid blue, because the "toward real"
+  /* THE ONE ACCENT. Slate: near-black with just enough blue to read as
+     deliberate on paper, lifted to a soft tint on charcoal so it stays
+     legible. Deliberately not a mid blue, because the "toward real"
      direction colour is one and the two must never be confused. */
-  --accent:       light-dark(#35465c, #a9bdd4);
-  --accent-hover: light-dark(#1f2b3a, #cfdcea);
-  --accent-ink:   light-dark(#fffefb, #141311);
+  --accent:       light-dark(#35465c, #9db4ce);
+  --accent-hover: light-dark(#22303f, #c3d3e4);
+  --accent-ink:   light-dark(#fffdf8, #15130f);
 
-  /* The two direction colours. Checked with a colour-vision validator
-     against both surfaces rather than picked by eye - see ARCHITECTURE
-     section 3.9. Colour is never the only channel: direction is also
-     carried by which side of the axis a bar sits on, by a +/- glyph, and
-     by the row's own words. */
-  --toward-ghost: light-dark(#b23b33, #d87264);
-  --toward-real:  light-dark(#2a6098, #4595d8);
-  --ghost-wash:   light-dark(#f7e7e4, #3a211d);
-  --real-wash:    light-dark(#e4edf7, #16293a);
+  /* The two direction colours, softened to sit on warm backgrounds.
+     Colour is never the only channel, and that matters more here than
+     usual: these two differ by only 1.11 in relative luminance, so they
+     are told apart by hue rather than lightness. Direction is therefore
+     also carried by which side of the axis a bar sits on, by a +/- glyph,
+     and by the row's own words - see ARCHITECTURE section 3.9. */
+  --toward-ghost: light-dark(#a84036, #e08a7c);
+  --toward-real:  light-dark(#2a5e96, #7faedc);
+  --ghost-wash:   light-dark(#f6e4e0, #3a211d);
+  --real-wash:    light-dark(#e3ecf6, #16293a);
 
   --warn-bg:   light-dark(#fbf4e6, #241f14);
   --warn-rule: light-dark(#e8d9b4, #453a24);
   --warn-ink:  light-dark(#6b4a09, #dfba77);
 
-  /* A precise spacing scale, so every gap on the page is one of these
-     rather than whatever looked right at the time. */
+  /* The spacing scale. Every gap on the page is one of these rather than
+     whatever looked right at the time, which is what makes the vertical
+     rhythm read as deliberate instead of accidental. */
   --s1: 4px;  --s2: 8px;  --s3: 12px; --s4: 16px;
-  --s5: 24px; --s6: 32px; --s7: 48px; --s8: 72px; --s9: 112px;
+  --s5: 24px; --s6: 40px; --s7: 64px; --s8: 96px; --s9: 128px;
 
-  --radius: 6px;
-  --measure: 68ch;
+  --radius: 10px;        /* ONE radius. Pills use 999px; nothing else. */
+  --shadow: 0 1px 2px light-dark(rgba(26,23,19,.04), rgba(0,0,0,.26)),
+            0 8px 24px light-dark(rgba(26,23,19,.05), rgba(0,0,0,.22));
+  --measure: 64ch;       /* ~60-70 characters, the comfortable reading span */
 
-  --sans: "Instrument Sans", ui-sans-serif, system-ui, -apple-system,
-          "Segoe UI", Roboto, sans-serif;
-  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo,
-          Consolas, monospace;
+  /* THREE FAMILIES, each with one job. The serif carries the headline,
+     the section headings and the score, because that is the voice of the
+     page. The sans carries everything you read in quantity. The mono
+     carries every number, so figures line up in a column and a weight
+     never shifts when a digit changes. */
+  --serif: "Fraunces", "Iowan Old Style", Georgia, "Times New Roman", serif;
+  --sans:  "Instrument Sans", ui-sans-serif, system-ui, -apple-system,
+           "Segoe UI", Roboto, sans-serif;
+  --mono:  "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo,
+           Consolas, monospace;
+
+  /* The type scale, named by role. Sizes are clamped so the page is
+     drawn for the window it is in rather than stepping at breakpoints. */
+  --t-display: clamp(2.75rem, 5.6vw, 4.5rem);   /* 44 -> 72px */
+  --t-h2:      clamp(2rem, 3.2vw, 2.5rem);      /* 32 -> 40px */
+  --t-h3:      1.25rem;
+  --t-score:   clamp(4.5rem, 10.5vw, 6.5rem);   /* 72 -> 104px */
+  --t-body:    1.0625rem;                        /* 17px */
+  --t-small:   0.875rem;                         /* 14px */
+  --t-label:   0.75rem;                          /* 12px */
 }
 
 :root[data-theme="light"] { color-scheme: light; }
@@ -118,15 +152,29 @@ body {
   background: var(--paper);
   color: var(--ink);
   font-family: var(--sans);
-  font-size: 16px;
-  line-height: 1.6;
+  font-size: var(--t-body);
+  line-height: 1.65;
   -webkit-font-smoothing: antialiased;
+  /* The switch repaints the whole page, so the two themes cross-fade
+     rather than snapping. Only colour transitions - nothing moves. */
+  transition: background-color 0.25s ease, color 0.25s ease;
 }
 
-h1, h2, h3 { line-height: 1.2; letter-spacing: -0.015em; font-weight: 600; }
-h1 { font-size: clamp(1.75rem, 3.2vw, 2.3rem); margin: 0 0 var(--s3); }
-h2 { font-size: 1.3rem; margin: 0 0 var(--s3); }
-h3 { font-size: 1rem; margin: 0 0 var(--s2); }
+/* THE HEADINGS CARRY THE PAGE. Serif, large, tightly tracked. The old
+   scale topped out at 36px for h1 and 21px for h2, which left the whole
+   page sitting in a narrow band between 11px and 15px with nothing to
+   anchor the eye. Size contrast is the point here. */
+h1, h2, h3 {
+  font-family: var(--serif);
+  font-weight: 600;
+  line-height: 1.08;
+  letter-spacing: -0.022em;
+  text-wrap: balance;   /* no orphaned last word in a headline */
+}
+h1 { font-size: var(--t-display); margin: 0 0 var(--s4); }
+h2 { font-size: var(--t-h2);      margin: 0 0 var(--s4); line-height: 1.12; }
+h3 { font-size: var(--t-h3);      margin: 0 0 var(--s2); line-height: 1.25;
+     letter-spacing: -0.012em; }
 p  { margin: 0 0 var(--s4); max-width: var(--measure); }
 
 a { color: var(--accent); text-underline-offset: 3px; }
@@ -154,8 +202,14 @@ summary:focus-visible, [tabindex]:focus-visible {
   top: 0;
   z-index: 20;
   background: var(--paper);
-  border-bottom: 1px solid var(--rule);
+  /* The rule is transparent at the top of the page and fades in once the
+     header is actually overlapping content, so the hairline means
+     "something is scrolled underneath" rather than being permanent
+     furniture. app.js toggles .is-stuck from a scroll listener. */
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.2s ease, background-color 0.25s ease;
 }
+.site-header.is-stuck { border-bottom-color: var(--rule); }
 .site-header .wrap {
   display: flex;
   align-items: center;
@@ -197,18 +251,68 @@ summary:focus-visible, [tabindex]:focus-visible {
 }
 .theme-btn:hover { color: var(--ink); border-color: var(--ink-faint); }
 
+/* ---------------------------------------------------- The view toggle */
+
+.head-right { display: flex; align-items: center; gap: var(--s4); margin-left: auto; }
+
+/* A segmented control: two options, one visible choice, no dropdown for a
+   binary. The selected half carries the accent as a filled block, which is
+   the one place on the page a solid accent area appears. */
+.view-toggle {
+  display: inline-flex;
+  padding: 2px;
+  background: var(--rule-soft);
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+}
+.view-btn {
+  font: inherit;
+  font-size: var(--t-label);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: var(--s1) var(--s4);
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--ink-faint);
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.view-btn:hover { color: var(--ink); }
+.view-btn[aria-selected="true"] {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
 /* ------------------------------------------------------------- Sections */
 
-.section { padding: var(--s8) 0; border-top: 1px solid var(--rule); }
+/* FULL-WIDTH BANDS, not more bordered cards.
+   Every section used to be the same outlined box, so the page read as one
+   texture from top to bottom. The tool keeps its cards because its parts
+   are genuinely separate controls; the explanatory sections become bands
+   that alternate tone, which is what gives the page a rhythm you can feel
+   while scrolling without adding a single border. */
+.section { padding: var(--s8) 0; }
+.section-band {
+  background: var(--surface);
+  border-top: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+}
 .section-lede { color: var(--ink-soft); }
+
+/* The small label above every section heading. Mono and letter-spaced so
+   it reads as a tag rather than as a very short sentence. */
 .eyebrow-rule {
   font-family: var(--mono);
-  font-size: 0.75rem;
-  letter-spacing: 0.08em;
+  font-size: var(--t-label);
+  letter-spacing: 0.09em;
   text-transform: uppercase;
-  color: var(--ink-faint);
-  margin: 0 0 var(--s2);
+  color: var(--accent);
+  margin: 0 0 var(--s3);
 }
+/* Section heads share one shape: small label, large heading, one line of
+   intro - so the page reads as a system rather than as six designs. */
+.section-head { margin-bottom: var(--s6); max-width: var(--measure); }
 
 /* ------------------------------------------------------------ Workspace */
 
@@ -239,7 +343,19 @@ summary:focus-visible, [tabindex]:focus-visible {
   padding: var(--s4) var(--s5);
   border-bottom: 1px solid var(--rule-soft);
 }
-.panel-head h2 { margin: 0; font-size: 0.95rem; }
+/* A panel head labels a control, so it stays in the interface voice:
+   sans, small, spaced. Setting the serif loose at 15px here made these
+   read as tiny section headings, which is exactly backwards. */
+.panel-head h2 {
+  margin: 0;
+  font-family: var(--sans);
+  font-size: var(--t-label);
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  line-height: 1.4;
+}
 .panel-body { padding: var(--s5); }
 
 #posting {
@@ -309,38 +425,99 @@ summary:focus-visible, [tabindex]:focus-visible {
 
 .score-row { display: flex; align-items: baseline; gap: var(--s3); }
 .score {
-  font-family: var(--mono);
-  font-size: clamp(2.6rem, 7vw, 3.6rem);
+  /* Serif, to match the headings, and large enough to be the first
+     thing the eye lands on. Tabular figures so the number does not
+     jiggle sideways while it counts up. */
+  font-family: var(--serif);
+  font-size: var(--t-score);
   font-weight: 600;
-  line-height: 1;
-  letter-spacing: -0.03em;
+  line-height: 0.92;
+  letter-spacing: -0.035em;
   font-variant-numeric: tabular-nums;
 }
 .score-of { font-size: 0.82rem; color: var(--ink-faint); }
 
-.verdict { margin: var(--s3) 0 0; font-size: 0.95rem; font-weight: 600; }
-.verdict-note { margin: var(--s1) 0 0; font-size: 0.87rem; color: var(--ink-soft); }
+/* One sentence, at reading size. This is the answer the visitor came
+   for, so it is not a 15px bold label squeezed under the number. */
+.verdict {
+  margin: var(--s4) 0 0;
+  font-size: 1.125rem;
+  font-weight: 500;
+  line-height: 1.4;
+  max-width: 46ch;
+}
+.verdict-note {
+  margin: var(--s2) 0 0;
+  font-size: var(--t-small);
+  color: var(--ink-soft);
+  max-width: 54ch;
+}
 
 /* A thin bar, with the two thresholds marked so a reader can see where
    the bands fall rather than only learning which one they landed in. */
+/* THE PROBABILITY BAR.
+   Full width of the result panel and thick enough to read as a chart
+   rather than a progress spinner. It carries the accent, because it is
+   showing one value on one axis - not a direction, which is what the
+   coral/blue pair is reserved for. */
+.bar-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin: var(--s6) 0 var(--s2);
+  font-family: var(--mono);
+  font-size: var(--t-label);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
 .bar-track {
   position: relative;
-  height: 6px;
-  margin: var(--s5) 0 var(--s2);
+  height: 14px;
   background: var(--rule-soft);
+  border: 1px solid var(--rule);
   border-radius: 999px;
   overflow: hidden;
 }
 .bar-fill {
   height: 100%;
   border-radius: 999px;
-  background: var(--ink);
+  background: var(--accent);
   transform-origin: left center;
   transform: scaleX(0);
-  transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
 }
-.bar-ticks { position: relative; height: 14px; font-family: var(--mono); font-size: 0.68rem; color: var(--ink-faint); }
-.bar-tick { position: absolute; transform: translateX(-50%); }
+/* The threshold marks. These used to render as a bare "40" and "70"
+   floating under the bar with nothing saying what they were, which is
+   worse than having no marks at all. Each one now names itself. */
+.bar-ticks {
+  position: relative;
+  height: 32px;
+  margin-top: var(--s2);
+  font-family: var(--mono);
+  font-size: var(--t-label);
+  color: var(--ink-faint);
+}
+.bar-tick {
+  position: absolute;
+  transform: translateX(-50%);
+  text-align: center;
+  line-height: 1.25;
+  /* The two marks sit at 40% and 70%, so on a narrow panel their labels
+     are only ~30% of the width apart. nowrap ran them into each other;
+     a hard measure makes them wrap to a second line instead. */
+  max-width: 11ch;
+  font-size: 0.6875rem;
+}
+.bar-tick::before {
+  content: "";
+  display: block;
+  width: 1px;
+  height: 6px;
+  margin: 0 auto var(--s1);
+  background: var(--ink-faint);
+}
+.bar-tick b { display: block; font-weight: 400; color: var(--ink-soft); }
 
 .caution {
   margin: var(--s4) 0 0;
@@ -364,7 +541,10 @@ summary:focus-visible, [tabindex]:focus-visible {
 .breakdown { margin: 0; padding: 0; list-style: none; }
 .brow {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 96px;
+  /* 96px was two characters short once the points grew a sign, a decimal
+     and the "pts" unit: "+48.4 pts" wrapped and dropped its unit onto a
+     second line. Sized to the longest real string, not to a round number. */
+  grid-template-columns: minmax(0, 1fr) 112px;
   align-items: center;
   gap: var(--s3);
   padding: var(--s2) 0;
@@ -419,19 +599,29 @@ summary:focus-visible, [tabindex]:focus-visible {
   background: var(--paper);
   border: 1px solid var(--rule);
   border-radius: var(--radius);
+  /* Matches the textarea's height, so switching views does not make the
+     panel jump and shove the rest of the page around. */
+  min-height: 260px;
   max-height: 420px;
   overflow-y: auto;
 }
-/* Proofreader marking: a wash plus an underline, so the mark survives
-   greyscale and colour blindness rather than relying on hue. */
+/* MARKER PEN, not a link underline.
+   A wash behind the words with a heavier rule beneath, so the mark reads
+   as something laid over the text. Colour is still never the only signal:
+   the underline weight survives greyscale and colour blindness, which
+   matters here because the two direction colours differ in hue rather
+   than in lightness. */
 .annotated mark {
-  padding: 1px 2px;
-  border-radius: 2px;
+  padding: 2px 3px;
+  margin: 0 -1px;
+  border-radius: 3px;
   background: none;
   color: inherit;
+  box-decoration-break: clone;          /* a wrapped phrase keeps its ends */
+  -webkit-box-decoration-break: clone;
   text-decoration: underline;
   text-decoration-thickness: 2px;
-  text-underline-offset: 3px;
+  text-underline-offset: 4px;
   cursor: help;
 }
 .annotated mark.toward-ghost {
@@ -533,10 +723,27 @@ summary:focus-visible, [tabindex]:focus-visible {
 @media (max-width: 640px) {
   .wrap { padding: 0 var(--s4); }
   .section { padding: var(--s7) 0; }
-  .site-nav { gap: var(--s3); }
-  .site-nav a { font-size: 0.84rem; }
   #posting { min-height: 220px; }
-  .brow { grid-template-columns: minmax(0, 1fr) 78px; }
+  .brow { grid-template-columns: minmax(0, 1fr) 92px; }
+
+  /* At 375px "How it works" wrapped onto a second line and pushed the
+     header to 44px of nav inside a 60px bar. nowrap plus a tighter scale
+     keeps all four controls on one row; measured at 375px, the row comes
+     to 266px of the 268px available, which is the reason for the 0.8rem
+     rather than a round number. */
+  .site-nav { gap: var(--s3); }
+  .site-nav a { font-size: 0.8rem; white-space: nowrap; }
+  .theme-btn { font-size: 0.78rem; padding: var(--s1) var(--s2); }
+  .wordmark { font-size: 1rem; }
+
+  /* The panel head stacks its label above the toggle rather than letting
+     a segmented control and a word count fight over 180px. */
+  .panel-head { flex-wrap: wrap; row-gap: var(--s2); }
+  .head-right { gap: var(--s3); }
+  .view-btn { padding: var(--s1) var(--s3); }
+
+  /* Threshold labels have far less room between 40% and 70% here. */
+  .bar-tick { max-width: 9ch; font-size: 0.625rem; }
 }
 
 /* Nothing on this page moves for decoration, so honouring the preference
