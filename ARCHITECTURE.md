@@ -392,6 +392,60 @@ in - both of which are showing a number changing. `bump_version.py` lost
 those two files from its target list, which `tests/test_versions.py`
 guards.
 
+### 3.10 The typographic pass, and the three things it corrected
+
+The redesign in 3.9 fixed the structure but left the page in a single
+narrow band of type: `h1` topped out at 36px, `h2` at 21px, and roughly
+forty declarations sat between 11px and 15px. Nothing anchored the eye,
+so every section read with the same weight as every other.
+
+This pass gave the page a scale (headline 44-72px, headings 32-40px, body
+17px/1.65) and three typefaces with one job each: Fraunces for the
+headline, section headings and the score; Instrument Sans for text; IBM
+Plex Mono for every number. The fonts are self-hosted woff2 in
+`docs/fonts/`, not a CDN. The page tells visitors the posting never leaves
+their machine, and a third-party font request would put a request on the
+board that undercuts the claim for no benefit. They had in fact been
+referenced but missing for some time, so the live site was throwing three
+404s and silently rendering in Segoe UI.
+
+**Dark is the default, and it is declared rather than inherited.**
+`color-scheme: dark` on `:root`, and `applyTheme` resolves an unset
+preference to dark instead of reading `prefers-color-scheme`. Following
+the OS would have meant most visitors never saw the palette the page was
+drawn for. All fourteen colour pairs were measured rather than judged by
+eye; the lowest is the faint label at 5.02:1, so every one clears WCAG AA
+for body text.
+
+**The highlighting moved to where it is useful.** It is the feature that
+makes this a tool rather than a number generator, and it had been sitting
+below an eleven-row table where nobody scrolled to it. It is now a view of
+the input panel itself, behind an Edit/Highlights toggle. Both views
+render from the same string, so they cannot drift apart. It is
+deliberately NOT a textarea with marks overlaid: that needs a mirrored
+element kept in sync with the textarea's scroll position and font
+metrics, and it breaks the moment a font loads late or a line wraps
+differently.
+
+Three content faults were fixed at the same time, all of which had the
+same shape - the page stating something the data contradicted:
+
+1. **Two small-sample cautions quoting two thresholds.** `train.py` owns
+   this judgement through `MIN_USABLE`, and `app.js` had invented a
+   second one at 100. The hardcoded one is gone.
+2. **A weight table presented as findings.** On the current sample, seven
+   of the ten signals with a stated direction learned the OPPOSITE of
+   their hypothesis. The card now counts the disagreements out of
+   `model.json` and says so, which means the note corrects itself on
+   every retrain and disappears on its own once the weights settle. Two
+   "where it gets things wrong" bullets that named directions the weights
+   contradict were reworded to describe the failure without asserting a
+   direction.
+3. **The how-it-works demo had no out-of-distribution caution.** It runs
+   the real scorer, so a two-word line sits about ten standard deviations
+   below the training mean - and it showed that arithmetic as if it were
+   a reading. It now gives the same caution the main panel does.
+
 ## 4. The 11 features, and why each was chosen
 
 These are **hypotheses**, drawn from commonly reported reasons ghost
